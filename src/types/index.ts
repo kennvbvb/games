@@ -13,13 +13,30 @@ export type UpgradeType = 'hp' | 'atk' | 'def'
 
 export type UpgradeCounts = Record<UpgradeType, number>
 
+export interface StatBonus {
+  hp?: number
+  atk?: number
+  def?: number
+}
+
+export interface ShopItem {
+  id: string
+  name: string
+  emoji: string
+  bonus: StatBonus
+  cost: number
+  minLevel?: number
+}
+
 export interface PlayerState {
   name: string
+  avatar: string
   level: number
   exp: number
   gold: number
   stats: PlayerStats
   upgrades: UpgradeCounts
+  ownedItemIds: string[]
   stageProgress: StageProgress
 }
 
@@ -36,12 +53,19 @@ export interface StageRewards {
   gold: number
 }
 
+export interface StageBackground {
+  top: number
+  bottom: number
+  decor: string[]
+}
+
 export interface StageConfig {
   id: string
   name: string
   order: number
   enemy: EnemyConfig
   rewards: StageRewards
+  bg: StageBackground
 }
 
 export interface TurnEvent {

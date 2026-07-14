@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
+import { GAME_W, GAME_H, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
-import { createDefaultPlayerState } from '../state/playerState'
 import { getSession, signIn, signUp, isSupabaseConfigured } from '../services/authService'
 import { loadLocal, loadState } from '../services/saveService'
 import { COLORS, FONT } from '../ui/styles'
@@ -13,12 +13,12 @@ export class AuthScene extends Phaser.Scene {
   }
 
   create(): void {
-    const { width, height } = this.scale
+    setupScene(this)
 
-    const mascot = this.add.text(width / 2, 100, '🐱', { fontSize: '64px' }).setOrigin(0.5)
+    const mascot = this.add.text(GAME_W / 2, 100, '🐱', { fontSize: '64px' }).setOrigin(0.5)
     this.tweens.add({ targets: mascot, y: 92, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
     this.add
-      .text(width / 2, 160, '🌸 Incremental RPG 🌸', {
+      .text(GAME_W / 2, 160, '🌸 Incremental RPG 🌸', {
         fontSize: '28px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -26,7 +26,7 @@ export class AuthScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
     this.add
-      .text(width / 2, 194, 'Train your hero and clear every stage!', {
+      .text(GAME_W / 2, 194, 'Train your hero and clear every stage!', {
         fontSize: '14px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -34,7 +34,13 @@ export class AuthScene extends Phaser.Scene {
       .setOrigin(0.5)
 
     this.statusText = this.add
-      .text(width / 2, height - 40, '', { fontSize: '14px', fontFamily: FONT.family, color: COLORS.danger, wordWrap: { width: width - 40 }, align: 'center' })
+      .text(GAME_W / 2, GAME_H - 40, '', {
+        fontSize: '14px',
+        fontFamily: FONT.family,
+        color: COLORS.danger,
+        wordWrap: { width: GAME_W - 40 },
+        align: 'center',
+      })
       .setOrigin(0.5)
 
     if (!isSupabaseConfigured) {
@@ -55,7 +61,7 @@ export class AuthScene extends Phaser.Scene {
         <button id="guest" type="button" style="padding:10px;font-size:14px;font-weight:bold;cursor:pointer;border:2px solid #ff8fab;border-radius:14px;background:#fff;color:#ff8fab;font-family:inherit">🏠 Continue as Guest</button>
       </div>
     `
-    const dom = this.add.dom(width / 2, height / 2 + 60).createFromHTML(formHtml)
+    const dom = this.add.dom(GAME_W / 2, GAME_H / 2 + 60).createFromHTML(formHtml)
 
     const emailInput = dom.getChildByID('email') as HTMLInputElement
     const passwordInput = dom.getChildByID('password') as HTMLInputElement
@@ -75,16 +81,22 @@ export class AuthScene extends Phaser.Scene {
       void this.handleAuth('signup', emailInput.value, passwordInput.value)
     })
     guestBtn.addEventListener('click', () => {
-      void this.continueAsGuest()
+      this.continueAsGuest()
     })
 
     void this.tryResumeSession()
   }
 
+  private enterGame(): void {
+    this.scene.start(GameState.player ? 'MainMenu' : 'CreateHero')
+  }
+
   private async tryResumeSession(): Promise<void> {
     const session = await getSession()
     if (session?.user) {
-      await this.enterGameWithUser(session.user.id)
+      GameState.userId = session.user.id
+      GameState.player = await loadState(session.user.id)
+      this.enterGame()
     }
   }
 
@@ -97,7 +109,9 @@ export class AuthScene extends Phaser.Scene {
     try {
       const session = mode === 'signin' ? await signIn(email, password) : await signUp(email, password)
       if (session?.user) {
-        await this.enterGameWithUser(session.user.id)
+        GameState.userId = session.user.id
+        GameState.player = await loadState(session.user.id)
+        this.enterGame()
       } else {
         this.statusText.setColor(COLORS.textDim)
         this.statusText.setText('Check your email to confirm your account, then sign in')
@@ -108,15 +122,9 @@ export class AuthScene extends Phaser.Scene {
     }
   }
 
-  private async continueAsGuest(): Promise<void> {
+  private continueAsGuest(): void {
     GameState.userId = null
-    GameState.player = loadLocal() ?? createDefaultPlayerState()
-    this.scene.start('MainMenu')
-  }
-
-  private async enterGameWithUser(userId: string): Promise<void> {
-    GameState.userId = userId
-    GameState.player = (await loadState(userId)) ?? createDefaultPlayerState()
-    this.scene.start('MainMenu')
+    GameState.player = loadLocal()
+    this.enterGame()
   }
 }

@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_W, setupScene } from '../config/layout'
 import { STAGES } from '../data/stages'
 import { GameState } from '../state/GameState'
 import { makeButton } from '../ui/components/makeButton'
@@ -10,7 +11,8 @@ export class StageSelectScene extends Phaser.Scene {
   }
 
   create(): void {
-    const { width } = this.scale
+    setupScene(this)
+    const width = GAME_W
     const player = GameState.player!
 
     this.add

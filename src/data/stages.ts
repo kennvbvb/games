@@ -1,18 +1,24 @@
-import type { EnemyConfig, StageConfig } from '../types'
+import type { EnemyConfig, StageBackground, StageConfig } from '../types'
 
-const STAGE_DEFS = [
-  { name: 'Whispering Woods', emoji: '🐛' },
-  { name: 'Bramble Hollow', emoji: '🦔' },
-  { name: 'Stonefang Ridge', emoji: '🐗' },
-  { name: 'Sunken Marsh', emoji: '🐸' },
-  { name: 'Ashen Crypt', emoji: '👻' },
-  { name: 'Frostpeak Pass', emoji: '🐺' },
-  { name: 'Ember Caverns', emoji: '🦎' },
-  { name: 'Shattered Coast', emoji: '🦀' },
-  { name: 'Wraith Hollow', emoji: '🦇' },
-  { name: 'Obsidian Spire', emoji: '🕷️' },
-  { name: 'Storm Bastion', emoji: '🦅' },
-  { name: "Dragon's Maw", emoji: '🐉' },
+interface StageDef {
+  name: string
+  emoji: string
+  bg: StageBackground
+}
+
+const STAGE_DEFS: StageDef[] = [
+  { name: 'Whispering Woods', emoji: '🐛', bg: { top: 0xd8f3dc, bottom: 0x95d5b2, decor: ['🌲', '🍃', '🌼'] } },
+  { name: 'Bramble Hollow', emoji: '🦔', bg: { top: 0xe9edc9, bottom: 0xccd5ae, decor: ['🌿', '🍄', '🌰'] } },
+  { name: 'Stonefang Ridge', emoji: '🐗', bg: { top: 0xece7e2, bottom: 0xc9beb4, decor: ['⛰️', '🪨', '🌾'] } },
+  { name: 'Sunken Marsh', emoji: '🐸', bg: { top: 0xd0f4de, bottom: 0x8fd6bd, decor: ['🪷', '🌾', '💧'] } },
+  { name: 'Ashen Crypt', emoji: '👻', bg: { top: 0xe2d9f3, bottom: 0xb9a6d9, decor: ['🕯️', '🪦', '🕸️'] } },
+  { name: 'Frostpeak Pass', emoji: '🐺', bg: { top: 0xe0fbfc, bottom: 0xa8d8ea, decor: ['❄️', '⛄', '🌨️'] } },
+  { name: 'Ember Caverns', emoji: '🦎', bg: { top: 0xffe5d9, bottom: 0xffb5a7, decor: ['🔥', '🌋', '💎'] } },
+  { name: 'Shattered Coast', emoji: '🦀', bg: { top: 0xdff6ff, bottom: 0x94c9f0, decor: ['🌊', '🐚', '⚓'] } },
+  { name: 'Wraith Hollow', emoji: '🦇', bg: { top: 0xd8d0f0, bottom: 0xa393c9, decor: ['🌙', '🦉', '🌫️'] } },
+  { name: 'Obsidian Spire', emoji: '🕷️', bg: { top: 0xd3d3e7, bottom: 0x9d9dc0, decor: ['🗼', '🕸️', '🔮'] } },
+  { name: 'Storm Bastion', emoji: '🦅', bg: { top: 0xd7e3fc, bottom: 0x91aede, decor: ['⛈️', '⚡', '☁️'] } },
+  { name: "Dragon's Maw", emoji: '🐉', bg: { top: 0xffd6d6, bottom: 0xf59a9a, decor: ['🔥', '🏰', '💀'] } },
 ]
 
 function scaledEnemy(order: number): EnemyConfig {
@@ -37,5 +43,6 @@ export const STAGES: StageConfig[] = STAGE_DEFS.map((def, idx) => {
       exp: Math.round(10 + order * 6),
       gold: Math.round(5 + order * 4),
     },
+    bg: def.bg,
   }
 })

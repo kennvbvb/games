@@ -1,7 +1,9 @@
 import Phaser from 'phaser'
+import { GAME_W, GAME_H, RENDER_SCALE } from './layout'
 import { BootScene } from '../scenes/BootScene'
 import { PreloadScene } from '../scenes/PreloadScene'
 import { AuthScene } from '../scenes/AuthScene'
+import { CreateHeroScene } from '../scenes/CreateHeroScene'
 import { MainMenuScene } from '../scenes/MainMenuScene'
 import { CharacterScene } from '../scenes/CharacterScene'
 import { ShopScene } from '../scenes/ShopScene'
@@ -13,8 +15,8 @@ import { COLORS } from '../ui/styles'
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'app',
-  width: 480,
-  height: 720,
+  width: GAME_W * RENDER_SCALE,
+  height: GAME_H * RENDER_SCALE,
   backgroundColor: COLORS.pageBg,
   dom: { createContainer: true },
   scale: {
@@ -25,6 +27,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     BootScene,
     PreloadScene,
     AuthScene,
+    CreateHeroScene,
     MainMenuScene,
     CharacterScene,
     ShopScene,

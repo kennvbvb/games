@@ -40,12 +40,17 @@ guest-only mode automatically.
 
 ## Gameplay notes (MVP scope)
 
+- New players name their hero and pick an animal avatar before starting.
 - Single character, no party/roster.
-- 12 hand-tuned stages with a difficulty curve; each stage unlocks the next on victory.
+- 12 hand-tuned stages with a difficulty curve and per-stage backdrop; each stage
+  unlocks the next on victory.
 - Combat is a deterministic, precomputed auto-battle (`resolveBattle`) that the `BattleScene`
   animates — no twitch input, in keeping with the incremental/idle genre.
-- Stats grow automatically on level-up; the Treat Shop sells permanent stat upgrades
-  (Heart Cookie / Sword Candy / Shield Donut) with escalating gold costs.
+- Stats grow automatically on level-up; the shop sells repeatable treats
+  (Heart Cookie / Sword Candy / Shield Donut, escalating costs) plus 20 one-of-a-kind
+  gear pieces — the strongest are level-gated.
 - A Character page shows level, EXP progress, effective stats (base + shop bonuses),
-  gold, and stage completion.
-- Losing a stage has no penalty — just try again after leveling up or buying treats.
+  gold, gear count, and stage completion.
+- The canvas renders at 2x supersampling (`src/config/layout.ts`) so text and shapes
+  stay crisp on high-DPI screens.
+- Losing a stage has no penalty — just try again after leveling up or shopping.

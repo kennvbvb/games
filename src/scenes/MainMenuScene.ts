@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { signOut } from '../services/authService'
 import { effectiveStats } from '../systems/upgrades'
@@ -12,12 +13,12 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    const { width } = this.scale
+    setupScene(this)
     const player = GameState.player!
     const stats = effectiveStats(player)
 
     this.add
-      .text(width / 2, 64, '🌸 Incremental RPG 🌸', {
+      .text(GAME_W / 2, 64, '🌸 Incremental RPG 🌸', {
         fontSize: '28px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -25,15 +26,15 @@ export class MainMenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
     this.add
-      .text(width / 2, 100, GameState.userId ? '☁️ Signed in — progress syncs to the cloud' : '🏠 Guest mode — progress saved on this device', {
+      .text(GAME_W / 2, 100, GameState.userId ? '☁️ Signed in — progress syncs to the cloud' : '🏠 Guest mode — progress saved on this device', {
         fontSize: '13px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
 
-    makePanel(this, width / 2, 210, 400, 150)
-    const hero = this.add.text(120, 210, '🐱', { fontSize: '56px' }).setOrigin(0.5)
+    makePanel(this, GAME_W / 2, 210, 400, 150)
+    const hero = this.add.text(120, 210, player.avatar, { fontSize: '56px' }).setOrigin(0.5)
     this.tweens.add({ targets: hero, y: 204, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
 
     this.add
@@ -59,12 +60,12 @@ export class MainMenuScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5)
 
-    makeButton(this, width / 2, 340, '⚔️ Stages', () => this.scene.start('StageSelect'), { minWidth: 240 })
-    makeButton(this, width / 2, 404, '😺 Character', () => this.scene.start('Character'), { minWidth: 240 })
-    makeButton(this, width / 2, 468, '🛒 Shop', () => this.scene.start('Shop'), { minWidth: 240 })
+    makeButton(this, GAME_W / 2, 340, '⚔️ Stages', () => this.scene.start('StageSelect'), { minWidth: 240 })
+    makeButton(this, GAME_W / 2, 404, '😺 Character', () => this.scene.start('Character'), { minWidth: 240 })
+    makeButton(this, GAME_W / 2, 468, '🛒 Shop', () => this.scene.start('Shop'), { minWidth: 240 })
     makeButton(
       this,
-      width / 2,
+      GAME_W / 2,
       544,
       GameState.userId ? 'Sign Out' : 'Exit Guest Mode',
       () => {

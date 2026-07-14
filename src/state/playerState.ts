@@ -1,14 +1,16 @@
 import type { PlayerState } from '../types'
 import { statsForLevel } from '../systems/leveling'
 
-export function createDefaultPlayerState(name = 'Hero'): PlayerState {
+export function createDefaultPlayerState(name = 'Hero', avatar = '🐱'): PlayerState {
   return {
     name,
+    avatar,
     level: 1,
     exp: 0,
     gold: 0,
     stats: statsForLevel(1),
     upgrades: { hp: 0, atk: 0, def: 0 },
+    ownedItemIds: [],
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
   }
 }
@@ -20,6 +22,7 @@ export function normalizePlayerState(raw: Partial<PlayerState>): PlayerState {
     ...defaults,
     ...raw,
     upgrades: { ...defaults.upgrades, ...raw.upgrades },
+    ownedItemIds: Array.isArray(raw.ownedItemIds) ? raw.ownedItemIds : [],
     stageProgress: { ...defaults.stageProgress, ...raw.stageProgress },
     stats: defaults.stats,
   }

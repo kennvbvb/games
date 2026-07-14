@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { applyRewards } from '../systems/rewards'
 import { persist } from '../services/saveService'
@@ -12,7 +13,8 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create(): void {
-    const { width } = this.scale
+    setupScene(this)
+    const width = GAME_W
     const result = GameState.lastBattleResult!
     const stage = GameState.selectedStage!
     const prevLevel = GameState.player!.level
