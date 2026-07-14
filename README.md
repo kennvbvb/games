@@ -44,5 +44,8 @@ guest-only mode automatically.
 - 12 hand-tuned stages with a difficulty curve; each stage unlocks the next on victory.
 - Combat is a deterministic, precomputed auto-battle (`resolveBattle`) that the `BattleScene`
   animates — no twitch input, in keeping with the incremental/idle genre.
-- Stats grow automatically on level-up (no manual stat allocation yet).
-- Losing a stage has no penalty — just try again after leveling up elsewhere.
+- Stats grow automatically on level-up; the Treat Shop sells permanent stat upgrades
+  (Heart Cookie / Sword Candy / Shield Donut) with escalating gold costs.
+- A Character page shows level, EXP progress, effective stats (base + shop bonuses),
+  gold, and stage completion.
+- Losing a stage has no penalty — just try again after leveling up or buying treats.

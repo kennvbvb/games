@@ -1,8 +1,11 @@
 import Phaser from 'phaser'
-import { COLORS } from '../styles'
+import { COLORS, FONT } from '../styles'
 
 interface ButtonOptions {
   disabled?: boolean
+  variant?: 'primary' | 'secondary'
+  minWidth?: number
+  fontSize?: string
 }
 
 export function makeButton(
@@ -14,28 +17,37 @@ export function makeButton(
   options: ButtonOptions = {},
 ): Phaser.GameObjects.Container {
   const disabled = options.disabled ?? false
+  const fill = disabled ? COLORS.disabledBg : options.variant === 'secondary' ? COLORS.secondary : COLORS.primary
 
   const text = scene.add
     .text(0, 0, label, {
-      fontSize: '16px',
-      color: disabled ? COLORS.textDisabled : COLORS.text,
+      fontSize: options.fontSize ?? '17px',
+      fontFamily: FONT.family,
+      fontStyle: 'bold',
+      color: disabled ? COLORS.textDisabled : COLORS.textOnPrimary,
     })
     .setOrigin(0.5)
 
-  const paddingX = 16
-  const paddingY = 10
-  const bg = scene.add
-    .rectangle(0, 0, text.width + paddingX * 2, text.height + paddingY * 2, disabled ? COLORS.bgDisabled : COLORS.bgButton)
-    .setStrokeStyle(1, COLORS.border)
+  const w = Math.max(text.width + 40, options.minWidth ?? 0)
+  const h = text.height + 20
+  const bg = scene.add.graphics()
+  bg.fillStyle(fill, 1).fillRoundedRect(-w / 2, -h / 2, w, h, h / 2)
 
   const container = scene.add.container(x, y, [bg, text])
-  container.setSize(bg.width, bg.height)
+  container.setSize(w, h)
 
   if (!disabled) {
     container.setInteractive({ useHandCursor: true })
-    container.on('pointerover', () => bg.setFillStyle(COLORS.bgButtonHover))
-    container.on('pointerout', () => bg.setFillStyle(COLORS.bgButton))
-    container.on('pointerdown', () => onClick())
+    container.on('pointerover', () => {
+      scene.tweens.add({ targets: container, scale: 1.06, duration: 100, ease: 'Back.Out' })
+    })
+    container.on('pointerout', () => {
+      scene.tweens.add({ targets: container, scale: 1, duration: 100 })
+    })
+    container.on('pointerdown', () => {
+      scene.tweens.add({ targets: container, scale: 0.94, duration: 60, yoyo: true })
+      onClick()
+    })
   }
 
   return container

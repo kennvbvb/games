@@ -1,4 +1,5 @@
 import type { PlayerState } from '../types'
+import { normalizePlayerState } from '../state/playerState'
 import { supabase } from './supabaseClient'
 
 const LOCAL_KEY = 'incremental-rpg-save-v1'
@@ -10,7 +11,7 @@ export function saveLocal(state: PlayerState): void {
 
 export function loadLocal(): PlayerState | null {
   const raw = localStorage.getItem(LOCAL_KEY)
-  return raw ? (JSON.parse(raw) as PlayerState) : null
+  return raw ? normalizePlayerState(JSON.parse(raw) as Partial<PlayerState>) : null
 }
 
 export function clearLocal(): void {
@@ -33,7 +34,8 @@ async function loadCloud(userId: string): Promise<PlayerState | null> {
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
-  return (data?.state as PlayerState | undefined) ?? null
+  const raw = data?.state as Partial<PlayerState> | undefined
+  return raw ? normalizePlayerState(raw) : null
 }
 
 /** Persist immediately: always mirrors to localStorage, and best-effort syncs to the cloud when signed in. */

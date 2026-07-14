@@ -3,7 +3,7 @@ import { GameState } from '../state/GameState'
 import { createDefaultPlayerState } from '../state/playerState'
 import { getSession, signIn, signUp, isSupabaseConfigured } from '../services/authService'
 import { loadLocal, loadState } from '../services/saveService'
-import { COLORS } from '../ui/styles'
+import { COLORS, FONT } from '../ui/styles'
 
 export class AuthScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text
@@ -15,12 +15,26 @@ export class AuthScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale
 
+    const mascot = this.add.text(width / 2, 100, '🐱', { fontSize: '64px' }).setOrigin(0.5)
+    this.tweens.add({ targets: mascot, y: 92, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
     this.add
-      .text(width / 2, 80, 'Incremental RPG', { fontSize: '32px', color: COLORS.text })
+      .text(width / 2, 160, '🌸 Incremental RPG 🌸', {
+        fontSize: '28px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.text,
+      })
+      .setOrigin(0.5)
+    this.add
+      .text(width / 2, 194, 'Train your hero and clear every stage!', {
+        fontSize: '14px',
+        fontFamily: FONT.family,
+        color: COLORS.textDim,
+      })
       .setOrigin(0.5)
 
     this.statusText = this.add
-      .text(width / 2, height - 40, '', { fontSize: '14px', color: COLORS.danger, wordWrap: { width: width - 40 }, align: 'center' })
+      .text(width / 2, height - 40, '', { fontSize: '14px', fontFamily: FONT.family, color: COLORS.danger, wordWrap: { width: width - 40 }, align: 'center' })
       .setOrigin(0.5)
 
     if (!isSupabaseConfigured) {
@@ -28,16 +42,20 @@ export class AuthScene extends Phaser.Scene {
       this.statusText.setText('Cloud accounts are not configured — guest mode only')
     }
 
+    const inputStyle =
+      'padding:10px 14px;font-size:14px;border-radius:14px;border:2px solid #f3d9e5;background:#fff;color:#5d4a66;outline:none;font-family:inherit'
+    const buttonStyle = (bg: string) =>
+      `padding:10px;font-size:14px;font-weight:bold;cursor:pointer;border:none;border-radius:14px;background:${bg};color:#fff;font-family:inherit`
     const formHtml = `
-      <div style="display:flex;flex-direction:column;gap:8px;width:220px;font-family:sans-serif;">
-        <input type="email" id="email" placeholder="Email" autocomplete="email" style="padding:8px;font-size:14px" />
-        <input type="password" id="password" placeholder="Password" autocomplete="current-password" style="padding:8px;font-size:14px" />
-        <button id="signin" type="button" style="padding:8px;font-size:14px;cursor:pointer">Sign In</button>
-        <button id="signup" type="button" style="padding:8px;font-size:14px;cursor:pointer">Sign Up</button>
-        <button id="guest" type="button" style="padding:8px;font-size:14px;cursor:pointer">Continue as Guest</button>
+      <div style="display:flex;flex-direction:column;gap:10px;width:240px;font-family:'Trebuchet MS',sans-serif;">
+        <input type="email" id="email" placeholder="Email" autocomplete="email" style="${inputStyle}" />
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" style="${inputStyle}" />
+        <button id="signin" type="button" style="${buttonStyle('#ff8fab')}">Sign In</button>
+        <button id="signup" type="button" style="${buttonStyle('#a78bfa')}">Sign Up</button>
+        <button id="guest" type="button" style="padding:10px;font-size:14px;font-weight:bold;cursor:pointer;border:2px solid #ff8fab;border-radius:14px;background:#fff;color:#ff8fab;font-family:inherit">🏠 Continue as Guest</button>
       </div>
     `
-    const dom = this.add.dom(width / 2, height / 2).createFromHTML(formHtml)
+    const dom = this.add.dom(width / 2, height / 2 + 60).createFromHTML(formHtml)
 
     const emailInput = dom.getChildByID('email') as HTMLInputElement
     const passwordInput = dom.getChildByID('password') as HTMLInputElement

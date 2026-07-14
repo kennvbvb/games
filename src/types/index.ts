@@ -9,17 +9,23 @@ export interface StageProgress {
   completedStageIds: string[]
 }
 
+export type UpgradeType = 'hp' | 'atk' | 'def'
+
+export type UpgradeCounts = Record<UpgradeType, number>
+
 export interface PlayerState {
   name: string
   level: number
   exp: number
   gold: number
   stats: PlayerStats
+  upgrades: UpgradeCounts
   stageProgress: StageProgress
 }
 
 export interface EnemyConfig {
   name: string
+  emoji?: string
   maxHp: number
   atk: number
   def: number
