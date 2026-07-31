@@ -3,7 +3,7 @@ import { GAME_W, setupScene } from '../config/layout'
 import { ITEMS_BY_SLOT, ITEM_BY_ID } from '../data/items'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
-import { EQUIP_SLOTS, SLOT_LABELS, effectiveStats, equipItem, unequipSlot } from '../systems/upgrades'
+import { EQUIP_SLOTS, SLOT_LABEL_KEYS, effectiveStats, equipItem, unequipSlot } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
@@ -11,6 +11,7 @@ import { makeStatRow, type StatEntry } from '../ui/components/makeStatRow'
 import { makeTitle } from '../ui/components/makeTitle'
 import { COLORS, FONT } from '../ui/styles'
 import type { EquipSlot, ShopItem, StatBonus } from '../types'
+import { t } from '../i18n'
 
 /** Footer row for the picker, below five choice rows. */
 const PICKER_FOOTER_Y = 578
@@ -47,7 +48,7 @@ export class EquipmentScene extends Phaser.Scene {
 
   create(): void {
     setupScene(this)
-    makeTitle(this, 46, this.picking ? SLOT_LABELS[this.picking] : 'Equipment', 'icon_bag')
+    makeTitle(this, 46, this.picking ? t(SLOT_LABEL_KEYS[this.picking]) : t('equipment.title'), 'icon_bag')
 
     if (this.picking) this.renderPicker(this.picking)
     else this.renderOverview()
@@ -58,7 +59,7 @@ export class EquipmentScene extends Phaser.Scene {
     const stats = effectiveStats(player)
 
     this.add
-      .text(GAME_W / 2, 82, 'One piece per slot — choose what suits your build', {
+      .text(GAME_W / 2, 82, t('equipment.subtitle'), {
         fontSize: '13px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -76,14 +77,14 @@ export class EquipmentScene extends Phaser.Scene {
       if (!item) icon.setAlpha(0.3)
 
       this.add
-        .text(100, y - 26, SLOT_LABELS[slot], {
+        .text(100, y - 26, t(SLOT_LABEL_KEYS[slot]), {
           fontSize: '13px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
         })
         .setOrigin(0, 0.5)
       this.add
-        .text(100, y - 4, item ? item.name : 'Empty', {
+        .text(100, y - 4, item ? item.name : t('equipment.empty'), {
           fontSize: '16px',
           fontFamily: FONT.family,
           fontStyle: 'bold',
@@ -94,14 +95,14 @@ export class EquipmentScene extends Phaser.Scene {
       if (item) makeStatRow(this, 100, y + 22, bonusEntries(item.bonus), { fontSize: '13px', iconSize: 15, gap: 12 })
       else
         this.add
-          .text(100, y + 22, ownedInSlot.length ? `${ownedInSlot.length} available` : 'Nothing owned yet', {
+          .text(100, y + 22, ownedInSlot.length ? t('equipment.available', { count: ownedInSlot.length }) : t('equipment.nothingOwned'), {
             fontSize: '12px',
             fontFamily: FONT.family,
             color: COLORS.textDim,
           })
           .setOrigin(0, 0.5)
 
-      makeButton(this, 372, y, 'Change', () => this.scene.restart({ picking: slot } satisfies EquipmentSceneData), {
+      makeButton(this, 372, y, t('equipment.change'), () => this.scene.restart({ picking: slot } satisfies EquipmentSceneData), {
         disabled: ownedInSlot.length === 0,
         minWidth: 100,
         fontSize: '14px',
@@ -111,7 +112,7 @@ export class EquipmentScene extends Phaser.Scene {
 
     makePanel(this, GAME_W / 2, 494, 430, 62)
     this.add
-      .text(70, 494, 'Total', { fontSize: '15px', fontFamily: FONT.family, fontStyle: 'bold', color: COLORS.text })
+      .text(70, 494, t('equipment.total'), { fontSize: '15px', fontFamily: FONT.family, fontStyle: 'bold', color: COLORS.text })
       .setOrigin(0, 0.5)
     makeStatRow(
       this,
@@ -125,7 +126,7 @@ export class EquipmentScene extends Phaser.Scene {
       { fontSize: '16px', iconSize: 18, gap: 20 },
     )
 
-    makeButton(this, GAME_W / 2, 576, 'Back', () => this.scene.start('Character'), {
+    makeButton(this, GAME_W / 2, 576, t('common.back'), () => this.scene.start('Character'), {
       variant: 'secondary',
       minWidth: 180,
       fontSize: '15px',
@@ -137,7 +138,7 @@ export class EquipmentScene extends Phaser.Scene {
     const owned = ITEMS_BY_SLOT[slot].filter((item) => player.ownedItemIds.includes(item.id))
 
     this.add
-      .text(GAME_W / 2, 82, 'Tap a piece to wear it', {
+      .text(GAME_W / 2, 82, t('equipment.pick'), {
         fontSize: '13px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -150,13 +151,13 @@ export class EquipmentScene extends Phaser.Scene {
       this,
       GAME_W / 2 - 92,
       PICKER_FOOTER_Y,
-      'Unequip',
+      t('equipment.unequip'),
       () => {
         this.commit(unequipSlot(player, slot))
       },
       { variant: 'secondary', minWidth: 150, fontSize: '15px', disabled: player.equipped[slot] === null },
     )
-    makeButton(this, GAME_W / 2 + 92, PICKER_FOOTER_Y, 'Back', () => this.scene.restart({ picking: null }), {
+    makeButton(this, GAME_W / 2 + 92, PICKER_FOOTER_Y, t('common.back'), () => this.scene.restart({ picking: null }), {
       variant: 'secondary',
       minWidth: 150,
       fontSize: '15px',
@@ -181,7 +182,7 @@ export class EquipmentScene extends Phaser.Scene {
 
     if (isEquipped) {
       this.add
-        .text(378, y, 'Worn', {
+        .text(378, y, t('equipment.worn'), {
           fontSize: '14px',
           fontFamily: FONT.family,
           fontStyle: 'bold',
@@ -189,7 +190,7 @@ export class EquipmentScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
     } else {
-      makeButton(this, 378, y, 'Equip', () => this.commit(equipItem(player, item.id)), {
+      makeButton(this, 378, y, t('equipment.equip'), () => this.commit(equipItem(player, item.id)), {
         minWidth: 96,
         fontSize: '14px',
         minHeight: 48,

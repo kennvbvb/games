@@ -11,11 +11,12 @@ export interface StageOutlook {
   willWin: boolean
 }
 
-const LABELS: Record<DifficultyTier, string> = { easy: 'Easy', fair: 'Fair', hard: 'Hard' }
-
-export function difficultyLabel(tier: DifficultyTier): string {
-  return LABELS[tier]
-}
+/** Message keys for the tiers; the strings themselves live in src/i18n. */
+export const DIFFICULTY_LABEL_KEYS = {
+  easy: 'stages.easy',
+  fair: 'stages.fair',
+  hard: 'stages.hard',
+} as const satisfies Record<DifficultyTier, string>
 
 /**
  * Rates a stage by simulating the fight the player would actually get.

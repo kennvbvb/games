@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, GAME_H, setupScene } from '../config/layout'
 import EMOJI_ASSETS from '../data/emojiAssets.json'
 import { COLORS, FONT } from '../ui/styles'
+import { t } from '../i18n'
 
 /** Texture keys available after this scene runs — every key in the manifest. */
 export type EmojiKey = keyof typeof EMOJI_ASSETS
@@ -20,7 +21,7 @@ export class PreloadScene extends Phaser.Scene {
     const cy = GAME_H / 2
 
     this.add
-      .text(cx, cy - 60, 'Loading…', {
+      .text(cx, cy - 60, t('app.loading'), {
         fontSize: '22px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -51,8 +52,13 @@ export class PreloadScene extends Phaser.Scene {
     // Phaser measures text against whatever font is ready at draw time, so make
     // sure Fredoka has actually arrived before any scene lays out its labels.
     try {
-      await document.fonts.load(`700 16px Fredoka`)
-      await document.fonts.load(`400 16px Fredoka`)
+      await Promise.all([
+        document.fonts.load('700 16px Fredoka'),
+        document.fonts.load('400 16px Fredoka'),
+        // Thai glyphs come from Mitr, so it has to be ready too.
+        document.fonts.load('600 16px Mitr', 'ก'),
+        document.fonts.load('400 16px Mitr', 'ก'),
+      ])
     } catch {
       // Non-fatal: the CSS stack falls back to Trebuchet MS.
     }

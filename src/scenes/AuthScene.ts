@@ -9,6 +9,7 @@ import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeTitle } from '../ui/components/makeTitle'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
+import { t } from '../i18n'
 
 export class AuthScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text
@@ -23,9 +24,9 @@ export class AuthScene extends Phaser.Scene {
 
     const mascot = makeEmoji(this, GAME_W / 2, 100, 'avatar_cat', 70)
     ambientTween(this, { targets: mascot, y: 92, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
-    makeTitle(this, 160, 'Incremental RPG', 'icon_blossom', { fontSize: '29px', iconSize: 22, flank: true })
+    makeTitle(this, 160, t('app.title'), 'icon_blossom', { fontSize: '29px', iconSize: 22, flank: true })
     this.add
-      .text(GAME_W / 2, 194, 'Train your hero and clear every stage!', {
+      .text(GAME_W / 2, 194, t('app.tagline'), {
         fontSize: '14px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -44,7 +45,7 @@ export class AuthScene extends Phaser.Scene {
 
     if (!isSupabaseConfigured) {
       this.statusText.setColor(COLORS.textDim)
-      this.statusText.setText('Cloud accounts are not configured — guest mode only')
+      this.statusText.setText(t('auth.cloudUnavailable'))
     }
 
     const inputStyle =
@@ -53,11 +54,11 @@ export class AuthScene extends Phaser.Scene {
       `padding:14px;font-size:16px;font-weight:bold;cursor:pointer;border:none;border-radius:14px;background:${bg};color:#fff;font-family:inherit`
     const formHtml = `
       <div style="display:flex;flex-direction:column;gap:10px;width:250px;font-family:'Fredoka','Trebuchet MS',sans-serif;">
-        <input type="email" id="email" placeholder="Email" autocomplete="email" style="${inputStyle}" />
-        <input type="password" id="password" placeholder="Password" autocomplete="current-password" style="${inputStyle}" />
-        <button id="signin" type="button" style="${buttonStyle('#ff8fab')}">Sign In</button>
-        <button id="signup" type="button" style="${buttonStyle('#a78bfa')}">Sign Up</button>
-        <button id="guest" type="button" style="padding:14px;font-size:16px;font-weight:bold;cursor:pointer;border:2px solid #ff8fab;border-radius:14px;background:#fff;color:#ff8fab;font-family:inherit">Continue as Guest</button>
+        <input type="email" id="email" placeholder="${t('auth.email')}" autocomplete="email" style="${inputStyle}" />
+        <input type="password" id="password" placeholder="${t('auth.password')}" autocomplete="current-password" style="${inputStyle}" />
+        <button id="signin" type="button" style="${buttonStyle('#ff8fab')}">${t('auth.signIn')}</button>
+        <button id="signup" type="button" style="${buttonStyle('#a78bfa')}">${t('auth.signUp')}</button>
+        <button id="guest" type="button" style="padding:14px;font-size:16px;font-weight:bold;cursor:pointer;border:2px solid #ff8fab;border-radius:14px;background:#fff;color:#ff8fab;font-family:inherit">${t('auth.guest')}</button>
       </div>
     `
     this.form = this.add.dom(GAME_W / 2, GAME_H / 2 + 60).createFromHTML(formHtml)
@@ -108,7 +109,7 @@ export class AuthScene extends Phaser.Scene {
 
     makePanel(this, GAME_W / 2, GAME_H / 2 + 40, 400, 240)
     this.add
-      .text(GAME_W / 2, GAME_H / 2 - 40, 'Welcome!', {
+      .text(GAME_W / 2, GAME_H / 2 - 40, t('auth.welcome'), {
         fontSize: '22px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -116,7 +117,7 @@ export class AuthScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
     this.add
-      .text(GAME_W / 2, GAME_H / 2 - 4, 'There is guest progress saved on this device.\nBring it into your account?', {
+      .text(GAME_W / 2, GAME_H / 2 - 4, t('auth.importPrompt'), {
         fontSize: '14px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -128,7 +129,7 @@ export class AuthScene extends Phaser.Scene {
       this,
       GAME_W / 2,
       GAME_H / 2 + 62,
-      'Import guest progress',
+      t('auth.import'),
       () => {
         void importGuestSave(userId).then((state) => {
           GameState.player = state
@@ -137,7 +138,7 @@ export class AuthScene extends Phaser.Scene {
       },
       { minWidth: 280 },
     )
-    makeButton(this, GAME_W / 2, GAME_H / 2 + 126, 'Start fresh', () => this.scene.start('CreateHero'), {
+    makeButton(this, GAME_W / 2, GAME_H / 2 + 126, t('auth.startFresh'), () => this.scene.start('CreateHero'), {
       variant: 'secondary',
       fontSize: '15px',
       minWidth: 280,
@@ -154,7 +155,7 @@ export class AuthScene extends Phaser.Scene {
   private async handleAuth(mode: 'signin' | 'signup', email: string, password: string): Promise<void> {
     if (!email || !password) {
       this.statusText.setColor(COLORS.danger)
-      this.statusText.setText('Enter an email and password')
+      this.statusText.setText(t('auth.needCredentials'))
       return
     }
     try {
@@ -163,11 +164,11 @@ export class AuthScene extends Phaser.Scene {
         await this.enterWithUser(session.user.id)
       } else {
         this.statusText.setColor(COLORS.textDim)
-        this.statusText.setText('Check your email to confirm your account, then sign in')
+        this.statusText.setText(t('auth.confirmEmail'))
       }
     } catch (err) {
       this.statusText.setColor(COLORS.danger)
-      this.statusText.setText(err instanceof Error ? err.message : 'Authentication failed')
+      this.statusText.setText(err instanceof Error ? err.message : t('auth.failed'))
     }
   }
 

@@ -11,6 +11,7 @@ import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeTitle } from '../ui/components/makeTitle'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
+import { t } from '../i18n'
 
 export class CharacterScene extends Phaser.Scene {
   constructor() {
@@ -24,7 +25,7 @@ export class CharacterScene extends Phaser.Scene {
     const bonus = totalBonus(player)
     const nextExp = expToNext(player.level)
 
-    makeTitle(this, 48, 'Character', 'icon_face')
+    makeTitle(this, 48, t('character.title'), 'icon_face')
 
     // Hero card with level + EXP progress
     makePanel(this, GAME_W / 2, 170, 400, 170)
@@ -40,7 +41,7 @@ export class CharacterScene extends Phaser.Scene {
       .setOrigin(0.5)
     makeBar(this, GAME_W / 2, 220, 320, 14, COLORS.expBar).set(player.exp / nextExp)
     const expLabel = this.add
-      .text(GAME_W / 2 + 8, 240, `EXP ${player.exp} / ${nextExp}`, {
+      .text(GAME_W / 2 + 8, 240, t('character.exp', { current: player.exp, next: nextExp }), {
         fontSize: '12px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -51,9 +52,9 @@ export class CharacterScene extends Phaser.Scene {
     // Stats card: base (from level) + bonus (treats and gear)
     makePanel(this, GAME_W / 2, 360, 400, 180)
     const rows = [
-      { icon: 'icon_hp', label: 'HP', base: player.stats.maxHp, bonus: bonus.hp, total: stats.maxHp },
-      { icon: 'icon_atk', label: 'ATK', base: player.stats.atk, bonus: bonus.atk, total: stats.atk },
-      { icon: 'icon_def', label: 'DEF', base: player.stats.def, bonus: bonus.def, total: stats.def },
+      { icon: 'icon_hp', label: t('character.hp'), base: player.stats.maxHp, bonus: bonus.hp, total: stats.maxHp },
+      { icon: 'icon_atk', label: t('character.atk'), base: player.stats.atk, bonus: bonus.atk, total: stats.atk },
+      { icon: 'icon_def', label: t('character.def'), base: player.stats.def, bonus: bonus.def, total: stats.def },
     ]
     rows.forEach((row, i) => {
       const y = 312 + i * 40
@@ -81,7 +82,7 @@ export class CharacterScene extends Phaser.Scene {
     })
     makeEmoji(this, GAME_W / 2 - 42, 428, 'icon_gold', 17)
     this.add
-      .text(GAME_W / 2 - 28, 428, `${player.gold} gold`, {
+      .text(GAME_W / 2 - 28, 428, t('menu.gold', { gold: player.gold }), {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.gold,
@@ -91,7 +92,7 @@ export class CharacterScene extends Phaser.Scene {
     const cleared = player.stageProgress.completedStageIds.length
     makeEmoji(this, 128, 472, 'icon_star', 17)
     this.add
-      .text(146, 472, `Stages cleared: ${cleared} / ${STAGES.length}`, {
+      .text(146, 472, t('character.stagesCleared', { cleared, total: STAGES.length }), {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -100,24 +101,24 @@ export class CharacterScene extends Phaser.Scene {
     const worn = equippedItems(player).length
     makeEmoji(this, 128, 500, 'icon_bag', 17)
     this.add
-      .text(146, 500, `Gear: ${worn}/3 worn · ${player.ownedItemIds.length} owned`, {
+      .text(146, 500, t('character.gearSummary', { worn, owned: player.ownedItemIds.length }), {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0, 0.5)
 
-    makeButton(this, GAME_W / 2 - 92, 552, 'Equipment', () => this.scene.start('Equipment'), {
+    makeButton(this, GAME_W / 2 - 92, 552, t('character.equipment'), () => this.scene.start('Equipment'), {
       minWidth: 168,
       fontSize: '15px',
       icon: 'icon_bag',
     })
-    makeButton(this, GAME_W / 2 + 92, 552, 'Shop', () => this.scene.start('Shop'), {
+    makeButton(this, GAME_W / 2 + 92, 552, t('menu.shop'), () => this.scene.start('Shop'), {
       minWidth: 168,
       fontSize: '15px',
       icon: 'icon_cart',
     })
-    makeButton(this, GAME_W / 2, 622, 'Back', () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, 622, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '15px',
       minWidth: 160,

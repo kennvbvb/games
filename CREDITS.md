@@ -20,6 +20,17 @@ committed to the repository so builds and deploys need no network access.
 
 Used for all in-game text, loaded via `@font-face` in `index.html`.
 
+## Mitr (Thai typeface)
+
+- Copyright © Cadson Demak
+- Source: https://github.com/google/fonts/tree/main/ofl/mitr
+- License: SIL Open Font License 1.1
+- Shipped license text: `public/assets/fonts/Mitr-OFL.txt`
+
+Fredoka covers no Thai glyphs, so Mitr carries the Thai script. Both are listed
+in the font stack and the browser resolves each character from whichever face
+has it.
+
 ## Noto Color Emoji (character, enemy, item and scenery art)
 
 - Copyright © Google LLC

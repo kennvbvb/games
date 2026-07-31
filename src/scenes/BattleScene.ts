@@ -10,6 +10,7 @@ import { makeEmoji } from '../ui/components/makeEmoji'
 import { drawStageScenery } from '../ui/scenery'
 import { COLORS, FONT } from '../ui/styles'
 import type { BattleSpeed } from '../types'
+import { t } from '../i18n'
 
 const BASE_TURN_MS = 260
 const SPEEDS: BattleSpeed[] = [1, 2, 4]
@@ -76,7 +77,7 @@ export class BattleScene extends Phaser.Scene {
 
     const logIcon = makeEmoji(this, 0, 356, 'icon_bolt', 20)
     const logText = this.add
-      .text(0, 356, 'Battle start!', {
+      .text(0, 356, t('battle.start'), {
         fontSize: '16px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -91,11 +92,11 @@ export class BattleScene extends Phaser.Scene {
       logIcon.setX(GAME_W / 2 - total / 2 + 10)
       logText.setX(GAME_W / 2 - total / 2 + 26)
     }
-    layoutLog('icon_bolt', 'Battle start!')
+    layoutLog('icon_bolt', t('battle.start'))
 
     if (GameState.autoRunsRemaining > 0) {
       this.add
-        .text(GAME_W / 2, 400, `Auto-battle · run ${GameState.autoRunCount + 1}`, {
+        .text(GAME_W / 2, 400, t('battle.autoRun', { run: GameState.autoRunCount + 1 }), {
           fontSize: '13px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
@@ -140,12 +141,12 @@ export class BattleScene extends Phaser.Scene {
           enemyHp = ev.targetHpAfter
           lunge(playerSprite, 1)
           recoil(enemySprite)
-          layoutLog('icon_hit', `You hit for ${ev.damage}!`)
+          layoutLog('icon_hit', t('battle.youHit', { damage: ev.damage }))
         } else {
           playerHp = ev.targetHpAfter
           lunge(enemySprite, -1)
           recoil(playerSprite)
-          layoutLog('icon_clash', `${stage.enemy.name} hits you for ${ev.damage}!`)
+          layoutLog('icon_clash', t('battle.enemyHits', { enemy: stage.enemy.name, damage: ev.damage }))
         }
         renderHp()
         i++
@@ -176,7 +177,7 @@ export class BattleScene extends Phaser.Scene {
         },
       )
     })
-    makeButton(this, 386, 556, 'Skip', () => this.scene.start('Result'), {
+    makeButton(this, 386, 556, t('battle.skip'), () => this.scene.start('Result'), {
       variant: 'secondary',
       minWidth: 84,
       fontSize: '15px',

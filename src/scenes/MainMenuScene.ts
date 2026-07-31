@@ -15,6 +15,7 @@ import { makeTitle } from '../ui/components/makeTitle'
 import { makeTutorialTip } from '../ui/components/makeTutorialTip'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
+import { t } from '../i18n'
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -26,7 +27,7 @@ export class MainMenuScene extends Phaser.Scene {
     const player = GameState.player!
     const stats = effectiveStats(player)
 
-    makeTitle(this, 64, 'Incremental RPG', 'icon_blossom', { fontSize: '29px', iconSize: 22, flank: true })
+    makeTitle(this, 64, t('app.title'), 'icon_blossom', { fontSize: '29px', iconSize: 22, flank: true })
 
     // Live cloud-sync status: updates whenever a save starts, succeeds, or fails.
     const statusText = this.add
@@ -35,10 +36,10 @@ export class MainMenuScene extends Phaser.Scene {
     const statusIcon = makeEmoji(this, 0, 100, 'icon_home', 15)
     const renderStatus = (status: SyncStatus) => {
       const display: Record<SyncStatus, { icon: string; label: string; color: string }> = {
-        guest: { icon: 'icon_home', label: 'Guest mode — progress saved on this device', color: COLORS.textDim },
-        saving: { icon: 'icon_cloud', label: 'Saving to cloud…', color: COLORS.textDim },
-        synced: { icon: 'icon_cloud', label: 'Signed in — progress synced to the cloud', color: COLORS.textDim },
-        error: { icon: 'icon_clash', label: 'Sync failed — progress saved on this device', color: COLORS.danger },
+        guest: { icon: 'icon_home', label: t('sync.guest'), color: COLORS.textDim },
+        saving: { icon: 'icon_cloud', label: t('sync.saving'), color: COLORS.textDim },
+        synced: { icon: 'icon_cloud', label: t('sync.synced'), color: COLORS.textDim },
+        error: { icon: 'icon_clash', label: t('sync.error'), color: COLORS.danger },
       }
       const d = display[status]
       statusText.setText(d.label).setColor(d.color)
@@ -69,22 +70,22 @@ export class MainMenuScene extends Phaser.Scene {
 
     makeEmoji(this, 194, 244, 'icon_gold', 17)
     this.add
-      .text(208, 244, `${player.gold} gold`, { fontSize: '15px', fontFamily: FONT.family, color: COLORS.gold })
+      .text(208, 244, t('menu.gold', { gold: player.gold }), { fontSize: '15px', fontFamily: FONT.family, color: COLORS.gold })
       .setOrigin(0, 0.5)
 
-    makeButton(this, GAME_W / 2, 340, 'Stages', () => this.scene.start('StageSelect'), {
+    makeButton(this, GAME_W / 2, 340, t('menu.stages'), () => this.scene.start('StageSelect'), {
       minWidth: 240,
       icon: 'icon_atk',
     })
-    makeButton(this, GAME_W / 2, 404, 'Character', () => this.scene.start('Character'), {
+    makeButton(this, GAME_W / 2, 404, t('menu.character'), () => this.scene.start('Character'), {
       minWidth: 240,
       icon: 'icon_face',
     })
-    makeButton(this, GAME_W / 2, 468, 'Shop', () => this.scene.start('Shop'), {
+    makeButton(this, GAME_W / 2, 468, t('menu.shop'), () => this.scene.start('Shop'), {
       minWidth: 240,
       icon: 'icon_cart',
     })
-    makeButton(this, GAME_W / 2 - 92, 540, 'Settings', () => this.scene.start('Settings'), {
+    makeButton(this, GAME_W / 2 - 92, 540, t('menu.settings'), () => this.scene.start('Settings'), {
       variant: 'secondary',
       minWidth: 168,
       fontSize: '15px',
@@ -94,14 +95,14 @@ export class MainMenuScene extends Phaser.Scene {
       this,
       GAME_W / 2 + 92,
       540,
-      GameState.userId ? 'Sign Out' : 'Exit Guest',
+      GameState.userId ? t('menu.signOut') : t('menu.exitGuest'),
       () => {
         void this.handleExit()
       },
       { variant: 'secondary', minWidth: 168, fontSize: '15px' },
     )
 
-    makeTutorialTip(this, 0, 'Welcome! Tap Stages to find your first fight.', 618)
+    makeTutorialTip(this, 0, t('tutorial.step0'), 618)
     this.showOfflineRewards()
   }
 
@@ -129,7 +130,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     const panel = makePanel(this, GAME_W / 2, GAME_H / 2, 400, 300)
     const title = this.add
-      .text(GAME_W / 2, GAME_H / 2 - 112, 'Welcome back!', {
+      .text(GAME_W / 2, GAME_H / 2 - 112, t('idle.welcomeBack'), {
         fontSize: '24px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -140,13 +141,18 @@ export class MainMenuScene extends Phaser.Scene {
       .text(
         GAME_W / 2,
         GAME_H / 2 - 74,
-        `${player.name} kept fighting in ${report.stageName}\nfor ${formatDuration(report.creditedMs)}${report.capped ? ' (max)' : ''}`,
+        t('idle.keptFighting', {
+          name: player.name,
+          stage: report.stageName,
+          duration: formatDuration(report.creditedMs),
+          capped: report.capped ? t('idle.capped') : '',
+        }),
         { fontSize: '14px', fontFamily: FONT.family, color: COLORS.textDim, align: 'center' },
       )
       .setOrigin(0.5)
     const hero = makeEmoji(this, GAME_W / 2, GAME_H / 2 - 14, `avatar_${player.avatar}`, 52)
     const battles = this.add
-      .text(GAME_W / 2, GAME_H / 2 + 26, `${report.battles} battles won`, {
+      .text(GAME_W / 2, GAME_H / 2 + 26, t('idle.battlesWon', { count: report.battles }), {
         fontSize: '14px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -170,7 +176,7 @@ export class MainMenuScene extends Phaser.Scene {
       this,
       GAME_W / 2,
       GAME_H / 2 + 112,
-      'Collect',
+      t('idle.collect'),
       () => {
         const collected = applyExp(
           { ...player, gold: player.gold + report.rewards.gold, idle: { ...player.idle, lastSeenAt: now } },

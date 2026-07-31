@@ -163,3 +163,28 @@ test.describe('idle and accessibility', () => {
     expect(await game.save()).not.toBeNull()
   })
 })
+
+test.describe('localization', () => {
+  test('switching to Thai translates the UI and persists', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+
+    await game.tap(240 - 92, 540) // Settings
+    // Language row sits below the three toggles.
+    await game.tap(330 + 78, 236 + 3 * 96) // "ไทย"
+    await expect.poll(async () => (await game.save())?.settings?.locale, { timeout: 10_000 }).toBe('th')
+
+    // Thai needs its own face; Fredoka has no Thai glyphs at all.
+    const thaiFontReady = await page.evaluate(async () => {
+      await document.fonts.load('400 16px Mitr', 'ก')
+      return document.fonts.check('400 16px Mitr', 'ก')
+    })
+    expect(thaiFontReady).toBe(true)
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.settings?.locale).toBe('th')
+  })
+})

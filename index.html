@@ -14,6 +14,21 @@
         font-weight: 300 700;
         font-display: swap;
       }
+      /* Fredoka is Latin-only. Mitr carries the Thai script and is rounded
+         enough to sit beside it; the browser picks per glyph, so mixed
+         Thai/Latin strings stay visually consistent. */
+      @font-face {
+        font-family: 'Mitr';
+        src: url('assets/fonts/Mitr-Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Mitr';
+        src: url('assets/fonts/Mitr-SemiBold.ttf') format('truetype');
+        font-weight: 600 700;
+        font-display: swap;
+      }
       body {
         margin: 0;
         display: flex;
@@ -21,7 +36,7 @@
         align-items: center;
         min-height: 100vh;
         background: #ffe9f0;
-        font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
+        font-family: 'Fredoka', 'Mitr', 'Trebuchet MS', sans-serif;
       }
     </style>
   </head>

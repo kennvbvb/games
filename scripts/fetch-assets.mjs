@@ -20,6 +20,13 @@ const EMOJI_BASE = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/mai
 const FONT_URL =
   'https://raw.githubusercontent.com/google/fonts/main/ofl/fredoka/Fredoka%5Bwdth,wght%5D.ttf'
 const FONT_LICENSE_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/fredoka/OFL.txt'
+// Fredoka is Latin-only, so Thai needs its own face. Mitr is rounded enough to
+// sit beside it without the UI looking like two different games.
+const THAI_FONTS = [
+  ['Mitr-Regular.ttf', 'https://raw.githubusercontent.com/google/fonts/main/ofl/mitr/Mitr-Regular.ttf'],
+  ['Mitr-SemiBold.ttf', 'https://raw.githubusercontent.com/google/fonts/main/ofl/mitr/Mitr-SemiBold.ttf'],
+]
+const THAI_FONT_LICENSE_URL = 'https://raw.githubusercontent.com/google/fonts/main/ofl/mitr/OFL.txt'
 const EMOJI_LICENSE_URL = 'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/LICENSE'
 
 /** Noto's filenames omit the FE0F variation selector and lowercase every codepoint. */
@@ -80,9 +87,11 @@ async function main() {
     for (const key of keys) await copyFile(cached, path.join(emojiDir, `${key}.png`))
   }
 
-  console.log('Fetching Fredoka font…')
+  console.log('Fetching fonts…')
   await download(FONT_URL, path.join(fontDir, 'Fredoka.ttf'))
   await download(FONT_LICENSE_URL, path.join(fontDir, 'Fredoka-OFL.txt'))
+  for (const [name, url] of THAI_FONTS) await download(url, path.join(fontDir, name))
+  await download(THAI_FONT_LICENSE_URL, path.join(fontDir, 'Mitr-OFL.txt'))
   await download(EMOJI_LICENSE_URL, path.join(emojiDir, 'LICENSE.txt'))
 
   await writeFile(
@@ -92,6 +101,8 @@ async function main() {
       '',
       'fonts/Fredoka.ttf   - Fredoka, (c) The Fredoka Project Authors.',
       '                      SIL Open Font License 1.1 (fonts/Fredoka-OFL.txt).',
+      'fonts/Mitr-*.ttf    - Mitr, (c) Cadson Demak. Thai script support.',
+      '                      SIL Open Font License 1.1 (fonts/Mitr-OFL.txt).',
       'emoji/*.png         - Noto Color Emoji, (c) Google LLC.',
       '                      SIL Open Font License 1.1 (emoji/LICENSE.txt).',
       '',
