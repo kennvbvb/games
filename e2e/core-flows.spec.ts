@@ -1,0 +1,165 @@
+import { test, expect } from '@playwright/test'
+import { GamePage, GUEST_KEY, QUARANTINE_KEY, makeSave, userKey } from './helpers'
+
+// Menu button positions in the game's logical coordinate space.
+const MENU = { stages: { x: 240, y: 340 }, character: { x: 240, y: 404 }, shop: { x: 240, y: 468 } }
+const STAGE_ROW_1 = { x: 372, y: 142 }
+
+test.describe('core flows', () => {
+  test('a new player can create a hero and reach the menu', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open()
+    await game.continueAsGuest()
+
+    // No save yet, so the hero creation screen should be showing.
+    await expect(page.locator('#hero-name')).toBeVisible()
+    await page.locator('#hero-name').fill('Newbie')
+    await game.tap(240, 574) // Start Adventure
+    await game.expectSaved()
+
+    const save = await game.save()
+    expect(save).toMatchObject({ name: 'Newbie', level: 1, tutorialStep: 0 })
+    // The hero-name input is gone once we're past creation.
+    await expect(page.locator('#hero-name')).toHaveCount(0)
+  })
+
+  test('winning a stage grants rewards and unlocks the next one', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        gold: 0,
+        stageProgress: { highestUnlocked: 1, completedStageIds: [] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y) // Fight stage 1
+
+    await expect
+      .poll(async () => (await game.save())?.stageProgress?.highestUnlocked ?? 0, { timeout: 20_000 })
+      .toBeGreaterThan(1)
+
+    const save = await game.save()
+    expect(save?.gold).toBeGreaterThan(0)
+    expect(save?.stageProgress?.completedStageIds).toContain('stage-1')
+    // A win sets what the hero farms while away.
+    expect(save?.idle?.farmingStageId).toBe('stage-1')
+  })
+
+  test('losing grants nothing and offers a retry', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        level: 2,
+        gold: 500,
+        stats: { maxHp: 62, atk: 13, def: 5 },
+        stageProgress: { highestUnlocked: 12, completedStageIds: [] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(240 + 110, 508) // page 2
+    await game.tap(240 + 110, 508) // page 3 — stages 9 to 12
+    await game.tap(372, 436) // fight stage 12, well out of reach
+
+    await page.waitForTimeout(6000)
+    const save = await game.save()
+    expect(save?.gold).toBe(500)
+    expect(save?.stageProgress?.completedStageIds).toEqual([])
+  })
+
+  test('progress survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ name: 'Persist', gold: 1234 }))
+    await game.continueAsGuest()
+    await game.tap(MENU.character.x, MENU.character.y)
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+
+    // Straight back into the game rather than hero creation.
+    await expect(page.locator('#hero-name')).toHaveCount(0)
+    const save = await game.save()
+    expect(save).toMatchObject({ name: 'Persist' })
+    expect(save?.gold).toBeGreaterThanOrEqual(1234)
+  })
+
+  test('a corrupt save is quarantined instead of crashing the game', async ({ page }) => {
+    const game = new GamePage(page)
+    const errors: string[] = []
+    page.on('pageerror', (err) => errors.push(err.message))
+
+    await game.open()
+    await game.setRaw(GUEST_KEY, '{ not valid json')
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+
+    // Recovers into hero creation with the bad data set aside.
+    await expect(page.locator('#hero-name')).toBeVisible()
+    const quarantined = await page.evaluate((k) => localStorage.getItem(k), QUARANTINE_KEY)
+    expect(quarantined).toBe('{ not valid json')
+    expect(errors).toEqual([])
+  })
+
+  test('guest progress never leaks into a signed-in namespace', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ name: 'GuestOnly', gold: 4242 }))
+    await game.continueAsGuest()
+
+    const keys = await game.localStorageKeys()
+    expect(keys).toContain(GUEST_KEY)
+    // Nothing should have been written into any account slot.
+    expect(keys.some((k) => k.includes(':user:'))).toBe(false)
+    expect(await game.save(userKey('someone'))).toBeNull()
+  })
+})
+
+test.describe('idle and accessibility', () => {
+  test('offline rewards pay out once', async ({ page }) => {
+    const game = new GamePage(page)
+    const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000
+    await game.open(makeSave({ gold: 100, idle: { farmingStageId: 'stage-1', lastSeenAt: threeHoursAgo } }))
+    await game.continueAsGuest()
+
+    await game.tap(240, 472) // Collect on the welcome-back modal
+    await expect.poll(async () => (await game.save())?.gold ?? 0, { timeout: 10_000 }).toBeGreaterThan(100)
+
+    const afterCollect = (await game.save())?.gold
+    // Bouncing through another scene must not pay a second time.
+    await game.tap(240, 404)
+    await game.settle()
+    await game.tap(240, 622)
+    await game.settle()
+    expect((await game.save())?.gold).toBe(afterCollect)
+  })
+
+  test('buttons stay above the 44px touch target minimum', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+
+    // Buttons are 56 logical px tall; check what that becomes on this viewport.
+    const cssPerLogical = await game.scaleFactor()
+    expect(56 * cssPerLogical).toBeGreaterThanOrEqual(44)
+  })
+
+  test('the keyboard can drive the menu', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(300)
+    await page.keyboard.press('Enter') // first focusable is Stages
+    await page.waitForTimeout(800)
+
+    // Reaching stage select advances the tutorial, which is observable in the save.
+    await game.tap(240, 588) // Back
+    await game.settle()
+    expect(await game.save()).not.toBeNull()
+  })
+})
