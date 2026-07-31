@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { GAME_W, GAME_H } from '../config/layout'
+import { ambientTween } from './motion'
 import type { StageBackground } from '../types'
 
 /** Small deterministic PRNG so each stage's scenery layout is stable between visits. */
@@ -70,7 +71,7 @@ export function drawStageScenery(
     const y = 86 + rand() * 34
     const size = 26 + rand() * 12
     const img = scene.add.image(x, y, key).setDisplaySize(size, size).setAlpha(0.75)
-    scene.tweens.add({
+    ambientTween(scene, {
       targets: img,
       x: x + (rand() < 0.5 ? -16 : 16),
       duration: 4000 + rand() * 2500,

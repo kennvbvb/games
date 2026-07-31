@@ -2,6 +2,7 @@ import { SAVE_SCHEMA_VERSION } from '../types'
 import type { PlayerState } from '../types'
 import { statsForLevel } from '../systems/leveling'
 import { DEFAULT_AVATAR } from '../data/avatars'
+import { systemPrefersReducedMotion } from '../platform/prefers'
 
 export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT_AVATAR): PlayerState {
   return {
@@ -18,7 +19,15 @@ export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT
     ownedItemIds: [],
     equipped: { weapon: null, armor: null, charm: null },
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
-    settings: { battleSpeed: 1, skipCleared: false, autoRepeat: false, autoAdvance: false },
+    settings: {
+      battleSpeed: 1,
+      skipCleared: false,
+      autoRepeat: false,
+      autoAdvance: false,
+      // Honour the OS preference for a brand new hero.
+      reducedMotion: systemPrefersReducedMotion(),
+    },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },
+    tutorialStep: 0,
   }
 }

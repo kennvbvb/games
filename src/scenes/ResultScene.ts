@@ -8,7 +8,9 @@ import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeStatRow } from '../ui/components/makeStatRow'
+import { advanceTutorial, makeTutorialTip } from '../ui/components/makeTutorialTip'
 import { drawStageScenery } from '../ui/scenery'
+import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 import type { PlayerState, StageConfig } from '../types'
 
@@ -46,6 +48,7 @@ export class ResultScene extends Phaser.Scene {
 
     // A loss always breaks the auto-battle loop — that is the stop condition.
     if (!result.win) GameState.stopAutoBattle()
+    if (result.win) advanceTutorial(2)
 
     const nextStage = STAGES.find((s) => s.order === stage.order + 1) ?? null
     const nextUnlocked = nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
@@ -102,7 +105,7 @@ export class ResultScene extends Phaser.Scene {
           })
           .setOrigin(0.5)
         makeEmoji(this, levelUp.x - levelUp.width / 2 - 12, 314, 'icon_levelup', 18)
-        this.tweens.add({ targets: levelUp, scale: { from: 1, to: 1.08 }, duration: 500, yoyo: true, repeat: -1 })
+        ambientTween(this, { targets: levelUp, scale: { from: 1, to: 1.08 }, duration: 500, yoyo: true, repeat: -1 })
       } else {
         this.add
           .text(GAME_W / 2, 314, 'The next stage is waiting for you!', {
@@ -214,5 +217,7 @@ export class ResultScene extends Phaser.Scene {
       minWidth: 200,
       fontSize: '14px',
     })
+
+    makeTutorialTip(this, 2, 'Nice win! Spend your gold in the Shop to grow stronger.', 606)
   }
 }

@@ -1,5 +1,7 @@
 import Phaser from 'phaser'
 import { COLORS, FONT } from '../styles'
+import { registerFocusable } from '../focus'
+import { reducedMotion } from '../motion'
 
 interface ButtonOptions {
   disabled?: boolean
@@ -69,16 +71,18 @@ export function makeButton(
 
   if (!disabled) {
     container.setInteractive({ useHandCursor: true })
+    const quiet = reducedMotion()
     container.on('pointerover', () => {
-      scene.tweens.add({ targets: container, scale: 1.06, duration: 100, ease: 'Back.Out' })
+      if (!quiet) scene.tweens.add({ targets: container, scale: 1.06, duration: 100, ease: 'Back.Out' })
     })
     container.on('pointerout', () => {
-      scene.tweens.add({ targets: container, scale: 1, duration: 100 })
+      if (!quiet) scene.tweens.add({ targets: container, scale: 1, duration: 100 })
     })
     container.on('pointerdown', () => {
-      scene.tweens.add({ targets: container, scale: 0.94, duration: 60, yoyo: true })
+      if (!quiet) scene.tweens.add({ targets: container, scale: 0.94, duration: 60, yoyo: true })
       onClick()
     })
+    registerFocusable(scene, container, onClick)
   }
 
   return container

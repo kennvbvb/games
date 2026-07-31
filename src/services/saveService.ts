@@ -2,6 +2,7 @@ import type { PlayerState } from '../types'
 import { parsePlayerState } from '../state/validate'
 import { supabase } from './supabaseClient'
 import { setSyncStatus } from './syncStatus'
+import { setReducedMotionPreference } from '../ui/motion'
 
 // Saves are namespaced so signing in or out can never surface another
 // profile's progress: the guest slot and each account's slot are separate keys
@@ -53,6 +54,9 @@ export function loadLocal(userId: string | null): PlayerState | null {
   // on every load, and so what's on disk always matches the current schema.
   const canonical = JSON.stringify(parsed)
   if (canonical !== raw) localStorage.setItem(key, canonical)
+  // UI code reads this synchronously while building scenes, so apply it here
+  // rather than making every scene reach into the save.
+  setReducedMotionPreference(parsed.settings.reducedMotion)
   return parsed
 }
 

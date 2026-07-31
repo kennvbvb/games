@@ -7,6 +7,7 @@ import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeTitle } from '../ui/components/makeTitle'
+import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 
 export class AuthScene extends Phaser.Scene {
@@ -21,7 +22,7 @@ export class AuthScene extends Phaser.Scene {
     setupScene(this)
 
     const mascot = makeEmoji(this, GAME_W / 2, 100, 'avatar_cat', 70)
-    this.tweens.add({ targets: mascot, y: 92, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+    ambientTween(this, { targets: mascot, y: 92, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
     makeTitle(this, 160, 'Incremental RPG', 'icon_blossom', { fontSize: '29px', iconSize: 22, flank: true })
     this.add
       .text(GAME_W / 2, 194, 'Train your hero and clear every stage!', {
