@@ -3,7 +3,7 @@ import { GAME_W, setupScene } from '../config/layout'
 import { STAGES } from '../data/stages'
 import { GameState } from '../state/GameState'
 import { makeButton } from '../ui/components/makeButton'
-import { COLORS, FONT } from '../ui/styles'
+import { makeTitle } from '../ui/components/makeTitle'
 
 export class StageSelectScene extends Phaser.Scene {
   constructor() {
@@ -12,17 +12,9 @@ export class StageSelectScene extends Phaser.Scene {
 
   create(): void {
     setupScene(this)
-    const width = GAME_W
     const player = GameState.player!
 
-    this.add
-      .text(width / 2, 42, '⚔️ Select Stage', {
-        fontSize: '26px',
-        fontFamily: FONT.family,
-        fontStyle: 'bold',
-        color: COLORS.text,
-      })
-      .setOrigin(0.5)
+    makeTitle(this, 42, 'Select Stage', 'icon_atk')
 
     const startY = 92
     const rowHeight = 44
@@ -30,24 +22,28 @@ export class StageSelectScene extends Phaser.Scene {
     STAGES.forEach((stage, i) => {
       const unlocked = stage.order <= player.stageProgress.highestUnlocked
       const cleared = player.stageProgress.completedStageIds.includes(stage.id)
-      const icon = unlocked ? stage.enemy.emoji ?? '👾' : '🔒'
-      const label = `${icon} ${stage.order}. ${stage.name}${cleared ? ' ⭐' : ''}`
       const y = startY + i * rowHeight
 
       makeButton(
         this,
-        width / 2,
+        GAME_W / 2,
         y,
-        label,
+        `${stage.order}. ${stage.name}`,
         () => {
           GameState.selectedStage = stage
           this.scene.start('Battle')
         },
-        { disabled: !unlocked, minWidth: 330, fontSize: '15px' },
+        {
+          disabled: !unlocked,
+          minWidth: 330,
+          fontSize: '15px',
+          icon: unlocked ? stage.enemy.sprite : 'icon_lock',
+        },
       )
+      if (cleared) this.add.image(GAME_W / 2 + 152, y, 'icon_star').setDisplaySize(18, 18)
     })
 
-    makeButton(this, width / 2, startY + STAGES.length * rowHeight + 22, 'Back', () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, startY + STAGES.length * rowHeight + 24, 'Back', () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '14px',
     })
