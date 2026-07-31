@@ -16,6 +16,7 @@ export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT
     stats: statsForLevel(1),
     upgrades: { hp: 0, atk: 0, def: 0 },
     ownedItemIds: [],
+    equipped: { weapon: null, armor: null, charm: null },
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
     settings: { battleSpeed: 1, skipCleared: false, autoRepeat: false, autoAdvance: false },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },

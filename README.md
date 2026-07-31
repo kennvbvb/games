@@ -87,6 +87,9 @@ key to the emoji it came from, driving both the download script
 - Stats grow automatically on level-up; the shop sells repeatable treats
   (Heart Cookie / Sword Candy / Shield Donut, escalating costs) plus 20 one-of-a-kind
   gear pieces — the strongest are level-gated.
+- Gear goes into three slots (Weapon / Armor / Charm), one piece each, so
+  upgrading means choosing rather than accumulating. Owning a piece does
+  nothing until it is worn; the Equipment screen swaps pieces freely.
 - A Character page shows level, EXP progress, effective stats (base + shop bonuses),
   gold, gear count, and stage completion.
 - The canvas renders at 2x supersampling (`src/config/layout.ts`) so text and shapes

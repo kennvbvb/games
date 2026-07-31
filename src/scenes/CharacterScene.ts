@@ -3,7 +3,7 @@ import { GAME_W, setupScene } from '../config/layout'
 import { STAGES } from '../data/stages'
 import { GameState } from '../state/GameState'
 import { expToNext } from '../systems/leveling'
-import { effectiveStats, totalBonus } from '../systems/upgrades'
+import { effectiveStats, equippedItems, totalBonus } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
@@ -96,19 +96,30 @@ export class CharacterScene extends Phaser.Scene {
         color: COLORS.textDim,
       })
       .setOrigin(0, 0.5)
+    const worn = equippedItems(player).length
     makeEmoji(this, 128, 500, 'icon_bag', 17)
     this.add
-      .text(146, 500, `Gear owned: ${player.ownedItemIds.length}`, {
+      .text(146, 500, `Gear: ${worn}/3 worn · ${player.ownedItemIds.length} owned`, {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0, 0.5)
 
-    makeButton(this, GAME_W / 2, 556, 'Shop', () => this.scene.start('Shop'), { minWidth: 200, icon: 'icon_cart' })
-    makeButton(this, GAME_W / 2, 620, 'Back', () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2 - 92, 552, 'Equipment', () => this.scene.start('Equipment'), {
+      minWidth: 168,
+      fontSize: '15px',
+      icon: 'icon_bag',
+    })
+    makeButton(this, GAME_W / 2 + 92, 552, 'Shop', () => this.scene.start('Shop'), {
+      minWidth: 168,
+      fontSize: '15px',
+      icon: 'icon_cart',
+    })
+    makeButton(this, GAME_W / 2, 622, 'Back', () => this.scene.start('MainMenu'), {
       variant: 'secondary',
-      fontSize: '14px',
+      fontSize: '15px',
+      minWidth: 160,
     })
   }
 }

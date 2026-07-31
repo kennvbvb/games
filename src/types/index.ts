@@ -19,8 +19,14 @@ export interface StatBonus {
   def?: number
 }
 
+export type EquipSlot = 'weapon' | 'armor' | 'charm'
+
+/** One item may be equipped per slot; the rest stay in the bag. */
+export type Equipment = Record<EquipSlot, string | null>
+
 export interface ShopItem {
   id: string
+  slot: EquipSlot
   name: string
   emoji: string
   bonus: StatBonus
@@ -28,7 +34,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 3
+export const SAVE_SCHEMA_VERSION = 4
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -65,6 +71,7 @@ export interface PlayerState {
   stats: PlayerStats
   upgrades: UpgradeCounts
   ownedItemIds: string[]
+  equipped: Equipment
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState
