@@ -8,6 +8,7 @@ import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeStatRow } from '../ui/components/makeStatRow'
 import { makeTitle } from '../ui/components/makeTitle'
+import { advanceTutorial, makeTutorialTip } from '../ui/components/makeTutorialTip'
 import { COLORS, FONT } from '../ui/styles'
 import type { DifficultyTier } from '../systems/difficulty'
 import type { StageConfig } from '../types'
@@ -32,6 +33,7 @@ export class StageSelectScene extends Phaser.Scene {
     const page = Math.min(Math.max(GameState.stagePage, 0), pageCount - 1)
     GameState.stagePage = page
 
+    advanceTutorial(1)
     makeTitle(this, 46, 'Select Stage', 'icon_atk')
 
     STAGES.slice(page * STAGES_PER_PAGE, (page + 1) * STAGES_PER_PAGE).forEach((stage, i) => {
@@ -62,6 +64,8 @@ export class StageSelectScene extends Phaser.Scene {
       fontSize: '15px',
       minWidth: 160,
     })
+
+    makeTutorialTip(this, 1, 'Green means an easy win. Tap Fight to begin!', 654)
   }
 
   /**

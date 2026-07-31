@@ -12,6 +12,8 @@ import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeStatRow } from '../ui/components/makeStatRow'
 import { makeTitle } from '../ui/components/makeTitle'
+import { makeTutorialTip } from '../ui/components/makeTutorialTip'
+import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 
 export class MainMenuScene extends Phaser.Scene {
@@ -48,7 +50,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     makePanel(this, GAME_W / 2, 210, 400, 150)
     const hero = makeEmoji(this, 118, 210, `avatar_${player.avatar}`, 62)
-    this.tweens.add({ targets: hero, y: 203, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+    ambientTween(this, { targets: hero, y: 203, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
 
     this.add
       .text(186, 178, `${player.name}  ·  Lv ${player.level}`, {
@@ -82,17 +84,24 @@ export class MainMenuScene extends Phaser.Scene {
       minWidth: 240,
       icon: 'icon_cart',
     })
+    makeButton(this, GAME_W / 2 - 92, 540, 'Settings', () => this.scene.start('Settings'), {
+      variant: 'secondary',
+      minWidth: 168,
+      fontSize: '15px',
+      icon: 'icon_bolt',
+    })
     makeButton(
       this,
-      GAME_W / 2,
-      546,
-      GameState.userId ? 'Sign Out' : 'Exit Guest Mode',
+      GAME_W / 2 + 92,
+      540,
+      GameState.userId ? 'Sign Out' : 'Exit Guest',
       () => {
         void this.handleExit()
       },
-      { variant: 'secondary', fontSize: '14px' },
+      { variant: 'secondary', minWidth: 168, fontSize: '15px' },
     )
 
+    makeTutorialTip(this, 0, 'Welcome! Tap Stages to find your first fight.', 618)
     this.showOfflineRewards()
   }
 

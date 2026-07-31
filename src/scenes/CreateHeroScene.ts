@@ -7,6 +7,7 @@ import { persist } from '../services/saveService'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
+import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 
 export class CreateHeroScene extends Phaser.Scene {
@@ -38,7 +39,7 @@ export class CreateHeroScene extends Phaser.Scene {
 
     makePanel(this, GAME_W / 2, 162, 170, 132)
     this.preview = makeEmoji(this, GAME_W / 2, 158, `avatar_${this.selected}`, 76)
-    this.tweens.add({ targets: this.preview, y: 150, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+    ambientTween(this, { targets: this.preview, y: 150, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
 
     this.add
       .text(GAME_W / 2, 254, 'Choose your buddy', { fontSize: '15px', fontFamily: FONT.family, color: COLORS.textDim })

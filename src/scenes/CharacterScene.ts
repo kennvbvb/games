@@ -9,6 +9,7 @@ import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeTitle } from '../ui/components/makeTitle'
+import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 
 export class CharacterScene extends Phaser.Scene {
@@ -28,7 +29,7 @@ export class CharacterScene extends Phaser.Scene {
     // Hero card with level + EXP progress
     makePanel(this, GAME_W / 2, 170, 400, 170)
     const hero = makeEmoji(this, GAME_W / 2, 138, `avatar_${player.avatar}`, 70)
-    this.tweens.add({ targets: hero, angle: { from: -4, to: 4 }, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
+    ambientTween(this, { targets: hero, angle: { from: -4, to: 4 }, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
     this.add
       .text(GAME_W / 2, 192, `${player.name}  ·  Lv ${player.level}`, {
         fontSize: '19px',

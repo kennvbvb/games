@@ -10,8 +10,9 @@ import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeStatRow, type StatEntry } from '../ui/components/makeStatRow'
 import { makeTitle } from '../ui/components/makeTitle'
+import { advanceTutorial } from '../ui/components/makeTutorialTip'
 import { COLORS, FONT } from '../ui/styles'
-import type { ShopItem, StatBonus, UpgradeType } from '../types'
+import { TUTORIAL_DONE, type ShopItem, type StatBonus, type UpgradeType } from '../types'
 
 const UPGRADE_TYPES: UpgradeType[] = ['hp', 'atk', 'def']
 const ITEMS_PER_PAGE = 4
@@ -49,6 +50,7 @@ export class ShopScene extends Phaser.Scene {
     setupScene(this)
     const player = GameState.player!
 
+    advanceTutorial(TUTORIAL_DONE)
     makeTitle(this, 44, 'Shop', 'icon_cart')
 
     const goldLabel = this.add

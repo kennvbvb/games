@@ -94,6 +94,12 @@ key to the emoji it came from, driving both the download script
   gold, gear count, and stage completion.
 - The canvas renders at 2x supersampling (`src/config/layout.ts`) so text and shapes
   stay crisp on high-DPI screens.
+- A three-step intro points new players at their first fight, their first win
+  and the shop, then gets out of the way for good.
+- Every button is keyboard operable: Tab and arrow keys move a visible focus
+  ring, Enter or Space activates. Settings covers battle speed, skip-cleared,
+  auto-advance and Reduce motion, which silences all decorative animation and
+  defaults from the OS `prefers-reduced-motion` setting.
 - Losing a stage has no penalty — just try again after leveling up or shopping.
 
 ## License

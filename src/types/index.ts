@@ -34,7 +34,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 4
+export const SAVE_SCHEMA_VERSION = 5
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -47,6 +47,11 @@ export interface GameSettings {
   autoRepeat: boolean
   /** When auto-repeating, move on to the next stage once this one is cleared. */
   autoAdvance: boolean
+  /**
+   * Suppresses decorative motion. Defaults from the OS `prefers-reduced-motion`
+   * setting on a new save, and can then be overridden in Settings.
+   */
+  reducedMotion: boolean
 }
 
 export interface IdleState {
@@ -75,7 +80,11 @@ export interface PlayerState {
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState
+  /** How far through the 3-step intro the player is; TUTORIAL_DONE when finished. */
+  tutorialStep: number
 }
+
+export const TUTORIAL_DONE = 3
 
 export interface EnemyConfig {
   name: string

@@ -1,10 +1,11 @@
-import { SAVE_SCHEMA_VERSION } from '../types'
+import { SAVE_SCHEMA_VERSION, TUTORIAL_DONE } from '../types'
 import type { Equipment, PlayerState } from '../types'
 import { ITEM_BY_ID } from '../data/items'
 import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
 import { statsForLevel } from '../systems/leveling'
+import { systemPrefersReducedMotion } from '../platform/prefers'
 
 export const MAX_LEVEL = 500
 export const MAX_UPGRADE_COUNT = 999
@@ -102,7 +103,11 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       skipCleared: settingsRaw.skipCleared === true,
       autoRepeat: settingsRaw.autoRepeat === true,
       autoAdvance: settingsRaw.autoAdvance === true,
+      // Absent in pre-v5 saves: inherit the OS preference rather than forcing motion on.
+      reducedMotion:
+        typeof settingsRaw.reducedMotion === 'boolean' ? settingsRaw.reducedMotion : systemPrefersReducedMotion(),
     },
     idle: { farmingStageId, lastSeenAt },
+    tutorialStep: clampInt(raw.tutorialStep, 0, TUTORIAL_DONE, 0),
   }
 }
