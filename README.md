@@ -11,6 +11,7 @@ via Supabase.
 npm install
 npm run dev       # start the dev server
 npm run test      # run the unit tests (leveling/combat math, save service)
+npm run test:e2e  # run the Playwright end-to-end suite against a production build
 npm run build     # type-check and produce a production build in dist/
 npm run assets    # re-download the art in public/assets (already committed)
 npm run typecheck # type-check without emitting
@@ -67,6 +68,7 @@ key to the emoji it came from, driving both the download script
 - `src/state/` — the single `PlayerState` shape and a small in-memory `GameState` store
 - `src/services/` — Supabase client, auth, and save/load (local + cloud)
 - `tests/` — vitest unit tests for the systems and save service
+- `e2e/` — Playwright specs driving the built game in a mobile viewport
 
 ## Gameplay notes (MVP scope)
 
