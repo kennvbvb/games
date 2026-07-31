@@ -28,9 +28,12 @@ export default defineConfig({
   ],
   // Tests run against the real production bundle, not the dev server.
   webServer: {
-    command: `npm run build && npx vite preview --port ${PORT} --strictPort`,
+    // Bind 127.0.0.1 explicitly: vite preview's default `localhost` can resolve
+    // to ::1 only on CI runners, which never answers the IPv4 readiness probe.
+    command: `npm run build && npx vite preview --port ${PORT} --strictPort --host 127.0.0.1`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    // Generous, because the production build runs before the server starts.
+    timeout: 180_000,
   },
 })
