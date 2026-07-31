@@ -76,6 +76,14 @@ key to the emoji it came from, driving both the download script
   unlocks the next on victory.
 - Combat is a deterministic, precomputed auto-battle (`resolveBattle`) that the `BattleScene`
   animates — no twitch input, in keeping with the incremental/idle genre.
+- Idle-friendly: pick a battle speed (×1/×2/×4), skip the animation on stages you
+  have already cleared, and queue auto-battles that stop the moment you lose.
+- While the game is closed your hero keeps farming the last stage you won, paying
+  out on return (capped at 8 hours). Offline battles take 40s each, so idling is
+  slower than playing rather than secretly paying less.
+- Stage select previews each fight: rewards, plus an exact difficulty read
+  (Easy / Fair / Hard and the HP you would have left) simulated from the real
+  deterministic combat.
 - Stats grow automatically on level-up; the shop sells repeatable treats
   (Heart Cookie / Sword Candy / Shield Donut, escalating costs) plus 20 one-of-a-kind
   gear pieces — the strongest are level-gated.

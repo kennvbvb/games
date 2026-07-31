@@ -1,9 +1,12 @@
 import Phaser from 'phaser'
-import { GAME_W, setupScene } from '../config/layout'
+import { GAME_W, GAME_H, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { signOut } from '../services/authService'
 import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncStatus'
 import { effectiveStats } from '../systems/upgrades'
+import { applyExp } from '../systems/leveling'
+import { computeOfflineRewards, formatDuration } from '../systems/idle'
+import { persist } from '../services/saveService'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
@@ -89,6 +92,91 @@ export class MainMenuScene extends Phaser.Scene {
       },
       { variant: 'secondary', fontSize: '14px' },
     )
+
+    this.showOfflineRewards()
+  }
+
+  /**
+   * Settles what the hero earned while the game was closed. Shown as a modal
+   * over the menu so returning players see the payoff before anything else.
+   */
+  private showOfflineRewards(): void {
+    const player = GameState.player!
+    const now = Date.now()
+    const report = computeOfflineRewards(player, now)
+
+    if (!report) {
+      // Still stamp the visit so the next absence measures from now.
+      const touched = { ...player, idle: { ...player.idle, lastSeenAt: now } }
+      GameState.player = touched
+      void persist(touched, GameState.userId).then((stamped) => {
+        GameState.player = stamped
+      })
+      return
+    }
+
+    const veil = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x5d4a66, 0.45).setDepth(10)
+    const layer = this.add.container(0, 0).setDepth(11)
+
+    const panel = makePanel(this, GAME_W / 2, GAME_H / 2, 400, 300)
+    const title = this.add
+      .text(GAME_W / 2, GAME_H / 2 - 112, 'Welcome back!', {
+        fontSize: '24px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.text,
+      })
+      .setOrigin(0.5)
+    const sub = this.add
+      .text(
+        GAME_W / 2,
+        GAME_H / 2 - 74,
+        `${player.name} kept fighting in ${report.stageName}\nfor ${formatDuration(report.creditedMs)}${report.capped ? ' (max)' : ''}`,
+        { fontSize: '14px', fontFamily: FONT.family, color: COLORS.textDim, align: 'center' },
+      )
+      .setOrigin(0.5)
+    const hero = makeEmoji(this, GAME_W / 2, GAME_H / 2 - 14, `avatar_${player.avatar}`, 52)
+    const battles = this.add
+      .text(GAME_W / 2, GAME_H / 2 + 26, `${report.battles} battles won`, {
+        fontSize: '14px',
+        fontFamily: FONT.family,
+        color: COLORS.textDim,
+      })
+      .setOrigin(0.5)
+    layer.add([panel, title, sub, hero, battles])
+
+    const rewardX = GAME_W / 2 - 84
+    makeStatRow(
+      this,
+      rewardX,
+      GAME_H / 2 + 58,
+      [
+        { icon: 'icon_exp', value: `+${report.rewards.exp}` },
+        { icon: 'icon_gold', value: `+${report.rewards.gold}` },
+      ],
+      { fontSize: '18px', iconSize: 20, gap: 26, depth: 12 },
+    )
+
+    const claim = makeButton(
+      this,
+      GAME_W / 2,
+      GAME_H / 2 + 112,
+      'Collect',
+      () => {
+        const collected = applyExp(
+          { ...player, gold: player.gold + report.rewards.gold, idle: { ...player.idle, lastSeenAt: now } },
+          report.rewards.exp,
+        )
+        GameState.player = collected
+        void persist(collected, GameState.userId).then((stamped) => {
+          GameState.player = stamped
+        })
+        this.scene.restart()
+      },
+      { minWidth: 200 },
+    )
+    veil.setDepth(10)
+    claim.setDepth(12)
   }
 
   private async handleExit(): Promise<void> {

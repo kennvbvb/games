@@ -9,4 +9,17 @@ export const BALANCE = {
     def: { name: 'Shield Donut', emoji: '🍩', description: '+1 DEF', bonus: 1, baseCost: 18 },
   },
   upgradeCostGrowth: 1.35,
+  idle: {
+    /** Longest stretch of absence that still pays out. */
+    maxOfflineMs: 8 * 60 * 60 * 1000,
+    /** Below this, returning players get no popup at all. */
+    minRewardMs: 60 * 1000,
+    /**
+     * How long one offline auto-battle takes. Deliberately slower than an
+     * active battle, which is what makes idling less efficient than playing —
+     * expressed as time rather than a hidden payout multiplier so the
+     * "battles won" figure shown to the player is literally true.
+     */
+    msPerBattle: 40 * 1000,
+  },
 } as const

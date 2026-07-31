@@ -16,7 +16,7 @@ export function makeStatRow(
   x: number,
   y: number,
   entries: StatEntry[],
-  options: { fontSize?: string; iconSize?: number; gap?: number; color?: string } = {},
+  options: { fontSize?: string; iconSize?: number; gap?: number; color?: string; depth?: number } = {},
 ): number {
   const fontSize = options.fontSize ?? '16px'
   const iconSize = options.iconSize ?? 18
@@ -24,7 +24,8 @@ export function makeStatRow(
   let cursor = x
 
   for (const entry of entries) {
-    scene.add.image(cursor + iconSize / 2, y, entry.icon).setDisplaySize(iconSize, iconSize)
+    const icon = scene.add.image(cursor + iconSize / 2, y, entry.icon).setDisplaySize(iconSize, iconSize)
+    if (options.depth !== undefined) icon.setDepth(options.depth)
     const label = scene.add
       .text(cursor + iconSize + 5, y, String(entry.value), {
         fontSize,
@@ -32,6 +33,7 @@ export function makeStatRow(
         color: options.color ?? COLORS.text,
       })
       .setOrigin(0, 0.5)
+    if (options.depth !== undefined) label.setDepth(options.depth)
     cursor += iconSize + 5 + label.width + gap
   }
 
