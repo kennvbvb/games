@@ -1,9 +1,13 @@
+import { SAVE_SCHEMA_VERSION } from '../types'
 import type { PlayerState } from '../types'
 import { statsForLevel } from '../systems/leveling'
-import { DEFAULT_AVATAR, normalizeAvatar } from '../data/avatars'
+import { DEFAULT_AVATAR } from '../data/avatars'
 
 export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT_AVATAR): PlayerState {
   return {
+    schemaVersion: SAVE_SCHEMA_VERSION,
+    revision: 0,
+    updatedAt: new Date().toISOString(),
     name,
     avatar,
     level: 1,
@@ -14,20 +18,4 @@ export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT
     ownedItemIds: [],
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
   }
-}
-
-/** Fills in fields missing from saves written by older versions of the game. */
-export function normalizePlayerState(raw: Partial<PlayerState>): PlayerState {
-  const defaults = createDefaultPlayerState(raw.name)
-  const merged: PlayerState = {
-    ...defaults,
-    ...raw,
-    avatar: normalizeAvatar(raw.avatar),
-    upgrades: { ...defaults.upgrades, ...raw.upgrades },
-    ownedItemIds: Array.isArray(raw.ownedItemIds) ? raw.ownedItemIds : [],
-    stageProgress: { ...defaults.stageProgress, ...raw.stageProgress },
-    stats: defaults.stats,
-  }
-  merged.stats = statsForLevel(merged.level)
-  return merged
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { upgradeCost, buyUpgrade, effectiveStats } from '../src/systems/upgrades'
-import { createDefaultPlayerState, normalizePlayerState } from '../src/state/playerState'
+import { createDefaultPlayerState } from '../src/state/playerState'
+import { parsePlayerState } from '../src/state/validate'
 import { BALANCE } from '../src/data/balance'
 import type { PlayerState } from '../src/types'
 
@@ -36,7 +37,7 @@ describe('upgrades', () => {
   it('normalizes old saves that lack the upgrades field', () => {
     const old = createDefaultPlayerState('Vet') as Partial<PlayerState>
     delete old.upgrades
-    const migrated = normalizePlayerState({ ...old, level: 3 })
+    const migrated = parsePlayerState({ ...old, level: 3 })!
     expect(migrated.upgrades).toEqual({ hp: 0, atk: 0, def: 0 })
     expect(migrated.level).toBe(3)
     expect(migrated.stats.atk).toBeGreaterThan(createDefaultPlayerState().stats.atk)

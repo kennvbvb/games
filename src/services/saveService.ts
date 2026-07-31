@@ -1,28 +1,76 @@
 import type { PlayerState } from '../types'
-import { normalizePlayerState } from '../state/playerState'
+import { parsePlayerState } from '../state/validate'
 import { supabase } from './supabaseClient'
+import { setSyncStatus } from './syncStatus'
 
-const LOCAL_KEY = 'incremental-rpg-save-v1'
-let saveTimer: ReturnType<typeof setTimeout> | undefined
+// Saves are namespaced so signing in or out can never surface another
+// profile's progress: the guest slot and each account's slot are separate keys
+// and are never read across namespaces automatically.
+const KEY_PREFIX = 'incremental-rpg-save-v2'
+const LEGACY_KEY = 'incremental-rpg-save-v1'
+const QUARANTINE_KEY = `${KEY_PREFIX}:quarantine`
 
-export function saveLocal(state: PlayerState): void {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(state))
+function localKey(userId: string | null): string {
+  return userId ? `${KEY_PREFIX}:user:${userId}` : `${KEY_PREFIX}:guest`
 }
 
-export function loadLocal(): PlayerState | null {
-  const raw = localStorage.getItem(LOCAL_KEY)
-  return raw ? normalizePlayerState(JSON.parse(raw) as Partial<PlayerState>) : null
+/** Pre-v2 saves lived in a single shared key; adopt them into the guest slot once. */
+function migrateLegacyKey(): void {
+  const legacy = localStorage.getItem(LEGACY_KEY)
+  if (legacy === null) return
+  if (localStorage.getItem(localKey(null)) === null) {
+    localStorage.setItem(localKey(null), legacy)
+  }
+  localStorage.removeItem(LEGACY_KEY)
 }
 
-export function clearLocal(): void {
-  localStorage.removeItem(LOCAL_KEY)
+export function saveLocal(state: PlayerState, userId: string | null): void {
+  localStorage.setItem(localKey(userId), JSON.stringify(state))
+}
+
+/**
+ * Reads a namespaced local save. Corrupted or unrecognisable data is moved to
+ * a quarantine key (kept for manual recovery) instead of crashing the game.
+ */
+export function loadLocal(userId: string | null): PlayerState | null {
+  migrateLegacyKey()
+  const key = localKey(userId)
+  const raw = localStorage.getItem(key)
+  if (raw === null) return null
+  let parsed: PlayerState | null = null
+  try {
+    parsed = parsePlayerState(JSON.parse(raw))
+  } catch {
+    parsed = null
+  }
+  if (parsed === null) {
+    console.warn(`Save in ${key} was unreadable; moved to ${QUARANTINE_KEY}`)
+    localStorage.setItem(QUARANTINE_KEY, raw)
+    localStorage.removeItem(key)
+    return null
+  }
+  // Persist the upgraded shape straight away so an older blob isn't re-migrated
+  // on every load, and so what's on disk always matches the current schema.
+  const canonical = JSON.stringify(parsed)
+  if (canonical !== raw) localStorage.setItem(key, canonical)
+  return parsed
+}
+
+export function clearLocal(userId: string | null): void {
+  localStorage.removeItem(localKey(userId))
+}
+
+/** True if a guest save exists that a freshly signed-in account could import. */
+export function hasGuestSave(): boolean {
+  migrateLegacyKey()
+  return localStorage.getItem(localKey(null)) !== null
 }
 
 async function saveCloud(userId: string, state: PlayerState): Promise<void> {
   if (!supabase) throw new Error('Cloud accounts are not configured')
   const { error } = await supabase
     .from('saves')
-    .upsert({ user_id: userId, state, updated_at: new Date().toISOString() })
+    .upsert({ user_id: userId, state, revision: state.revision, updated_at: new Date().toISOString() })
   if (error) throw error
 }
 
@@ -34,39 +82,70 @@ async function loadCloud(userId: string): Promise<PlayerState | null> {
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
-  const raw = data?.state as Partial<PlayerState> | undefined
-  return raw ? normalizePlayerState(raw) : null
+  return data?.state === undefined ? null : parsePlayerState(data.state)
 }
 
-/** Persist immediately: always mirrors to localStorage, and best-effort syncs to the cloud when signed in. */
-export async function persist(state: PlayerState, userId: string | null): Promise<void> {
-  saveLocal(state)
-  if (userId) {
-    try {
-      await saveCloud(userId, state)
-    } catch (err) {
-      console.error('Cloud save failed, progress is still safe locally', err)
-    }
+/**
+ * Persist immediately: bumps the revision, always mirrors to the caller's own
+ * namespace in localStorage, and best-effort syncs to the cloud when signed in.
+ * Returns the stamped state so callers can keep the new revision in memory.
+ */
+export async function persist(state: PlayerState, userId: string | null): Promise<PlayerState> {
+  const stamped: PlayerState = {
+    ...state,
+    revision: state.revision + 1,
+    updatedAt: new Date().toISOString(),
   }
+  saveLocal(stamped, userId)
+  if (userId) {
+    setSyncStatus('saving')
+    try {
+      await saveCloud(userId, stamped)
+      setSyncStatus('synced')
+    } catch (err) {
+      console.error('Cloud save failed, progress is still safe on this device', err)
+      setSyncStatus('error')
+    }
+  } else {
+    setSyncStatus('guest')
+  }
+  return stamped
 }
 
-/** Debounced persist for frequent, low-priority state changes. */
-export function scheduleSave(state: PlayerState, userId: string | null, delayMs = 2500): void {
-  if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    void persist(state, userId)
-  }, delayMs)
-}
-
-/** Loads cloud state when signed in (falling back to local on failure), otherwise loads local state. */
+/**
+ * Loads the state for one namespace only — a signed-in user never falls back
+ * to the guest slot (see importGuestSave for the explicit path). When local
+ * and cloud disagree, the higher revision wins and is re-synced.
+ */
 export async function loadState(userId: string | null): Promise<PlayerState | null> {
-  if (userId) {
-    try {
-      const cloud = await loadCloud(userId)
-      if (cloud) return cloud
-    } catch (err) {
-      console.error('Cloud load failed, falling back to local save', err)
-    }
+  const local = loadLocal(userId)
+  if (!userId) {
+    setSyncStatus('guest')
+    return local
   }
-  return loadLocal()
+
+  let cloud: PlayerState | null = null
+  let cloudFailed = false
+  try {
+    cloud = await loadCloud(userId)
+  } catch (err) {
+    console.error('Cloud load failed, using this device\'s copy', err)
+    cloudFailed = true
+  }
+
+  if (local && (!cloud || local.revision > cloud.revision)) {
+    // This device is ahead (e.g. an earlier cloud write failed); push it back up.
+    if (!cloudFailed) void persist(local, userId)
+    else setSyncStatus('error')
+    return local
+  }
+  setSyncStatus(cloudFailed ? 'error' : 'synced')
+  return cloud ?? null
+}
+
+/** Copies the guest save into an account's namespace (guest copy is kept). */
+export async function importGuestSave(userId: string): Promise<PlayerState | null> {
+  const guest = loadLocal(null)
+  if (!guest) return null
+  return persist(guest, userId)
 }

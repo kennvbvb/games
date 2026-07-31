@@ -28,7 +28,15 @@ export interface ShopItem {
   minLevel?: number
 }
 
+export const SAVE_SCHEMA_VERSION = 2
+
 export interface PlayerState {
+  /** Bump SAVE_SCHEMA_VERSION and add a migration step when this shape changes. */
+  schemaVersion: number
+  /** Monotonic save counter; the higher revision wins when local and cloud disagree. */
+  revision: number
+  /** ISO timestamp of the last persist, informational only. */
+  updatedAt: string
   name: string
   avatar: string
   level: number

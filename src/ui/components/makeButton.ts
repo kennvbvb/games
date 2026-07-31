@@ -5,10 +5,19 @@ interface ButtonOptions {
   disabled?: boolean
   variant?: 'primary' | 'secondary'
   minWidth?: number
+  /** Minimum height in logical px. Defaults to MIN_TOUCH_HEIGHT; don't go lower. */
+  minHeight?: number
   fontSize?: string
   /** Preloaded emoji texture key drawn to the left of the label. */
   icon?: string
 }
+
+/**
+ * Scale.FIT shrinks the 480x720 stage to fit a phone viewport — on a 390px-wide
+ * screen that is a 0.8125 factor, so a 44 CSS px touch target needs ~54 logical
+ * px. 56 clears it on every breakpoint we support.
+ */
+export const MIN_TOUCH_HEIGHT = 56
 
 export function makeButton(
   scene: Phaser.Scene,
@@ -36,7 +45,8 @@ export function makeButton(
   const iconGap = 8
   const contentW = text.width + (options.icon ? iconSize + iconGap : 0)
   const w = Math.max(contentW + 40, options.minWidth ?? 0)
-  const h = text.height + 20
+  const minHeight = options.minHeight ?? MIN_TOUCH_HEIGHT
+  const h = Math.max(text.height + 20, minHeight)
 
   const bg = scene.add.graphics()
   // Chunky bottom edge reads as a soft 3D key, matching the rounded font.

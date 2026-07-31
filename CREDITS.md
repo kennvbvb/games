@@ -1,5 +1,8 @@
 # Credits
 
+The game's own source code is MIT licensed (see [LICENSE](./LICENSE)). That is
+separate from the third-party art below, which keeps its own terms.
+
 The game's art and typography come from open-licensed projects. Everything here
 is redistributable, including in a commercial or hosted build, provided the
 notices below travel with it — which they do: the full license texts ship inside

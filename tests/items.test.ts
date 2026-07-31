@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { ITEMS, ITEM_BY_ID } from '../src/data/items'
 import { buyItem, effectiveStats } from '../src/systems/upgrades'
-import { createDefaultPlayerState, normalizePlayerState } from '../src/state/playerState'
+import { createDefaultPlayerState } from '../src/state/playerState'
+import { parsePlayerState } from '../src/state/validate'
 import type { PlayerState } from '../src/types'
 
 describe('shop items', () => {
@@ -46,16 +47,17 @@ describe('shop items', () => {
     const old = createDefaultPlayerState('Vet') as Partial<PlayerState>
     delete old.avatar
     delete old.ownedItemIds
-    const migrated = normalizePlayerState(old)
+    const migrated = parsePlayerState(old)!
     expect(migrated.avatar).toBe('cat')
     expect(migrated.ownedItemIds).toEqual([])
   })
 
   it('migrates avatars saved as raw emoji to texture ids', () => {
-    expect(normalizePlayerState({ avatar: '🦊' }).avatar).toBe('fox')
-    expect(normalizePlayerState({ avatar: '🐼' }).avatar).toBe('panda')
+    const withAvatar = (avatar: string) => parsePlayerState({ name: 'Vet', level: 1, avatar })!.avatar
+    expect(withAvatar('🦊')).toBe('fox')
+    expect(withAvatar('🐼')).toBe('panda')
     // Already-migrated and unknown values both stay valid.
-    expect(normalizePlayerState({ avatar: 'frog' }).avatar).toBe('frog')
-    expect(normalizePlayerState({ avatar: '🍕' }).avatar).toBe('cat')
+    expect(withAvatar('frog')).toBe('frog')
+    expect(withAvatar('🍕')).toBe('cat')
   })
 })

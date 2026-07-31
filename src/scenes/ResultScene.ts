@@ -30,7 +30,9 @@ export class ResultScene extends Phaser.Scene {
       player = { ...player, stageProgress: { highestUnlocked: nextUnlock, completedStageIds } }
     }
     GameState.player = player
-    void persist(player, GameState.userId)
+    void persist(player, GameState.userId).then((stamped) => {
+      GameState.player = stamped
+    })
 
     drawStageScenery(this, stage.bg, stage.order, { horizon: 470 })
 

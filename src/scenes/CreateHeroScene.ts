@@ -100,8 +100,7 @@ export class CreateHeroScene extends Phaser.Scene {
   private async startGame(rawName: string): Promise<void> {
     const name = rawName.trim().slice(0, 14) || 'Hero'
     const state = createDefaultPlayerState(name, this.selected)
-    GameState.player = state
-    await persist(state, GameState.userId)
+    GameState.player = await persist(state, GameState.userId)
     this.scene.start('MainMenu')
   }
 }

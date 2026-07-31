@@ -13,6 +13,7 @@ npm run dev       # start the dev server
 npm run test      # run the unit tests (leveling/combat math, save service)
 npm run build     # type-check and produce a production build in dist/
 npm run assets    # re-download the art in public/assets (already committed)
+npm run typecheck # type-check without emitting
 ```
 
 ## Cloud saves (optional)
@@ -29,6 +30,20 @@ The game works fully in guest mode with zero configuration — progress is store
 
 Without a `.env` file, the "Sign In"/"Sign Up" buttons are disabled and the game falls back to
 guest-only mode automatically.
+
+## Saves
+
+Progress is namespaced so profiles can never bleed into each other:
+
+- `incremental-rpg-save-v2:guest` — guest play on this device
+- `incremental-rpg-save-v2:user:<id>` — one slot per signed-in account
+
+A signed-in account never silently adopts guest progress; if a guest save exists
+when you first sign in, the game asks whether to import it. Saves carry a
+`schemaVersion` and a monotonic `revision`, so when the local and cloud copies
+disagree the newer one wins and is re-synced. Anything unreadable is moved to
+`incremental-rpg-save-v2:quarantine` rather than crashing the game, and every
+loaded save is re-validated (bounds-checked, unknown item/stage ids dropped).
 
 ## Art and typography
 
@@ -69,3 +84,8 @@ key to the emoji it came from, driving both the download script
 - The canvas renders at 2x supersampling (`src/config/layout.ts`) so text and shapes
   stay crisp on high-DPI screens.
 - Losing a stage has no penalty — just try again after leveling up or shopping.
+
+## License
+
+Source code is MIT licensed — see [LICENSE](./LICENSE). The bundled art and
+typeface are under the SIL Open Font License 1.1; see [CREDITS.md](./CREDITS.md).
