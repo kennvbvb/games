@@ -28,7 +28,27 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 2
+export const SAVE_SCHEMA_VERSION = 3
+
+export type BattleSpeed = 1 | 2 | 4
+
+export interface GameSettings {
+  /** Playback multiplier for battle animation; combat maths are unaffected. */
+  battleSpeed: BattleSpeed
+  /** Jump straight to the result once a stage has been cleared before. */
+  skipCleared: boolean
+  /** Keep fighting the current stage automatically after a win. */
+  autoRepeat: boolean
+  /** When auto-repeating, move on to the next stage once this one is cleared. */
+  autoAdvance: boolean
+}
+
+export interface IdleState {
+  /** Stage id the hero keeps farming while away; null disables offline gains. */
+  farmingStageId: string | null
+  /** Epoch ms of the last time offline rewards were settled. */
+  lastSeenAt: number
+}
 
 export interface PlayerState {
   /** Bump SAVE_SCHEMA_VERSION and add a migration step when this shape changes. */
@@ -46,6 +66,8 @@ export interface PlayerState {
   upgrades: UpgradeCounts
   ownedItemIds: string[]
   stageProgress: StageProgress
+  settings: GameSettings
+  idle: IdleState
 }
 
 export interface EnemyConfig {

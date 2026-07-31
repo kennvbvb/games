@@ -51,6 +51,17 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
 
   const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 14) : 'Hero'
 
+  // v2 saves predate settings/idle; absent blocks fall back to defaults.
+  const settingsRaw = isRecord(raw.settings) ? raw.settings : {}
+  const idleRaw = isRecord(raw.idle) ? raw.idle : {}
+  const speed = settingsRaw.battleSpeed
+  const farmingStageId =
+    typeof idleRaw.farmingStageId === 'string' && validStageIds.has(idleRaw.farmingStageId)
+      ? idleRaw.farmingStageId
+      : null
+  // A future timestamp would mint free offline rewards, so never trust one.
+  const lastSeenAt = clampInt(idleRaw.lastSeenAt, 0, Date.now(), Date.now())
+
   return {
     schemaVersion: SAVE_SCHEMA_VERSION,
     revision: clampInt(raw.revision, 0, Number.MAX_SAFE_INTEGER, 0),
@@ -71,5 +82,12 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,
     },
+    settings: {
+      battleSpeed: speed === 2 || speed === 4 ? speed : 1,
+      skipCleared: settingsRaw.skipCleared === true,
+      autoRepeat: settingsRaw.autoRepeat === true,
+      autoAdvance: settingsRaw.autoAdvance === true,
+    },
+    idle: { farmingStageId, lastSeenAt },
   }
 }

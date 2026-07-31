@@ -3,11 +3,16 @@ import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { resolveBattle } from '../systems/combat'
 import { effectiveStats } from '../systems/upgrades'
+import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { drawStageScenery } from '../ui/scenery'
 import { COLORS, FONT } from '../ui/styles'
+import type { BattleSpeed } from '../types'
+
+const BASE_TURN_MS = 260
+const SPEEDS: BattleSpeed[] = [1, 2, 4]
 
 export class BattleScene extends Phaser.Scene {
   constructor() {
@@ -21,6 +26,14 @@ export class BattleScene extends Phaser.Scene {
     const stats = effectiveStats(player)
     const result = resolveBattle(stats, stage.enemy, stage.rewards)
     GameState.lastBattleResult = result
+
+    // Replaying a stage that's already been beaten is pure waiting, so the
+    // skip setting jumps straight to the payoff.
+    const alreadyCleared = player.stageProgress.completedStageIds.includes(stage.id)
+    if (player.settings.skipCleared && alreadyCleared) {
+      this.scene.start('Result')
+      return
+    }
 
     drawStageScenery(this, stage.bg, stage.order, { horizon: 452 })
 
@@ -80,6 +93,18 @@ export class BattleScene extends Phaser.Scene {
     }
     layoutLog('icon_bolt', 'Battle start!')
 
+    if (GameState.autoRunsRemaining > 0) {
+      this.add
+        .text(GAME_W / 2, 400, `Auto-battle · run ${GameState.autoRunCount + 1}`, {
+          fontSize: '13px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(0.5)
+    }
+
+    this.buildSpeedControls()
+
     let playerHp = stats.maxHp
     let enemyHp = stage.enemy.maxHp
     const renderHp = () => {
@@ -104,9 +129,10 @@ export class BattleScene extends Phaser.Scene {
       return
     }
 
+    const speed = player.settings.battleSpeed
     let i = 0
     this.time.addEvent({
-      delay: 260,
+      delay: BASE_TURN_MS / speed,
       repeat: result.log.length - 1,
       callback: () => {
         const ev = result.log[i]
@@ -124,9 +150,36 @@ export class BattleScene extends Phaser.Scene {
         renderHp()
         i++
         if (i >= result.log.length) {
-          this.time.delayedCall(600, () => this.scene.start('Result'))
+          this.time.delayedCall(600 / speed, () => this.scene.start('Result'))
         }
       },
+    })
+  }
+
+  /** Speed toggles plus an immediate skip; both persist the choice for next time. */
+  private buildSpeedControls(): void {
+    const player = GameState.player!
+    SPEEDS.forEach((speed, i) => {
+      makeButton(
+        this,
+        96 + i * 74,
+        556,
+        `×${speed}`,
+        () => {
+          GameState.player = { ...player, settings: { ...player.settings, battleSpeed: speed } }
+          this.scene.restart()
+        },
+        {
+          variant: player.settings.battleSpeed === speed ? 'primary' : 'secondary',
+          minWidth: 64,
+          fontSize: '15px',
+        },
+      )
+    })
+    makeButton(this, 386, 556, 'Skip', () => this.scene.start('Result'), {
+      variant: 'secondary',
+      minWidth: 84,
+      fontSize: '15px',
     })
   }
 }

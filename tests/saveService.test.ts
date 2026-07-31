@@ -10,6 +10,7 @@ vi.mock('../src/services/supabaseClient', () => ({
 
 const { saveLocal, loadLocal, clearLocal, persist, hasGuestSave } = await import('../src/services/saveService')
 const { createDefaultPlayerState } = await import('../src/state/playerState')
+const { SAVE_SCHEMA_VERSION } = await import('../src/types')
 
 const GUEST_KEY = 'incremental-rpg-save-v2:guest'
 const QUARANTINE_KEY = 'incremental-rpg-save-v2:quarantine'
@@ -90,7 +91,7 @@ describe('saveService', () => {
     const migrated = loadLocal(null)
     expect(migrated?.name).toBe('Vet')
     expect(migrated?.level).toBe(4)
-    expect(migrated?.schemaVersion).toBe(2)
+    expect(migrated?.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
     expect(localStorage.getItem('incremental-rpg-save-v1')).toBeNull()
   })
 
