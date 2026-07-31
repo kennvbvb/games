@@ -7,12 +7,15 @@ import { persist } from '../services/saveService'
 import { buyItem, buyUpgrade, upgradeCost } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
+import { makeEmoji } from '../ui/components/makeEmoji'
+import { makeStatRow, type StatEntry } from '../ui/components/makeStatRow'
+import { makeTitle } from '../ui/components/makeTitle'
 import { COLORS, FONT } from '../ui/styles'
 import type { ShopItem, StatBonus, UpgradeType } from '../types'
 
 const UPGRADE_TYPES: UpgradeType[] = ['hp', 'atk', 'def']
 const ITEMS_PER_PAGE = 4
-const ROW_YS = [212, 306, 400, 494]
+const ROW_YS = [214, 308, 402, 496]
 
 type Tab = 'treats' | 'gear'
 
@@ -21,12 +24,12 @@ interface ShopSceneData {
   page?: number
 }
 
-function bonusLabel(bonus: StatBonus): string {
-  const parts: string[] = []
-  if (bonus.hp) parts.push(`❤️ +${bonus.hp}`)
-  if (bonus.atk) parts.push(`⚔️ +${bonus.atk}`)
-  if (bonus.def) parts.push(`🛡️ +${bonus.def}`)
-  return parts.join('   ')
+function bonusEntries(bonus: StatBonus): StatEntry[] {
+  const entries: StatEntry[] = []
+  if (bonus.hp) entries.push({ icon: 'icon_hp', value: `+${bonus.hp}` })
+  if (bonus.atk) entries.push({ icon: 'icon_atk', value: `+${bonus.atk}` })
+  if (bonus.def) entries.push({ icon: 'icon_def', value: `+${bonus.def}` })
+  return entries
 }
 
 export class ShopScene extends Phaser.Scene {
@@ -46,32 +49,29 @@ export class ShopScene extends Phaser.Scene {
     setupScene(this)
     const player = GameState.player!
 
-    this.add
-      .text(GAME_W / 2, 44, '🛒 Shop', {
-        fontSize: '26px',
-        fontFamily: FONT.family,
-        fontStyle: 'bold',
-        color: COLORS.text,
-      })
-      .setOrigin(0.5)
-    this.add
-      .text(GAME_W / 2, 80, `🪙 ${player.gold} gold`, {
+    makeTitle(this, 44, 'Shop', 'icon_cart')
+
+    const goldLabel = this.add
+      .text(GAME_W / 2 + 10, 80, `${player.gold} gold`, {
         fontSize: '18px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
         color: COLORS.gold,
       })
       .setOrigin(0.5)
+    makeEmoji(this, goldLabel.x - goldLabel.width / 2 - 12, 80, 'icon_gold', 20)
 
-    makeButton(this, GAME_W / 2 - 85, 128, '🍬 Treats', () => this.switchTab('treats'), {
+    makeButton(this, GAME_W / 2 - 85, 128, 'Treats', () => this.switchTab('treats'), {
       variant: this.tab === 'treats' ? 'primary' : 'secondary',
       minWidth: 150,
       fontSize: '15px',
+      icon: 'icon_candy',
     })
-    makeButton(this, GAME_W / 2 + 85, 128, '🎒 Gear', () => this.switchTab('gear'), {
+    makeButton(this, GAME_W / 2 + 85, 128, 'Gear', () => this.switchTab('gear'), {
       variant: this.tab === 'gear' ? 'primary' : 'secondary',
       minWidth: 150,
       fontSize: '15px',
+      icon: 'icon_bag',
     })
 
     if (this.tab === 'treats') {
@@ -80,7 +80,7 @@ export class ShopScene extends Phaser.Scene {
       this.renderGear()
     }
 
-    makeButton(this, GAME_W / 2, 640, 'Back', () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, 644, 'Back', () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '14px',
     })
@@ -90,36 +90,33 @@ export class ShopScene extends Phaser.Scene {
     if (tab !== this.tab) this.scene.restart({ tab, page: 0 } satisfies ShopSceneData)
   }
 
+  private subtitle(text: string): void {
+    this.add
+      .text(GAME_W / 2, 160, text, { fontSize: '13px', fontFamily: FONT.family, color: COLORS.textDim })
+      .setOrigin(0.5)
+  }
+
   private renderTreats(): void {
     const player = GameState.player!
-    this.add
-      .text(GAME_W / 2, 157, 'Repeatable snacks — every bite counts!', {
-        fontSize: '13px',
-        fontFamily: FONT.family,
-        color: COLORS.textDim,
-      })
-      .setOrigin(0.5)
+    this.subtitle('Repeatable snacks — every bite counts!')
 
     UPGRADE_TYPES.forEach((type, i) => {
       const cfg = BALANCE.upgrades[type]
       const owned = player.upgrades[type]
       const cost = upgradeCost(type, owned)
-      const y = ROW_YS[i]
 
       this.renderCard({
-        y,
-        emoji: cfg.emoji,
+        y: ROW_YS[i],
+        icon: `treat_${type}`,
         name: cfg.name,
-        desc: cfg.description,
+        bonus: bonusEntries(type === 'hp' ? { hp: cfg.bonus } : type === 'atk' ? { atk: cfg.bonus } : { def: cfg.bonus }),
         note: `Owned: ${owned}`,
         cost,
         disabled: player.gold < cost,
         onBuy: () => {
           const next = buyUpgrade(GameState.player!, type)
           if (!next) return
-          GameState.player = next
-          void persist(next, GameState.userId)
-          this.scene.restart({ tab: this.tab, page: this.page } satisfies ShopSceneData)
+          this.commit(next)
         },
       })
     })
@@ -130,28 +127,21 @@ export class ShopScene extends Phaser.Scene {
     this.page = Math.min(this.page, pageCount - 1)
     const pageItems = ITEMS.slice(this.page * ITEMS_PER_PAGE, (this.page + 1) * ITEMS_PER_PAGE)
 
-    this.add
-      .text(GAME_W / 2, 157, 'One-of-a-kind gear — strong pieces need a higher level!', {
-        fontSize: '13px',
-        fontFamily: FONT.family,
-        color: COLORS.textDim,
-      })
-      .setOrigin(0.5)
-
+    this.subtitle('One-of-a-kind gear — strong pieces need a higher level!')
     pageItems.forEach((item, i) => this.renderGearCard(item, ROW_YS[i]))
 
-    makeButton(this, GAME_W / 2 - 110, 566, '◀', () => this.turnPage(-1), {
+    makeButton(this, GAME_W / 2 - 110, 570, '◀', () => this.turnPage(-1), {
       disabled: this.page === 0,
       fontSize: '14px',
     })
     this.add
-      .text(GAME_W / 2, 566, `Page ${this.page + 1} / ${pageCount}`, {
+      .text(GAME_W / 2, 570, `Page ${this.page + 1} / ${pageCount}`, {
         fontSize: '14px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
-    makeButton(this, GAME_W / 2 + 110, 566, '▶', () => this.turnPage(1), {
+    makeButton(this, GAME_W / 2 + 110, 570, '▶', () => this.turnPage(1), {
       disabled: this.page >= pageCount - 1,
       fontSize: '14px',
     })
@@ -164,45 +154,51 @@ export class ShopScene extends Phaser.Scene {
 
     this.renderCard({
       y,
-      emoji: item.emoji,
+      icon: `item_${item.id}`,
       name: item.name,
-      desc: bonusLabel(item.bonus),
-      note: owned ? 'In your bag!' : locked ? `🔒 Requires Lv ${item.minLevel}` : '',
+      bonus: bonusEntries(item.bonus),
+      note: owned ? 'In your bag!' : locked ? `Requires Lv ${item.minLevel}` : '',
+      noteIcon: locked ? 'icon_lock' : undefined,
       cost: owned ? null : item.cost,
       disabled: locked || player.gold < item.cost,
       ownedTag: owned,
       onBuy: () => {
         const next = buyItem(GameState.player!, item.id)
         if (!next) return
-        GameState.player = next
-        void persist(next, GameState.userId)
-        this.scene.restart({ tab: this.tab, page: this.page } satisfies ShopSceneData)
+        this.commit(next)
       },
     })
   }
 
   private renderCard(opts: {
     y: number
-    emoji: string
+    icon: string
     name: string
-    desc: string
+    bonus: StatEntry[]
     note: string
+    noteIcon?: string
     cost: number | null
     disabled: boolean
     ownedTag?: boolean
     onBuy: () => void
   }): void {
     makePanel(this, GAME_W / 2, opts.y, 430, 84)
-    this.add.text(64, opts.y, opts.emoji, { fontSize: '34px' }).setOrigin(0.5)
+    makeEmoji(this, 64, opts.y, opts.icon, 40)
     this.add
-      .text(100, opts.y - 20, opts.name, { fontSize: '16px', fontFamily: FONT.family, fontStyle: 'bold', color: COLORS.text })
+      .text(100, opts.y - 20, opts.name, {
+        fontSize: '16px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.text,
+      })
       .setOrigin(0, 0.5)
-    this.add
-      .text(100, opts.y + 2, opts.desc, { fontSize: '13px', fontFamily: FONT.family, color: COLORS.textDim })
-      .setOrigin(0, 0.5)
+    makeStatRow(this, 100, opts.y + 3, opts.bonus, { fontSize: '13px', iconSize: 15, gap: 12 })
+
     if (opts.note) {
+      const noteX = opts.noteIcon ? 114 : 100
+      if (opts.noteIcon) makeEmoji(this, 106, opts.y + 25, opts.noteIcon, 12)
       this.add
-        .text(100, opts.y + 23, opts.note, {
+        .text(noteX, opts.y + 25, opts.note, {
           fontSize: '11px',
           fontFamily: FONT.family,
           color: opts.ownedTag ? COLORS.success : COLORS.textDim,
@@ -212,15 +208,27 @@ export class ShopScene extends Phaser.Scene {
 
     if (opts.ownedTag) {
       this.add
-        .text(388, opts.y, '✓', { fontSize: '24px', fontFamily: FONT.family, fontStyle: 'bold', color: COLORS.success })
+        .text(388, opts.y, '✓', {
+          fontSize: '26px',
+          fontFamily: FONT.family,
+          fontStyle: 'bold',
+          color: COLORS.success,
+        })
         .setOrigin(0.5)
     } else if (opts.cost !== null) {
-      makeButton(this, 378, opts.y, `🪙 ${opts.cost}`, opts.onBuy, {
+      makeButton(this, 378, opts.y, `${opts.cost}`, opts.onBuy, {
         disabled: opts.disabled,
-        minWidth: 86,
+        minWidth: 92,
         fontSize: '14px',
+        icon: 'icon_gold',
       })
     }
+  }
+
+  private commit(next: NonNullable<ReturnType<typeof buyItem>>): void {
+    GameState.player = next
+    void persist(next, GameState.userId)
+    this.scene.restart({ tab: this.tab, page: this.page } satisfies ShopSceneData)
   }
 
   private turnPage(dir: number): void {

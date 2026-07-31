@@ -12,6 +12,7 @@ npm install
 npm run dev       # start the dev server
 npm run test      # run the unit tests (leveling/combat math, save service)
 npm run build     # type-check and produce a production build in dist/
+npm run assets    # re-download the art in public/assets (already committed)
 ```
 
 ## Cloud saves (optional)
@@ -28,6 +29,20 @@ The game works fully in guest mode with zero configuration — progress is store
 
 Without a `.env` file, the "Sign In"/"Sign Up" buttons are disabled and the game falls back to
 guest-only mode automatically.
+
+## Art and typography
+
+All visuals come from open-licensed sources (SIL Open Font License 1.1) and are
+committed under `public/assets/`, so builds need no network access:
+
+- **Fredoka** — the rounded UI typeface, loaded via `@font-face`.
+- **Noto Color Emoji** — 128px PNGs used as real sprites for hero avatars,
+  enemies, shop items, UI icons, and stage scenery.
+
+`src/data/emojiAssets.json` is the single source of truth: it maps every texture
+key to the emoji it came from, driving both the download script
+(`npm run assets`) and the runtime preload. Full attribution is in
+[CREDITS.md](./CREDITS.md).
 
 ## Project structure
 

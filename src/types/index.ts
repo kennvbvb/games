@@ -42,7 +42,8 @@ export interface PlayerState {
 
 export interface EnemyConfig {
   name: string
-  emoji?: string
+  /** Preloaded emoji texture key for this enemy's sprite. */
+  sprite: string
   maxHp: number
   atk: number
   def: number
@@ -54,9 +55,15 @@ export interface StageRewards {
 }
 
 export interface StageBackground {
-  top: number
-  bottom: number
+  skyTop: number
+  skyBottom: number
+  hillFar: number
+  hillNear: number
+  ground: number
+  /** Emoji texture keys scattered across the ground band. */
   decor: string[]
+  /** Emoji texture keys floating in the sky band. */
+  sky: string[]
 }
 
 export interface StageConfig {

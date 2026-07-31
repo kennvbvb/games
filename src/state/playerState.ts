@@ -1,7 +1,8 @@
 import type { PlayerState } from '../types'
 import { statsForLevel } from '../systems/leveling'
+import { DEFAULT_AVATAR, normalizeAvatar } from '../data/avatars'
 
-export function createDefaultPlayerState(name = 'Hero', avatar = '🐱'): PlayerState {
+export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT_AVATAR): PlayerState {
   return {
     name,
     avatar,
@@ -21,6 +22,7 @@ export function normalizePlayerState(raw: Partial<PlayerState>): PlayerState {
   const merged: PlayerState = {
     ...defaults,
     ...raw,
+    avatar: normalizeAvatar(raw.avatar),
     upgrades: { ...defaults.upgrades, ...raw.upgrades },
     ownedItemIds: Array.isArray(raw.ownedItemIds) ? raw.ownedItemIds : [],
     stageProgress: { ...defaults.stageProgress, ...raw.stageProgress },

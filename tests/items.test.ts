@@ -47,7 +47,15 @@ describe('shop items', () => {
     delete old.avatar
     delete old.ownedItemIds
     const migrated = normalizePlayerState(old)
-    expect(migrated.avatar).toBe('🐱')
+    expect(migrated.avatar).toBe('cat')
     expect(migrated.ownedItemIds).toEqual([])
+  })
+
+  it('migrates avatars saved as raw emoji to texture ids', () => {
+    expect(normalizePlayerState({ avatar: '🦊' }).avatar).toBe('fox')
+    expect(normalizePlayerState({ avatar: '🐼' }).avatar).toBe('panda')
+    // Already-migrated and unknown values both stay valid.
+    expect(normalizePlayerState({ avatar: 'frog' }).avatar).toBe('frog')
+    expect(normalizePlayerState({ avatar: '🍕' }).avatar).toBe('cat')
   })
 })
