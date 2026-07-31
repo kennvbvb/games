@@ -1,6 +1,7 @@
 import { SAVE_SCHEMA_VERSION } from '../types'
-import type { PlayerState } from '../types'
+import type { Equipment, PlayerState } from '../types'
 import { ITEM_BY_ID } from '../data/items'
+import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
 import { statsForLevel } from '../systems/leveling'
@@ -51,6 +52,19 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
 
   const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 14) : 'Hero'
 
+  // Pre-v4 saves have no `equipped` block. Rather than silently stripping the
+  // stats those players already had, fill each slot with the best thing they own.
+  const equippedRaw = isRecord(raw.equipped) ? raw.equipped : null
+  const equipped = equippedRaw
+    ? EQUIP_SLOTS.reduce((acc, slot) => {
+        const id = equippedRaw[slot]
+        // Only keep an equipped id the player actually owns and that fits the slot.
+        acc[slot] =
+          typeof id === 'string' && ownedItemIds.includes(id) && ITEM_BY_ID.get(id)?.slot === slot ? id : null
+        return acc
+      }, { weapon: null, armor: null, charm: null } as Equipment)
+    : bestOwnedPerSlot(ownedItemIds)
+
   // v2 saves predate settings/idle; absent blocks fall back to defaults.
   const settingsRaw = isRecord(raw.settings) ? raw.settings : {}
   const idleRaw = isRecord(raw.idle) ? raw.idle : {}
@@ -78,6 +92,7 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       def: clampInt(upgradesRaw.def, 0, MAX_UPGRADE_COUNT, 0),
     },
     ownedItemIds,
+    equipped,
     stageProgress: {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,

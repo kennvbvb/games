@@ -33,14 +33,19 @@ describe('shop items', () => {
     expect(buyItem(broke, 'wooden-sword')).toBeNull()
   })
 
-  it('owned items contribute to effective stats', () => {
+  it('only equipped items contribute to effective stats', () => {
     const state = createDefaultPlayerState()
     const base = effectiveStats(state)
-    const withRing = effectiveStats({ ...state, ownedItemIds: ['ruby-ring'] })
     const ring = ITEM_BY_ID.get('ruby-ring')!
-    expect(withRing.maxHp).toBe(base.maxHp + (ring.bonus.hp ?? 0))
-    expect(withRing.atk).toBe(base.atk + (ring.bonus.atk ?? 0))
-    expect(withRing.def).toBe(base.def)
+
+    // Owning it is not enough — it has to be worn.
+    const owned = { ...state, ownedItemIds: ['ruby-ring'] }
+    expect(effectiveStats(owned)).toEqual(base)
+
+    const worn = effectiveStats({ ...owned, equipped: { ...state.equipped, charm: 'ruby-ring' } })
+    expect(worn.maxHp).toBe(base.maxHp + (ring.bonus.hp ?? 0))
+    expect(worn.atk).toBe(base.atk + (ring.bonus.atk ?? 0))
+    expect(worn.def).toBe(base.def)
   })
 
   it('normalizes old saves missing avatar and ownedItemIds', () => {
