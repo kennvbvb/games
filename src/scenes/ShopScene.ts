@@ -15,7 +15,7 @@ import type { ShopItem, StatBonus, UpgradeType } from '../types'
 
 const UPGRADE_TYPES: UpgradeType[] = ['hp', 'atk', 'def']
 const ITEMS_PER_PAGE = 4
-const ROW_YS = [214, 308, 402, 496]
+const ROW_YS = [218, 312, 406, 500]
 
 type Tab = 'treats' | 'gear'
 
@@ -61,13 +61,13 @@ export class ShopScene extends Phaser.Scene {
       .setOrigin(0.5)
     makeEmoji(this, goldLabel.x - goldLabel.width / 2 - 12, 80, 'icon_gold', 20)
 
-    makeButton(this, GAME_W / 2 - 85, 128, 'Treats', () => this.switchTab('treats'), {
+    makeButton(this, GAME_W / 2 - 85, 122, 'Treats', () => this.switchTab('treats'), {
       variant: this.tab === 'treats' ? 'primary' : 'secondary',
       minWidth: 150,
       fontSize: '15px',
       icon: 'icon_candy',
     })
-    makeButton(this, GAME_W / 2 + 85, 128, 'Gear', () => this.switchTab('gear'), {
+    makeButton(this, GAME_W / 2 + 85, 122, 'Gear', () => this.switchTab('gear'), {
       variant: this.tab === 'gear' ? 'primary' : 'secondary',
       minWidth: 150,
       fontSize: '15px',
@@ -80,7 +80,7 @@ export class ShopScene extends Phaser.Scene {
       this.renderGear()
     }
 
-    makeButton(this, GAME_W / 2, 644, 'Back', () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, 646, 'Back', () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '14px',
     })
@@ -92,7 +92,7 @@ export class ShopScene extends Phaser.Scene {
 
   private subtitle(text: string): void {
     this.add
-      .text(GAME_W / 2, 160, text, { fontSize: '13px', fontFamily: FONT.family, color: COLORS.textDim })
+      .text(GAME_W / 2, 164, text, { fontSize: '13px', fontFamily: FONT.family, color: COLORS.textDim })
       .setOrigin(0.5)
   }
 
@@ -130,18 +130,18 @@ export class ShopScene extends Phaser.Scene {
     this.subtitle('One-of-a-kind gear — strong pieces need a higher level!')
     pageItems.forEach((item, i) => this.renderGearCard(item, ROW_YS[i]))
 
-    makeButton(this, GAME_W / 2 - 110, 570, '◀', () => this.turnPage(-1), {
+    makeButton(this, GAME_W / 2 - 110, 572, '◀', () => this.turnPage(-1), {
       disabled: this.page === 0,
       fontSize: '14px',
     })
     this.add
-      .text(GAME_W / 2, 570, `Page ${this.page + 1} / ${pageCount}`, {
+      .text(GAME_W / 2, 572, `Page ${this.page + 1} / ${pageCount}`, {
         fontSize: '14px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
-    makeButton(this, GAME_W / 2 + 110, 570, '▶', () => this.turnPage(1), {
+    makeButton(this, GAME_W / 2 + 110, 572, '▶', () => this.turnPage(1), {
       disabled: this.page >= pageCount - 1,
       fontSize: '14px',
     })
@@ -227,7 +227,9 @@ export class ShopScene extends Phaser.Scene {
 
   private commit(next: NonNullable<ReturnType<typeof buyItem>>): void {
     GameState.player = next
-    void persist(next, GameState.userId)
+    void persist(next, GameState.userId).then((stamped) => {
+      GameState.player = stamped
+    })
     this.scene.restart({ tab: this.tab, page: this.page } satisfies ShopSceneData)
   }
 

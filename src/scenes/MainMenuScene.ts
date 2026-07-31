@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { signOut } from '../services/authService'
+import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncStatus'
 import { effectiveStats } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
@@ -22,14 +23,25 @@ export class MainMenuScene extends Phaser.Scene {
 
     makeTitle(this, 64, 'Incremental RPG', 'icon_blossom', { fontSize: '29px', iconSize: 22, flank: true })
 
-    const status = this.add
-      .text(GAME_W / 2 + 10, 100, GameState.userId ? 'Signed in — progress syncs to the cloud' : 'Guest mode — progress saved on this device', {
-        fontSize: '13px',
-        fontFamily: FONT.family,
-        color: COLORS.textDim,
-      })
+    // Live cloud-sync status: updates whenever a save starts, succeeds, or fails.
+    const statusText = this.add
+      .text(GAME_W / 2 + 10, 100, '', { fontSize: '13px', fontFamily: FONT.family, color: COLORS.textDim })
       .setOrigin(0.5)
-    makeEmoji(this, status.x - status.width / 2 - 11, 100, GameState.userId ? 'icon_cloud' : 'icon_home', 15)
+    const statusIcon = makeEmoji(this, 0, 100, 'icon_home', 15)
+    const renderStatus = (status: SyncStatus) => {
+      const display: Record<SyncStatus, { icon: string; label: string; color: string }> = {
+        guest: { icon: 'icon_home', label: 'Guest mode — progress saved on this device', color: COLORS.textDim },
+        saving: { icon: 'icon_cloud', label: 'Saving to cloud…', color: COLORS.textDim },
+        synced: { icon: 'icon_cloud', label: 'Signed in — progress synced to the cloud', color: COLORS.textDim },
+        error: { icon: 'icon_clash', label: 'Sync failed — progress saved on this device', color: COLORS.danger },
+      }
+      const d = display[status]
+      statusText.setText(d.label).setColor(d.color)
+      statusIcon.setTexture(d.icon).setDisplaySize(15, 15).setX(statusText.x - statusText.width / 2 - 11)
+    }
+    renderStatus(getSyncStatus())
+    const unsubscribe = onSyncStatus(renderStatus)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe)
 
     makePanel(this, GAME_W / 2, 210, 400, 150)
     const hero = makeEmoji(this, 118, 210, `avatar_${player.avatar}`, 62)
