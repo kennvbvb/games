@@ -13,6 +13,7 @@ import { drawStageScenery } from '../ui/scenery'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 import type { PlayerState, StageConfig } from '../types'
+import { t } from '../i18n'
 
 /** How long the result screen lingers before the next queued auto-battle. */
 const AUTO_ADVANCE_MS = 900
@@ -75,7 +76,7 @@ export class ResultScene extends Phaser.Scene {
 
     makePanel(this, GAME_W / 2, 202, 300, 54)
     this.add
-      .text(GAME_W / 2, 202, win ? 'Victory!' : 'Defeat...', {
+      .text(GAME_W / 2, 202, win ? t('result.victory') : t('result.defeat'), {
         fontSize: '30px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -97,7 +98,7 @@ export class ResultScene extends Phaser.Scene {
       )
       if (player.level > prevLevel) {
         const levelUp = this.add
-          .text(GAME_W / 2 + 12, 314, `Level Up!  Lv ${prevLevel} → Lv ${player.level}`, {
+          .text(GAME_W / 2 + 12, 314, t('result.levelUp', { from: prevLevel, to: player.level }), {
             fontSize: '16px',
             fontFamily: FONT.family,
             fontStyle: 'bold',
@@ -108,7 +109,7 @@ export class ResultScene extends Phaser.Scene {
         ambientTween(this, { targets: levelUp, scale: { from: 1, to: 1.08 }, duration: 500, yoyo: true, repeat: -1 })
       } else {
         this.add
-          .text(GAME_W / 2, 314, 'The next stage is waiting for you!', {
+          .text(GAME_W / 2, 314, t('result.nextWaiting'), {
             fontSize: '14px',
             fontFamily: FONT.family,
             color: COLORS.textDim,
@@ -117,7 +118,7 @@ export class ResultScene extends Phaser.Scene {
       }
     } else {
       this.add
-        .text(GAME_W / 2, 292, 'No rewards this time...\nLevel up or buy some gear first!', {
+        .text(GAME_W / 2, 292, t('result.noRewards'), {
           fontSize: '14px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
@@ -141,7 +142,7 @@ export class ResultScene extends Phaser.Scene {
     const target = advancing ? nextStage : stage
 
     this.add
-      .text(GAME_W / 2, 376, `Auto-battle · ${GameState.autoRunsRemaining} run(s) left`, {
+      .text(GAME_W / 2, 376, t('result.autoLeft', { count: GameState.autoRunsRemaining }), {
         fontSize: '13px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -152,7 +153,7 @@ export class ResultScene extends Phaser.Scene {
       this,
       GAME_W / 2,
       430,
-      'Stop auto-battle',
+      t('result.stopAuto'),
       () => {
         GameState.stopAutoBattle()
         this.scene.restart()
@@ -181,30 +182,30 @@ export class ResultScene extends Phaser.Scene {
     }
 
     if (win && nextStage && nextUnlocked) {
-      makeButton(this, GAME_W / 2, 384, `Next: ${nextStage.name}`, () => startRun(nextStage, 0), {
+      makeButton(this, GAME_W / 2, 384, t('result.next', { stage: nextStage.name }), () => startRun(nextStage, 0), {
         minWidth: 280,
         icon: 'icon_atk',
         fontSize: '16px',
       })
-      makeButton(this, GAME_W / 2, 452, 'Farm this stage ×10', () => startRun(stage, 10), {
+      makeButton(this, GAME_W / 2, 452, t('result.farmTen'), () => startRun(stage, 10), {
         variant: 'secondary',
         minWidth: 280,
         fontSize: '15px',
       })
     } else if (win) {
       // Final stage cleared, or the next one is still locked.
-      makeButton(this, GAME_W / 2, 384, 'Farm this stage ×10', () => startRun(stage, 10), {
+      makeButton(this, GAME_W / 2, 384, t('result.farmTen'), () => startRun(stage, 10), {
         minWidth: 280,
         fontSize: '16px',
       })
-      makeButton(this, GAME_W / 2, 452, 'Retry', () => startRun(stage, 0), {
+      makeButton(this, GAME_W / 2, 452, t('result.retry'), () => startRun(stage, 0), {
         variant: 'secondary',
         minWidth: 280,
         fontSize: '15px',
       })
     } else {
-      makeButton(this, GAME_W / 2, 384, 'Retry', () => startRun(stage, 0), { minWidth: 280, fontSize: '16px' })
-      makeButton(this, GAME_W / 2, 452, 'Shop', () => this.scene.start('Shop'), {
+      makeButton(this, GAME_W / 2, 384, t('result.retry'), () => startRun(stage, 0), { minWidth: 280, fontSize: '16px' })
+      makeButton(this, GAME_W / 2, 452, t('menu.shop'), () => this.scene.start('Shop'), {
         variant: 'secondary',
         minWidth: 280,
         fontSize: '15px',
@@ -212,12 +213,12 @@ export class ResultScene extends Phaser.Scene {
       })
     }
 
-    makeButton(this, GAME_W / 2, 528, 'Stage select', () => this.scene.start('StageSelect'), {
+    makeButton(this, GAME_W / 2, 528, t('result.stageSelect'), () => this.scene.start('StageSelect'), {
       variant: 'secondary',
       minWidth: 200,
       fontSize: '14px',
     })
 
-    makeTutorialTip(this, 2, 'Nice win! Spend your gold in the Shop to grow stronger.', 606)
+    makeTutorialTip(this, 2, t('tutorial.step2'), 606)
   }
 }

@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { STAGES } from '../data/stages'
 import { GameState } from '../state/GameState'
-import { difficultyLabel, stageOutlook } from '../systems/difficulty'
+import { DIFFICULTY_LABEL_KEYS, stageOutlook } from '../systems/difficulty'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
@@ -12,6 +12,7 @@ import { advanceTutorial, makeTutorialTip } from '../ui/components/makeTutorialT
 import { COLORS, FONT } from '../ui/styles'
 import type { DifficultyTier } from '../systems/difficulty'
 import type { StageConfig } from '../types'
+import { t } from '../i18n'
 
 const STAGES_PER_PAGE = 4
 const ROW_YS = [136, 234, 332, 430]
@@ -34,7 +35,7 @@ export class StageSelectScene extends Phaser.Scene {
     GameState.stagePage = page
 
     advanceTutorial(1)
-    makeTitle(this, 46, 'Select Stage', 'icon_atk')
+    makeTitle(this, 46, t('stages.title'), 'icon_atk')
 
     STAGES.slice(page * STAGES_PER_PAGE, (page + 1) * STAGES_PER_PAGE).forEach((stage, i) => {
       this.renderStageCard(stage, ROW_YS[i])
@@ -47,7 +48,7 @@ export class StageSelectScene extends Phaser.Scene {
       minWidth: 64,
     })
     this.add
-      .text(GAME_W / 2, pagerY, `Page ${page + 1} / ${pageCount}`, {
+      .text(GAME_W / 2, pagerY, t('stages.page', { current: page + 1, total: pageCount }), {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -59,13 +60,13 @@ export class StageSelectScene extends Phaser.Scene {
       minWidth: 64,
     })
 
-    makeButton(this, GAME_W / 2, 588, 'Back', () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, 588, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '15px',
       minWidth: 160,
     })
 
-    makeTutorialTip(this, 1, 'Green means an easy win. Tap Fight to begin!', 654)
+    makeTutorialTip(this, 1, t('tutorial.step1'), 654)
   }
 
   /**
@@ -92,7 +93,7 @@ export class StageSelectScene extends Phaser.Scene {
 
     if (!unlocked) {
       this.add
-        .text(96, y + 4, `Clear stage ${stage.order - 1} to unlock`, {
+        .text(96, y + 4, t('stages.locked', { order: stage.order - 1 }), {
           fontSize: '12px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
@@ -118,7 +119,9 @@ export class StageSelectScene extends Phaser.Scene {
       .text(
         96,
         y + 26,
-        outlook.willWin ? `${difficultyLabel(outlook.tier)} · ${hpPct}% HP left` : 'Hard · you would lose',
+        outlook.willWin
+          ? t('stages.outlook', { tier: t(DIFFICULTY_LABEL_KEYS[outlook.tier]), hp: hpPct })
+          : t('stages.outlookLose'),
         { fontSize: '11px', fontFamily: FONT.family, color: TIER_COLOR[outlook.tier] },
       )
       .setOrigin(0, 0.5)
@@ -129,7 +132,7 @@ export class StageSelectScene extends Phaser.Scene {
       this,
       372,
       y + 6,
-      cleared ? 'Farm' : 'Fight',
+      cleared ? t('stages.farm') : t('stages.fight'),
       () => {
         GameState.selectedStage = stage
         GameState.stopAutoBattle()

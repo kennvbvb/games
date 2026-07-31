@@ -16,7 +16,7 @@ export interface SaveOverrides {
 /** A mid-game save in the current schema, overridable per test. */
 export function makeSave(over: SaveOverrides = {}): string {
   return JSON.stringify({
-    schemaVersion: 5,
+    schemaVersion: 6,
     revision: 1,
     updatedAt: new Date().toISOString(),
     name: 'Tester',
@@ -29,7 +29,14 @@ export function makeSave(over: SaveOverrides = {}): string {
     ownedItemIds: [],
     equipped: { weapon: null, armor: null, charm: null },
     stageProgress: { highestUnlocked: 6, completedStageIds: ['stage-1'] },
-    settings: { battleSpeed: 4, skipCleared: false, autoRepeat: false, autoAdvance: false, reducedMotion: true },
+    settings: {
+      battleSpeed: 4,
+      skipCleared: false,
+      autoRepeat: false,
+      autoAdvance: false,
+      reducedMotion: true,
+      locale: 'en',
+    },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },
     // Default past the tutorial so tips don't cover the buttons a test taps.
     tutorialStep: 3,

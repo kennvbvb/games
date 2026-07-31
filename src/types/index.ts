@@ -34,7 +34,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 5
+export const SAVE_SCHEMA_VERSION = 6
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -52,6 +52,8 @@ export interface GameSettings {
    * setting on a new save, and can then be overridden in Settings.
    */
   reducedMotion: boolean
+  /** UI language; defaults from the browser on a new save. */
+  locale: 'en' | 'th'
 }
 
 export interface IdleState {

@@ -9,6 +9,7 @@ import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
+import { t } from '../i18n'
 
 export class CreateHeroScene extends Phaser.Scene {
   private selected: AvatarId = DEFAULT_AVATAR
@@ -29,7 +30,7 @@ export class CreateHeroScene extends Phaser.Scene {
     this.rings = new Map()
 
     this.add
-      .text(GAME_W / 2, 60, 'Create Your Hero', {
+      .text(GAME_W / 2, 60, t('hero.create'), {
         fontSize: '27px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -42,7 +43,7 @@ export class CreateHeroScene extends Phaser.Scene {
     ambientTween(this, { targets: this.preview, y: 150, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
 
     this.add
-      .text(GAME_W / 2, 254, 'Choose your buddy', { fontSize: '15px', fontFamily: FONT.family, color: COLORS.textDim })
+      .text(GAME_W / 2, 254, t('hero.chooseBuddy'), { fontSize: '15px', fontFamily: FONT.family, color: COLORS.textDim })
       .setOrigin(0.5)
 
     AVATAR_IDS.forEach((id, i) => {
@@ -59,21 +60,21 @@ export class CreateHeroScene extends Phaser.Scene {
     })
 
     this.add
-      .text(GAME_W / 2, 456, 'Name your hero', { fontSize: '15px', fontFamily: FONT.family, color: COLORS.textDim })
+      .text(GAME_W / 2, 456, t('hero.nameYours'), { fontSize: '15px', fontFamily: FONT.family, color: COLORS.textDim })
       .setOrigin(0.5)
 
     const inputStyle =
       "padding:10px 14px;font-size:16px;text-align:center;border-radius:14px;border:2px solid #f3d9e5;background:#fff;color:#5d4a66;outline:none;font-family:'Fredoka','Trebuchet MS',sans-serif;width:200px"
     const dom = this.add
       .dom(GAME_W / 2, 496)
-      .createFromHTML(`<input id="hero-name" type="text" maxlength="14" placeholder="Hero" style="${inputStyle}" />`)
+      .createFromHTML(`<input id="hero-name" type="text" maxlength="14" placeholder="${t('hero.namePlaceholder')}" style="${inputStyle}" />`)
     const nameInput = dom.getChildByID('hero-name') as HTMLInputElement
 
     makeButton(
       this,
       GAME_W / 2,
       574,
-      'Start Adventure!',
+      t('hero.start'),
       () => {
         void this.startGame(nameInput.value)
       },

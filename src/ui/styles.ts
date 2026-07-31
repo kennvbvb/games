@@ -25,7 +25,8 @@ export const COLORS = {
   expBar: 0xa78bfa,
 } as const
 
-// Fredoka is loaded from public/assets/fonts in index.html.
+// Both faces are loaded in index.html. Fredoka covers Latin, Mitr covers Thai;
+// listing both lets the browser resolve each glyph from whichever has it.
 export const FONT = {
-  family: 'Fredoka, "Trebuchet MS", sans-serif',
+  family: 'Fredoka, Mitr, "Trebuchet MS", sans-serif',
 } as const

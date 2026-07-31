@@ -13,6 +13,7 @@ import { makeTitle } from '../ui/components/makeTitle'
 import { advanceTutorial } from '../ui/components/makeTutorialTip'
 import { COLORS, FONT } from '../ui/styles'
 import { TUTORIAL_DONE, type ShopItem, type StatBonus, type UpgradeType } from '../types'
+import { t } from '../i18n'
 
 const UPGRADE_TYPES: UpgradeType[] = ['hp', 'atk', 'def']
 const ITEMS_PER_PAGE = 4
@@ -51,10 +52,10 @@ export class ShopScene extends Phaser.Scene {
     const player = GameState.player!
 
     advanceTutorial(TUTORIAL_DONE)
-    makeTitle(this, 44, 'Shop', 'icon_cart')
+    makeTitle(this, 44, t('shop.title'), 'icon_cart')
 
     const goldLabel = this.add
-      .text(GAME_W / 2 + 10, 80, `${player.gold} gold`, {
+      .text(GAME_W / 2 + 10, 80, t('menu.gold', { gold: player.gold }), {
         fontSize: '18px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -63,13 +64,13 @@ export class ShopScene extends Phaser.Scene {
       .setOrigin(0.5)
     makeEmoji(this, goldLabel.x - goldLabel.width / 2 - 12, 80, 'icon_gold', 20)
 
-    makeButton(this, GAME_W / 2 - 85, 122, 'Treats', () => this.switchTab('treats'), {
+    makeButton(this, GAME_W / 2 - 85, 122, t('shop.treats'), () => this.switchTab('treats'), {
       variant: this.tab === 'treats' ? 'primary' : 'secondary',
       minWidth: 150,
       fontSize: '15px',
       icon: 'icon_candy',
     })
-    makeButton(this, GAME_W / 2 + 85, 122, 'Gear', () => this.switchTab('gear'), {
+    makeButton(this, GAME_W / 2 + 85, 122, t('shop.gear'), () => this.switchTab('gear'), {
       variant: this.tab === 'gear' ? 'primary' : 'secondary',
       minWidth: 150,
       fontSize: '15px',
@@ -82,7 +83,7 @@ export class ShopScene extends Phaser.Scene {
       this.renderGear()
     }
 
-    makeButton(this, GAME_W / 2, 646, 'Back', () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, 646, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '14px',
     })
@@ -100,7 +101,7 @@ export class ShopScene extends Phaser.Scene {
 
   private renderTreats(): void {
     const player = GameState.player!
-    this.subtitle('Repeatable snacks — every bite counts!')
+    this.subtitle(t('shop.treatsHint'))
 
     UPGRADE_TYPES.forEach((type, i) => {
       const cfg = BALANCE.upgrades[type]
@@ -112,7 +113,7 @@ export class ShopScene extends Phaser.Scene {
         icon: `treat_${type}`,
         name: cfg.name,
         bonus: bonusEntries(type === 'hp' ? { hp: cfg.bonus } : type === 'atk' ? { atk: cfg.bonus } : { def: cfg.bonus }),
-        note: `Owned: ${owned}`,
+        note: t('shop.owned', { count: owned }),
         cost,
         disabled: player.gold < cost,
         onBuy: () => {
@@ -129,7 +130,7 @@ export class ShopScene extends Phaser.Scene {
     this.page = Math.min(this.page, pageCount - 1)
     const pageItems = ITEMS.slice(this.page * ITEMS_PER_PAGE, (this.page + 1) * ITEMS_PER_PAGE)
 
-    this.subtitle('One-of-a-kind gear — strong pieces need a higher level!')
+    this.subtitle(t('shop.gearHint'))
     pageItems.forEach((item, i) => this.renderGearCard(item, ROW_YS[i]))
 
     makeButton(this, GAME_W / 2 - 110, 572, '◀', () => this.turnPage(-1), {
@@ -159,7 +160,7 @@ export class ShopScene extends Phaser.Scene {
       icon: `item_${item.id}`,
       name: item.name,
       bonus: bonusEntries(item.bonus),
-      note: owned ? 'In your bag!' : locked ? `Requires Lv ${item.minLevel}` : '',
+      note: owned ? t('shop.inBag') : locked ? t('shop.requiresLevel', { level: item.minLevel ?? 0 }) : '',
       noteIcon: locked ? 'icon_lock' : undefined,
       cost: owned ? null : item.cost,
       disabled: locked || player.gold < item.cost,

@@ -46,12 +46,25 @@ disagree the newer one wins and is re-synced. Anything unreadable is moved to
 `incremental-rpg-save-v2:quarantine` rather than crashing the game, and every
 loaded save is re-validated (bounds-checked, unknown item/stage ids dropped).
 
+## Languages
+
+The interface ships in English and Thai, switchable in Settings and remembered
+in the save. A new player's language is guessed from the browser.
+
+`src/i18n/en.ts` is the source of truth for message keys; `th.ts` is typed
+against it, so a missing or misspelled key fails the build. Unit tests also
+assert that both dictionaries agree on keys and on `{placeholder}` names.
+
+Stage, enemy and item names are content rather than interface text and are
+currently English in both languages.
+
 ## Art and typography
 
 All visuals come from open-licensed sources (SIL Open Font License 1.1) and are
 committed under `public/assets/`, so builds need no network access:
 
 - **Fredoka** — the rounded UI typeface, loaded via `@font-face`.
+- **Mitr** — carries the Thai script, which Fredoka does not cover at all.
 - **Noto Color Emoji** — 128px PNGs used as real sprites for hero avatars,
   enemies, shop items, UI icons, and stage scenery.
 

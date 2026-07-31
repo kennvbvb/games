@@ -6,6 +6,7 @@ import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
 import { statsForLevel } from '../systems/leveling'
 import { systemPrefersReducedMotion } from '../platform/prefers'
+import { detectLocale, isLocale } from '../i18n'
 
 export const MAX_LEVEL = 500
 export const MAX_UPGRADE_COUNT = 999
@@ -106,6 +107,8 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       // Absent in pre-v5 saves: inherit the OS preference rather than forcing motion on.
       reducedMotion:
         typeof settingsRaw.reducedMotion === 'boolean' ? settingsRaw.reducedMotion : systemPrefersReducedMotion(),
+      // Absent in pre-v6 saves: fall back to the browser's languages.
+      locale: isLocale(settingsRaw.locale) ? settingsRaw.locale : detectLocale(),
     },
     idle: { farmingStageId, lastSeenAt },
     tutorialStep: clampInt(raw.tutorialStep, 0, TUTORIAL_DONE, 0),

@@ -12,11 +12,12 @@ export function upgradeBonus(type: UpgradeType, owned: number): number {
 
 export const EQUIP_SLOTS: EquipSlot[] = ['weapon', 'armor', 'charm']
 
-export const SLOT_LABELS: Record<EquipSlot, string> = {
-  weapon: 'Weapon',
-  armor: 'Armor',
-  charm: 'Charm',
-}
+/** Message keys for slot names; the strings themselves live in src/i18n. */
+export const SLOT_LABEL_KEYS = {
+  weapon: 'equipment.weapon',
+  armor: 'equipment.armor',
+  charm: 'equipment.charm',
+} as const satisfies Record<EquipSlot, string>
 
 /** Items currently worn, in slot order, skipping empty slots. */
 export function equippedItems(state: PlayerState): ShopItem[] {
