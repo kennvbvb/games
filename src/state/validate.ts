@@ -1,6 +1,7 @@
 import { SAVE_SCHEMA_VERSION, TUTORIAL_DONE } from '../types'
 import type { Equipment, PlayerState } from '../types'
 import { ITEM_BY_ID } from '../data/items'
+import { ACHIEVEMENT_BY_ID } from '../data/achievements'
 import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
@@ -67,6 +68,8 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       }, { weapon: null, armor: null, charm: null } as Equipment)
     : bestOwnedPerSlot(ownedItemIds)
 
+  const lifetimeRaw = isRecord(raw.lifetime) ? raw.lifetime : {}
+
   // v2 saves predate settings/idle; absent blocks fall back to defaults.
   const settingsRaw = isRecord(raw.settings) ? raw.settings : {}
   const idleRaw = isRecord(raw.idle) ? raw.idle : {}
@@ -112,5 +115,12 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     },
     idle: { farmingStageId, lastSeenAt },
     tutorialStep: clampInt(raw.tutorialStep, 0, TUTORIAL_DONE, 0),
+    lifetime: {
+      battlesWon: clampInt(lifetimeRaw.battlesWon, 0, Number.MAX_SAFE_INTEGER, 0),
+      goldEarned: clampInt(lifetimeRaw.goldEarned, 0, Number.MAX_SAFE_INTEGER, 0),
+    },
+    claimedAchievementIds: Array.isArray(raw.claimedAchievementIds)
+      ? [...new Set(raw.claimedAchievementIds.filter((id): id is string => typeof id === 'string' && ACHIEVEMENT_BY_ID.has(id)))]
+      : [],
   }
 }

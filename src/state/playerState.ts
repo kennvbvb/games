@@ -31,5 +31,7 @@ export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT
     },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },
     tutorialStep: 0,
+    lifetime: { battlesWon: 0, goldEarned: 0 },
+    claimedAchievementIds: [],
   }
 }

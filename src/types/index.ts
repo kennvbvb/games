@@ -34,7 +34,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 6
+export const SAVE_SCHEMA_VERSION = 7
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -54,6 +54,12 @@ export interface GameSettings {
   reducedMotion: boolean
   /** UI language; defaults from the browser on a new save. */
   locale: 'en' | 'th'
+}
+
+/** Running totals that cannot be derived from the current state alone. */
+export interface LifetimeStats {
+  battlesWon: number
+  goldEarned: number
 }
 
 export interface IdleState {
@@ -84,6 +90,9 @@ export interface PlayerState {
   idle: IdleState
   /** How far through the 3-step intro the player is; TUTORIAL_DONE when finished. */
   tutorialStep: number
+  lifetime: LifetimeStats
+  /** Achievements whose reward has already been taken. */
+  claimedAchievementIds: string[]
 }
 
 export const TUTORIAL_DONE = 3

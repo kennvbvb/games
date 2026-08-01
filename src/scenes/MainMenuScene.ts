@@ -4,6 +4,7 @@ import { GameState } from '../state/GameState'
 import { signOut } from '../services/authService'
 import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncStatus'
 import { effectiveStats } from '../systems/upgrades'
+import { claimableCount } from '../systems/achievements'
 import { applyExp } from '../systems/leveling'
 import { computeOfflineRewards, formatDuration } from '../systems/idle'
 import { persist } from '../services/saveService'
@@ -73,19 +74,31 @@ export class MainMenuScene extends Phaser.Scene {
       .text(208, 244, t('menu.gold', { gold: player.gold }), { fontSize: '15px', fontFamily: FONT.family, color: COLORS.gold })
       .setOrigin(0, 0.5)
 
-    makeButton(this, GAME_W / 2, 340, t('menu.stages'), () => this.scene.start('StageSelect'), {
+    makeButton(this, GAME_W / 2, 334, t('menu.stages'), () => this.scene.start('StageSelect'), {
       minWidth: 240,
       icon: 'icon_atk',
     })
-    makeButton(this, GAME_W / 2, 404, t('menu.character'), () => this.scene.start('Character'), {
+    makeButton(this, GAME_W / 2, 396, t('menu.character'), () => this.scene.start('Character'), {
       minWidth: 240,
       icon: 'icon_face',
     })
-    makeButton(this, GAME_W / 2, 468, t('menu.shop'), () => this.scene.start('Shop'), {
+    makeButton(this, GAME_W / 2, 458, t('menu.shop'), () => this.scene.start('Shop'), {
       minWidth: 240,
       icon: 'icon_cart',
     })
-    makeButton(this, GAME_W / 2 - 92, 540, t('menu.settings'), () => this.scene.start('Settings'), {
+
+    // The badge is the only nudge the player gets that a reward is waiting.
+    const claimable = claimableCount(player)
+    makeButton(
+      this,
+      GAME_W / 2,
+      520,
+      claimable > 0 ? t('menu.questsBadge', { count: claimable }) : t('menu.quests'),
+      () => this.scene.start('Achievements'),
+      { variant: claimable > 0 ? 'primary' : 'secondary', minWidth: 240, fontSize: '16px', icon: 'icon_star' },
+    )
+
+    makeButton(this, GAME_W / 2 - 92, 586, t('menu.settings'), () => this.scene.start('Settings'), {
       variant: 'secondary',
       minWidth: 168,
       fontSize: '15px',
@@ -94,7 +107,7 @@ export class MainMenuScene extends Phaser.Scene {
     makeButton(
       this,
       GAME_W / 2 + 92,
-      540,
+      586,
       GameState.userId ? t('menu.signOut') : t('menu.exitGuest'),
       () => {
         void this.handleExit()
@@ -102,7 +115,7 @@ export class MainMenuScene extends Phaser.Scene {
       { variant: 'secondary', minWidth: 168, fontSize: '15px' },
     )
 
-    makeTutorialTip(this, 0, t('tutorial.step0'), 618)
+    makeTutorialTip(this, 0, t('tutorial.step0'), 656)
     this.showOfflineRewards()
   }
 
@@ -179,7 +192,16 @@ export class MainMenuScene extends Phaser.Scene {
       t('idle.collect'),
       () => {
         const collected = applyExp(
-          { ...player, gold: player.gold + report.rewards.gold, idle: { ...player.idle, lastSeenAt: now } },
+          {
+            ...player,
+            gold: player.gold + report.rewards.gold,
+            idle: { ...player.idle, lastSeenAt: now },
+            // Offline wins count towards achievements the same as fought ones.
+            lifetime: {
+              battlesWon: player.lifetime.battlesWon + report.battles,
+              goldEarned: player.lifetime.goldEarned + report.rewards.gold,
+            },
+          },
           report.rewards.exp,
         )
         GameState.player = collected
