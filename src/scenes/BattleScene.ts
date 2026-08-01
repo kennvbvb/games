@@ -10,12 +10,21 @@ import { makeBar } from '../ui/components/makeBar'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { drawStageScenery } from '../ui/scenery'
 import { COLORS, FONT } from '../ui/styles'
-import type { BattleSpeed } from '../types'
+import type { AnnounceKind, BattleSpeed } from '../types'
 import { t } from '../i18n'
 
 const BASE_TURN_MS = 260
 /** Kept on an enraged boss for the rest of the fight. */
 const ENRAGE_TINT = 0xff8f8f
+
+/** One line per announcement kind — the only thing allowed to take the banner. */
+const ANNOUNCEMENTS: Record<AnnounceKind, (enemy: string) => [string, string]> = {
+  enraged: (enemy) => ['decor_fire', t('battle.enraged', { enemy })],
+  fierce: (enemy) => ['decor_fire', t('battle.fierce', { enemy })],
+  bloodrage: () => ['icon_hit', t('battle.bloodrage')],
+  precision: () => ['icon_star', t('battle.precision')],
+  attrition: () => ['decor_fog', t('battle.attrition')],
+}
 const SPEEDS: BattleSpeed[] = [1, 2, 4]
 
 export class BattleScene extends Phaser.Scene {
@@ -28,7 +37,8 @@ export class BattleScene extends Phaser.Scene {
     const stage = GameState.selectedStage!
     const player = GameState.player!
     const stats = effectiveStats(player)
-    const result = resolveBattle(stats, stage.enemy, stage.rewards)
+    const plan = GameState.selectedPlan ?? player.settings.battlePlan
+    const result = resolveBattle({ player: stats, enemy: stage.enemy, rewards: stage.rewards, plan })
     GameState.lastBattleResult = result
 
     // Replaying a stage that's already been beaten is pure waiting, so the
@@ -148,23 +158,48 @@ export class BattleScene extends Phaser.Scene {
       repeat: result.log.length - 1,
       callback: () => {
         const ev = result.log[i]
-        if (ev.attacker === 'player') {
-          enemyHp = ev.targetHpAfter
-          lunge(playerSprite, 1)
-          recoil(enemySprite)
-          layoutLog('icon_hit', t('battle.youHit', { damage: ev.damage }))
+        const attacker = ev.attacker === 'player' ? playerSprite : enemySprite
+        const defender = ev.attacker === 'player' ? enemySprite : playerSprite
+
+        if (ev.attacker === 'player') enemyHp = ev.targetHpAfter
+        else playerHp = ev.targetHpAfter
+        if (ev.selfHpAfter !== undefined) {
+          if (ev.attacker === 'player') playerHp = ev.selfHpAfter
+          else enemyHp = ev.selfHpAfter
+        }
+
+        lunge(attacker, ev.attacker === 'player' ? 1 : -1)
+
+        if (ev.dodged) {
+          // Sidestep instead of a hit flash — the one way to take no damage.
+          this.tweens.add({ targets: defender, x: defender.x + 14, duration: 90, yoyo: true, ease: 'Quad.Out' })
+          this.floatText(defender.x, defender.y - 34, t('battle.dodge'), COLORS.textDim)
+          layoutLog('icon_bolt', t('battle.dodge'))
         } else {
-          playerHp = ev.targetHpAfter
-          lunge(enemySprite, -1)
-          recoil(playerSprite)
-          if (ev.enraged) {
-            // Announced once, on the turn the boss goes over its base attack.
-            layoutLog('decor_fire', t('battle.enraged', { enemy: stage.enemy.name }))
+          recoil(defender)
+          if (ev.crit) this.tweens.add({ targets: attacker, scale: attacker.scale * 1.16, duration: 130, yoyo: true })
+          layoutLog(
+            ev.attacker === 'player' ? 'icon_hit' : 'icon_clash',
+            ev.attacker === 'player'
+              ? t('battle.youHit', { damage: ev.damage })
+              : t('battle.enemyHits', { enemy: stage.enemy.name, damage: ev.damage }),
+          )
+        }
+
+        // Heals get a float over the healer, never the banner — a defensive
+        // plan mends seven times in a twenty-turn fight.
+        if (ev.healed !== undefined) {
+          this.floatText(attacker.x, attacker.y - 34, `+${ev.healed}`, COLORS.success)
+        }
+
+        // The banner is reserved for things that happen once per fight.
+        if (ev.announce !== undefined) {
+          const [icon, message] = ANNOUNCEMENTS[ev.announce](stage.enemy.name)
+          layoutLog(icon, message)
+          if (ev.announce === 'enraged' || ev.announce === 'fierce') {
             enrageTint = true
             enemySprite.setTint(ENRAGE_TINT)
             this.tweens.add({ targets: enemySprite, scale: enemySprite.scale * 1.18, duration: 200, yoyo: true })
-          } else {
-            layoutLog('icon_clash', t('battle.enemyHits', { enemy: stage.enemy.name, damage: ev.damage }))
           }
         }
         renderHp()
@@ -173,6 +208,22 @@ export class BattleScene extends Phaser.Scene {
           this.time.delayedCall(600 / speed, () => this.scene.start('Result'))
         }
       },
+    })
+  }
+
+  /** A short-lived number or word that drifts up off a sprite and fades. */
+  private floatText(x: number, y: number, message: string, color: string): void {
+    const label = this.add
+      .text(x, y, message, { fontSize: '15px', fontFamily: FONT.family, fontStyle: 'bold', color })
+      .setOrigin(0.5)
+      .setDepth(20)
+    this.tweens.add({
+      targets: label,
+      y: y - 26,
+      alpha: { from: 1, to: 0 },
+      duration: 620,
+      ease: 'Quad.Out',
+      onComplete: () => label.destroy(),
     })
   }
 

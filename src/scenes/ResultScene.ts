@@ -49,6 +49,7 @@ export class ResultScene extends Phaser.Scene {
       boss: isBossStage(stage),
       win: result.win,
       turns: result.log.length > 0 ? result.log[result.log.length - 1].turn : 0,
+      plan: GameState.selectedPlan ?? player.settings.battlePlan,
     })
 
     GameState.player = player
@@ -126,12 +127,15 @@ export class ResultScene extends Phaser.Scene {
           .setOrigin(0.5)
       }
     } else {
+      // A stalemate is not a defeat — telling the player to level up when the
+      // real problem is that nobody can finish would be the wrong advice.
       this.add
-        .text(GAME_W / 2, 292, t('result.noRewards'), {
+        .text(GAME_W / 2, 292, result.outcome === 'timeout' ? t('battle.stalemate') : t('result.noRewards'), {
           fontSize: '14px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
           align: 'center',
+          wordWrap: { width: 330 },
         })
         .setOrigin(0.5)
     }
@@ -222,10 +226,17 @@ export class ResultScene extends Phaser.Scene {
       })
     }
 
-    makeButton(this, GAME_W / 2, 528, t('result.stageSelect'), () => this.scene.start('StageSelect'), {
+    makeButton(this, GAME_W / 2 - 92, 522, t('plan.change'), () => this.scene.start('PrepareBattle'), {
       variant: 'secondary',
-      minWidth: 200,
+      minWidth: 168,
       fontSize: '14px',
+      minHeight: 50,
+    })
+    makeButton(this, GAME_W / 2 + 92, 522, t('result.stageSelect'), () => this.scene.start('StageSelect'), {
+      variant: 'secondary',
+      minWidth: 168,
+      fontSize: '14px',
+      minHeight: 50,
     })
 
     makeTutorialTip(this, 2, t('tutorial.step2'), 606)

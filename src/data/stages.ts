@@ -1,4 +1,5 @@
 import type { EnemyConfig, StageBackground, StageConfig } from '../types'
+import type { TraitId } from './enemyTraits'
 
 interface StageDef {
   name: string
@@ -127,11 +128,35 @@ const BOSS_ATK = 1.25
 const BOSS_DEF = 1.2
 const BOSS_REWARD = 2.5
 
+/**
+ * Which stage teaches which trait, in order. Hand-authored rather than derived:
+ * this sequence *is* the difficulty curve, so a formula would make it
+ * accidental. Stage 1 stays plain so the tutorial fight has nothing to explain.
+ */
+const STAGE_TRAITS: TraitId[] = [
+  'straightforward',
+  'slippery',
+  'fierce',
+  'mending',
+  'slippery',
+  'fierce',
+  'mending',
+  'slippery',
+  'mending',
+  'fierce',
+  'slippery',
+  'fierce',
+]
+
 function scaledEnemy(order: number): EnemyConfig {
   const maxHp = Math.round(30 + order * 18)
   const atk = Math.round(6 + order * 2.4)
   const def = Math.round(1 + order * 1.1)
-  const base = { name: ENEMY_NAMES[order - 1] ?? `Foe ${order}`, sprite: `enemy_${order}` }
+  const base = {
+    name: ENEMY_NAMES[order - 1] ?? `Foe ${order}`,
+    sprite: `enemy_${order}`,
+    trait: STAGE_TRAITS[order - 1] ?? 'straightforward',
+  }
 
   if (!isBossOrder(order)) return { ...base, maxHp, atk, def }
 

@@ -12,6 +12,7 @@ import { SettingsScene } from '../scenes/SettingsScene'
 import { AchievementsScene } from '../scenes/AchievementsScene'
 import { ConflictScene } from '../scenes/ConflictScene'
 import { StageSelectScene } from '../scenes/StageSelectScene'
+import { PrepareBattleScene } from '../scenes/PrepareBattleScene'
 import { BattleScene } from '../scenes/BattleScene'
 import { ResultScene } from '../scenes/ResultScene'
 import { COLORS } from '../ui/styles'
@@ -40,6 +41,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     SettingsScene,
     AchievementsScene,
     StageSelectScene,
+    PrepareBattleScene,
     BattleScene,
     ResultScene,
   ],
