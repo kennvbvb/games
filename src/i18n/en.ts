@@ -117,6 +117,8 @@ export const en = {
   'settings.autoAdvanceHint': 'Move to the next stage during an auto-battle streak',
   'settings.reducedMotion': 'Reduce motion',
   'settings.reducedMotionHint': 'Turn off bobbing, drifting and pulsing effects',
+  'settings.analytics': 'Share play data',
+  'settings.analyticsHint': 'Off by default. Sends which stages you fight and clear — never your name. Signed-in players only',
   'settings.language': 'Language',
   'settings.languageHint': 'Choose the language used throughout the game',
   'settings.keyboardHint': 'Tip: use Tab and arrow keys to move, Enter to select',

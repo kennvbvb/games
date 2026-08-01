@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
-import { STAGES } from '../data/stages'
+import { STAGES, isBossStage } from '../data/stages'
+import { recordEvent } from '../services/analytics'
 import { GameState } from '../state/GameState'
 import { applyRewards } from '../systems/rewards'
 import { persist } from '../services/saveService'
@@ -42,6 +43,14 @@ export class ResultScene extends Phaser.Scene {
         idle: { ...player.idle, farmingStageId: stage.id },
       }
     }
+    recordEvent({
+      name: 'stage_attempt',
+      stage: stage.order,
+      boss: isBossStage(stage),
+      win: result.win,
+      turns: result.log.length > 0 ? result.log[result.log.length - 1].turn : 0,
+    })
+
     GameState.player = player
     void persist(player, GameState.userId).then((stamped) => {
       GameState.player = stamped

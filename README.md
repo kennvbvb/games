@@ -46,6 +46,26 @@ disagree the newer one wins and is re-synced. Anything unreadable is moved to
 `incremental-rpg-save-v2:quarantine` rather than crashing the game, and every
 loaded save is re-validated (bounds-checked, unknown item/stage ids dropped).
 
+## Analytics
+
+Off by default, and off on every save upgraded from a version that predates the
+switch — consent is not something to inherit. Settings has a **Share play data**
+toggle; while it is on, and only while you are signed in, the game records four
+gameplay events (stage attempts, purchases, achievement claims, offline
+collections).
+
+There is no device id, no session id, and no free-text field anywhere in the
+payload — rows are attributed to the Supabase user id the player already has,
+which is why guests are never uploaded rather than being given an identifier to
+make it work. Each event has a field allowlist in `src/services/analytics.ts`,
+so a call site that grows an extra property cannot leak it; the database
+rejects unknown event names too, rather than trusting a patched client. Uploads
+are append-only (no update or delete policy) and piggyback on saves, so a failed
+batch can never delay or break a save.
+
+Full detail, including exactly which fields each event carries, is in
+[PRIVACY.md](PRIVACY.md).
+
 ## Languages
 
 The interface ships in English and Thai, switchable in Settings and remembered

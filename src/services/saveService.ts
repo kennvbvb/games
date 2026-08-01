@@ -2,6 +2,7 @@ import type { PlayerState } from '../types'
 import { parsePlayerState } from '../state/validate'
 import { getSupabase } from './supabaseClient'
 import { setSyncStatus } from './syncStatus'
+import { flushAnalytics, setAnalyticsEnabled, shouldFlush } from './analytics'
 import { setReducedMotionPreference } from '../ui/motion'
 import { setLocale } from '../i18n'
 
@@ -59,6 +60,7 @@ export function loadLocal(userId: string | null): PlayerState | null {
   // rather than making every scene reach into the save.
   setReducedMotionPreference(parsed.settings.reducedMotion)
   setLocale(parsed.settings.locale)
+  setAnalyticsEnabled(parsed.settings.analytics)
   return parsed
 }
 
@@ -117,6 +119,10 @@ export async function persist(state: PlayerState, userId: string | null): Promis
   } else {
     setSyncStatus('guest')
   }
+  // Analytics ride along with saves rather than on their own timer: persist is
+  // already called after everything worth measuring, and a batch that fails
+  // must never be able to delay or break the save above it.
+  if (shouldFlush()) void flushAnalytics(userId)
   return stamped
 }
 

@@ -16,6 +16,12 @@ const BOSS_ROW = { x: 372, y: 434 }
 const CHAPTER_NEXT = { x: 350, y: 528 }
 const STAGES_BACK = { x: 240, y: 592 }
 
+// Settings rows: four toggles from y=224 at 84 apart, then the language row.
+const SETTINGS = {
+  analytics: { x: 372, y: 224 + 3 * 84 },
+  thai: { x: 408, y: 224 + 4 * 84 },
+}
+
 test.describe('core flows', () => {
   test('a new player can create a hero and reach the menu', async ({ page }) => {
     const game = new GamePage(page)
@@ -257,6 +263,49 @@ test.describe('chapters and bosses', () => {
   })
 })
 
+test.describe('analytics consent', () => {
+  test('is off by default and sends nothing while off', async ({ page }) => {
+    const posted: string[] = []
+    page.on('request', (r) => {
+      if (r.method() === 'POST') posted.push(r.url())
+    })
+
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+    expect((await game.save())?.settings?.analytics).toBe(false)
+
+    // Play enough to generate events if anything were listening.
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y)
+    await page.waitForTimeout(6000)
+
+    expect(posted.filter((url) => url.includes('analytics'))).toEqual([])
+    expect((await game.save())?.settings?.analytics).toBe(false)
+  })
+
+  // Toggling consent must survive a reload, or the switch is decorative.
+  test('persists an explicit opt-in, and an opt-out after it', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+
+    await game.tap(MENU.settings.x, MENU.settings.y)
+    await game.tap(SETTINGS.analytics.x, SETTINGS.analytics.y)
+    await expect.poll(async () => (await game.save())?.settings?.analytics, { timeout: 10_000 }).toBe(true)
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.settings?.analytics).toBe(true)
+
+    // And back off again, which must also stick.
+    await game.tap(MENU.settings.x, MENU.settings.y)
+    await game.tap(SETTINGS.analytics.x, SETTINGS.analytics.y)
+    await expect.poll(async () => (await game.save())?.settings?.analytics, { timeout: 10_000 }).toBe(false)
+  })
+})
+
 test.describe('installable and offline', () => {
   test('a guest never downloads the cloud-accounts bundle', async ({ page }) => {
     const requested: string[] = []
@@ -317,8 +366,7 @@ test.describe('localization', () => {
     await game.continueAsGuest()
 
     await game.tap(MENU.settings.x, MENU.settings.y)
-    // Language row sits below the three toggles.
-    await game.tap(330 + 78, 236 + 3 * 96) // "ไทย"
+    await game.tap(SETTINGS.thai.x, SETTINGS.thai.y)
     await expect.poll(async () => (await game.save())?.settings?.locale, { timeout: 10_000 }).toBe('th')
 
     // Thai needs its own face; Fredoka has no Thai glyphs at all.

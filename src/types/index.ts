@@ -34,7 +34,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 7
+export const SAVE_SCHEMA_VERSION = 8
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -54,6 +54,11 @@ export interface GameSettings {
   reducedMotion: boolean
   /** UI language; defaults from the browser on a new save. */
   locale: 'en' | 'th'
+  /**
+   * Opt-in gameplay analytics. Always starts false, including on upgraded
+   * saves — consent cannot be inherited from a version that never asked.
+   */
+  analytics: boolean
 }
 
 /** Running totals that cannot be derived from the current state alone. */
