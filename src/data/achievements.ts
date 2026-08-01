@@ -1,4 +1,5 @@
 import { STAGES } from './stages'
+import { BOSS_STAGE_IDS } from './chapters'
 import type { MessageKey } from '../i18n'
 import type { PlayerState } from '../types'
 
@@ -78,6 +79,14 @@ export const ACHIEVEMENTS: Achievement[] = [
     reward: 400,
     target: 100,
     progress: (s) => s.lifetime.battlesWon,
+  },
+  {
+    id: 'boss-slayer',
+    nameKey: 'achv.bossSlayer',
+    icon: 'decor_skull',
+    reward: 450,
+    target: BOSS_STAGE_IDS.length,
+    progress: (s) => s.stageProgress.completedStageIds.filter((id) => BOSS_STAGE_IDS.includes(id)).length,
   },
   {
     id: 'wealthy',

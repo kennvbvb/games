@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
+import { isBossStage } from '../data/stages'
 import { resolveBattle } from '../systems/combat'
 import { effectiveStats } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
@@ -13,6 +14,8 @@ import type { BattleSpeed } from '../types'
 import { t } from '../i18n'
 
 const BASE_TURN_MS = 260
+/** Kept on an enraged boss for the rest of the fight. */
+const ENRAGE_TINT = 0xff8f8f
 const SPEEDS: BattleSpeed[] = [1, 2, 4]
 
 export class BattleScene extends Phaser.Scene {
@@ -40,14 +43,16 @@ export class BattleScene extends Phaser.Scene {
 
     // Title plate keeps the name legible over whatever scenery is behind it.
     makePanel(this, GAME_W / 2, 46, 300, 46)
-    this.add
-      .text(GAME_W / 2, 46, stage.name, {
+    const boss = isBossStage(stage)
+    const title = this.add
+      .text(GAME_W / 2 + (boss ? 11 : 0), 46, stage.name, {
         fontSize: '21px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
-        color: COLORS.text,
+        color: boss ? COLORS.danger : COLORS.text,
       })
       .setOrigin(0.5)
+    if (boss) makeEmoji(this, title.x - title.width / 2 - 14, 46, 'decor_skull', 20)
 
     makePanel(this, GAME_W / 2, 250, 430, 250)
 
@@ -119,10 +124,16 @@ export class BattleScene extends Phaser.Scene {
     const lunge = (target: Phaser.GameObjects.Image, dir: number) => {
       this.tweens.add({ targets: target, x: target.x + 18 * dir, duration: 110, yoyo: true, ease: 'Quad.Out' })
     }
+    // An enraged boss keeps its angry tint, so the hit flash has to restore it
+    // rather than clearing back to neutral.
+    let enrageTint = false
     const recoil = (target: Phaser.GameObjects.Image) => {
       this.tweens.add({ targets: target, angle: 12, duration: 60, yoyo: true, repeat: 1 })
       target.setTint(0xffaaaa)
-      this.time.delayedCall(160, () => target.clearTint())
+      this.time.delayedCall(160, () => {
+        if (target === enemySprite && enrageTint) target.setTint(ENRAGE_TINT)
+        else target.clearTint()
+      })
     }
 
     if (result.log.length === 0) {
@@ -146,7 +157,15 @@ export class BattleScene extends Phaser.Scene {
           playerHp = ev.targetHpAfter
           lunge(enemySprite, -1)
           recoil(playerSprite)
-          layoutLog('icon_clash', t('battle.enemyHits', { enemy: stage.enemy.name, damage: ev.damage }))
+          if (ev.enraged) {
+            // Announced once, on the turn the boss goes over its base attack.
+            layoutLog('decor_fire', t('battle.enraged', { enemy: stage.enemy.name }))
+            enrageTint = true
+            enemySprite.setTint(ENRAGE_TINT)
+            this.tweens.add({ targets: enemySprite, scale: enemySprite.scale * 1.18, duration: 200, yoyo: true })
+          } else {
+            layoutLog('icon_clash', t('battle.enemyHits', { enemy: stage.enemy.name, damage: ev.damage }))
+          }
         }
         renderHp()
         i++

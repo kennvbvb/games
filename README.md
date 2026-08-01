@@ -109,6 +109,18 @@ never downloads it.
 - Single character, no party/roster.
 - 12 hand-tuned stages with a difficulty curve and per-stage backdrop; each stage
   unlocks the next on victory.
+- The stages are grouped into three chapters of four, and stage select shows one
+  chapter per page. Chapters are a slice of the stage list rather than separate
+  content, so the grouping cannot drift out of sync with `STAGES`.
+- Every chapter closes with a **boss**: more health, harder hits, 2.5× rewards,
+  and an *enrage* — from turn 6 the boss gains 15% of its base attack every
+  turn. That ends fights instead of letting them stall, which is what stops a
+  low-damage hero grinding a boss down over a hundred turns. Measured across the
+  plausible stat range, enrage changes the outcome for 6–9% of builds on the
+  later bosses and barely touches the first one, so it gates the late game
+  without ambushing new players.
+- Enrage is deterministic like the rest of combat, so the stage preview
+  simulates it too — a boss the preview calls winnable is winnable.
 - Combat is a deterministic, precomputed auto-battle (`resolveBattle`) that the `BattleScene`
   animates — no twitch input, in keeping with the incremental/idle genre.
 - Idle-friendly: pick a battle speed (×1/×2/×4), skip the animation on stages you

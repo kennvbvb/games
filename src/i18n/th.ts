@@ -49,10 +49,20 @@ export const th: Record<keyof typeof en, string> = {
   'stages.easy': 'ง่าย',
   'stages.fair': 'พอดี',
   'stages.hard': 'ยาก',
+  'stages.boss': 'บอส',
+  'stages.bossHint': 'คลั่งตั้งแต่เทิร์นที่ {turn} — ต้องมีพลังโจมตี ไม่ใช่แค่เลือดเยอะ',
+
+  'chapter.1': 'ดินแดนพงไพร',
+  'chapter.2': 'เถ้าถ่านและน้ำแข็ง',
+  'chapter.3': 'เส้นทางสู่มังกร',
+  'chapter.label': 'บทที่ {index}',
+  'chapter.progress': 'ผ่านแล้ว {cleared} / {total}',
+  'chapter.bossDown': 'ล้มบอสแล้ว',
 
   'battle.start': 'เริ่มต่อสู้!',
   'battle.youHit': 'คุณโจมตี {damage}!',
   'battle.enemyHits': '{enemy} โจมตีคุณ {damage}!',
+  'battle.enraged': '{enemy} คลั่งแล้ว!',
   'battle.skip': 'ข้าม',
   'battle.autoRun': 'สู้อัตโนมัติ · รอบที่ {run}',
 
@@ -143,6 +153,7 @@ export const th: Record<keyof typeof en, string> = {
   'achv.battleHardened': 'ผ่านศึกมาเยอะ',
   'achv.relentless': 'ไม่ยอมแพ้',
   'achv.wealthy': 'ร่ำรวย',
+  'achv.bossSlayer': 'นักล่าบอส',
   'menu.quests': 'ภารกิจ',
   'menu.questsBadge': 'ภารกิจ ({count})',
 

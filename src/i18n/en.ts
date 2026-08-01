@@ -47,10 +47,20 @@ export const en = {
   'stages.easy': 'Easy',
   'stages.fair': 'Fair',
   'stages.hard': 'Hard',
+  'stages.boss': 'BOSS',
+  'stages.bossHint': 'Enrages from turn {turn} — bring damage, not just health',
+
+  'chapter.1': 'The Green Wilds',
+  'chapter.2': 'Ash and Frost',
+  'chapter.3': "The Dragon's Road",
+  'chapter.label': 'Chapter {index}',
+  'chapter.progress': '{cleared} / {total} cleared',
+  'chapter.bossDown': 'Boss defeated',
 
   'battle.start': 'Battle start!',
   'battle.youHit': 'You hit for {damage}!',
   'battle.enemyHits': '{enemy} hits you for {damage}!',
+  'battle.enraged': '{enemy} is enraged!',
   'battle.skip': 'Skip',
   'battle.autoRun': 'Auto-battle · run {run}',
 
@@ -141,6 +151,7 @@ export const en = {
   'achv.battleHardened': 'Battle Hardened',
   'achv.relentless': 'Relentless',
   'achv.wealthy': 'Wealthy',
+  'achv.bossSlayer': 'Boss Slayer',
   'menu.quests': 'Quests',
   'menu.questsBadge': 'Quests ({count})',
 
