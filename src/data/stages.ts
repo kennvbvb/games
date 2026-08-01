@@ -105,31 +105,65 @@ const STAGE_DEFS: StageDef[] = [
 ]
 
 const ENEMY_NAMES = [
-  'Grub', 'Prickle', 'Tusker', 'Croaker', 'Wisp', 'Howler',
-  'Emberling', 'Snipper', 'Flitter', 'Weaver', 'Screecher', 'Wyrm',
+  'Grub', 'Prickle', 'Tusker', 'Bog Warden', 'Wisp', 'Howler',
+  'Emberling', 'Tidecaller', 'Flitter', 'Weaver', 'Screecher', 'Elder Wyrm',
 ]
 
+/** Every fourth stage closes a chapter and is fought as a boss. */
+export const STAGES_PER_CHAPTER = 4
+
+export function isBossOrder(order: number): boolean {
+  return order % STAGES_PER_CHAPTER === 0
+}
+
+/**
+ * Bosses are tuned as a wall rather than one more step on the curve: a big
+ * health pool, harder hits, and an enrage that turns the fight into a damage
+ * check. The reward multiplier is what makes clearing one worth the grind, and
+ * makes a beaten boss the best stage to farm.
+ */
+const BOSS_HP = 1.45
+const BOSS_ATK = 1.25
+const BOSS_DEF = 1.2
+const BOSS_REWARD = 2.5
+
 function scaledEnemy(order: number): EnemyConfig {
+  const maxHp = Math.round(30 + order * 18)
+  const atk = Math.round(6 + order * 2.4)
+  const def = Math.round(1 + order * 1.1)
+  const base = { name: ENEMY_NAMES[order - 1] ?? `Foe ${order}`, sprite: `enemy_${order}` }
+
+  if (!isBossOrder(order)) return { ...base, maxHp, atk, def }
+
   return {
-    name: ENEMY_NAMES[order - 1] ?? `Foe ${order}`,
-    sprite: `enemy_${order}`,
-    maxHp: Math.round(30 + order * 18),
-    atk: Math.round(6 + order * 2.4),
-    def: Math.round(1 + order * 1.1),
+    ...base,
+    maxHp: Math.round(maxHp * BOSS_HP),
+    atk: Math.round(atk * BOSS_ATK),
+    def: Math.round(def * BOSS_DEF),
+    // Six turns of grace, then +15% of base attack per turn: enough room to
+    // win outright with a decent weapon, fatal to a pure-HP build.
+    boss: { enrageAfterTurn: 6, enrageAtkPerTurn: 0.15 },
   }
 }
 
 export const STAGES: StageConfig[] = STAGE_DEFS.map((def, idx) => {
   const order = idx + 1
+  const multiplier = isBossOrder(order) ? BOSS_REWARD : 1
   return {
     id: `stage-${order}`,
     name: def.name,
     order,
     enemy: scaledEnemy(order),
     rewards: {
-      exp: Math.round(10 + order * 6),
-      gold: Math.round(5 + order * 4),
+      exp: Math.round((10 + order * 6) * multiplier),
+      gold: Math.round((5 + order * 4) * multiplier),
     },
     bg: def.bg,
   }
 })
+
+export const STAGE_BY_ID = new Map(STAGES.map((stage) => [stage.id, stage]))
+
+export function isBossStage(stage: StageConfig): boolean {
+  return stage.enemy.boss !== undefined
+}

@@ -97,6 +97,18 @@ export interface PlayerState {
 
 export const TUTORIAL_DONE = 3
 
+/**
+ * Extra rules a boss fights under, layered on the normal turn loop. Kept
+ * deterministic so the stage preview stays an exact simulation rather than an
+ * estimate — see systems/difficulty.
+ */
+export interface BossConfig {
+  /** Turns of grace before the boss starts hitting harder every turn. */
+  enrageAfterTurn: number
+  /** Fraction of base ATK the boss gains per enraged turn. */
+  enrageAtkPerTurn: number
+}
+
 export interface EnemyConfig {
   name: string
   /** Preloaded emoji texture key for this enemy's sprite. */
@@ -104,6 +116,8 @@ export interface EnemyConfig {
   maxHp: number
   atk: number
   def: number
+  /** Present only on chapter bosses. */
+  boss?: BossConfig
 }
 
 export interface StageRewards {
@@ -137,6 +151,8 @@ export interface TurnEvent {
   attacker: 'player' | 'enemy'
   damage: number
   targetHpAfter: number
+  /** Set on the enemy blow where a boss first goes over its base attack. */
+  enraged?: boolean
 }
 
 export interface BattleResult {

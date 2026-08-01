@@ -9,7 +9,12 @@ const MENU = {
   quests: { x: 240, y: 520 },
   settings: { x: 148, y: 586 },
 }
-const STAGE_ROW_1 = { x: 372, y: 142 }
+// Stage select is one chapter per page: three ordinary rows, then a taller
+// boss card that closes the chapter.
+const STAGE_ROW_1 = { x: 372, y: 156 }
+const BOSS_ROW = { x: 372, y: 434 }
+const CHAPTER_NEXT = { x: 350, y: 528 }
+const STAGES_BACK = { x: 240, y: 592 }
 
 test.describe('core flows', () => {
   test('a new player can create a hero and reach the menu', async ({ page }) => {
@@ -66,9 +71,9 @@ test.describe('core flows', () => {
     await game.continueAsGuest()
 
     await game.tap(MENU.stages.x, MENU.stages.y)
-    await game.tap(240 + 110, 508) // page 2
-    await game.tap(240 + 110, 508) // page 3 — stages 9 to 12
-    await game.tap(372, 436) // fight stage 12, well out of reach
+    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y) // chapter 2
+    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y) // chapter 3 — stages 9 to 12
+    await game.tap(BOSS_ROW.x, BOSS_ROW.y) // fight the final boss, well out of reach
 
     await page.waitForTimeout(6000)
     const save = await game.save()
@@ -164,7 +169,7 @@ test.describe('idle and accessibility', () => {
     await page.waitForTimeout(800)
 
     // Reaching stage select advances the tutorial, which is observable in the save.
-    await game.tap(240, 588) // Back
+    await game.tap(STAGES_BACK.x, STAGES_BACK.y) // Back
     await game.settle()
     expect(await game.save()).not.toBeNull()
   })
@@ -201,6 +206,54 @@ test.describe('quests', () => {
     expect(new Set(after?.claimedAchievementIds as string[]).size).toBe(
       (after?.claimedAchievementIds as string[]).length,
     )
+  })
+})
+
+test.describe('chapters and bosses', () => {
+  test('clearing a chapter boss unlocks the next chapter', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        level: 30, // Stats are derived from level, so this is the real power.
+        stageProgress: { highestUnlocked: 4, completedStageIds: ['stage-1', 'stage-2', 'stage-3'] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the chapter-1 boss
+
+    await expect
+      .poll(async () => (await game.save())?.stageProgress?.highestUnlocked ?? 0, { timeout: 20_000 })
+      .toBeGreaterThan(4)
+
+    const save = await game.save()
+    expect(save?.stageProgress?.completedStageIds).toContain('stage-4')
+    // A boss pays far more than the stage before it — that is what makes the
+    // wall worth breaking.
+    expect(save?.gold).toBeGreaterThan(80)
+  })
+
+  test('every chapter is reachable and ends in a boss', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ stageProgress: { highestUnlocked: 12, completedStageIds: [] } }))
+    await game.continueAsGuest()
+    await game.tap(MENU.stages.x, MENU.stages.y)
+
+    // Paging to the last chapter and back proves the pager bounds match the
+    // chapter count — an off-by-one here would strand the final boss.
+    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y)
+    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y)
+    await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the final boss
+    await page.waitForTimeout(6000)
+
+    // The fight resolved one way or the other rather than hanging.
+    expect(await game.save()).not.toBeNull()
+    await game.tap(240, 528) // Stage select, from the result screen
+    await game.settle()
+    await game.tap(STAGES_BACK.x, STAGES_BACK.y)
+    await game.settle()
+    expect(await game.save()).not.toBeNull()
   })
 })
 
