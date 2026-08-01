@@ -35,7 +35,15 @@ export function computeOfflineRewards(state: PlayerState, now: number): OfflineR
   if (!Number.isFinite(elapsedMs) || elapsedMs < BALANCE.idle.minRewardMs) return null
 
   const creditedMs = Math.min(elapsedMs, BALANCE.idle.maxOfflineMs)
-  const outcome = resolveBattle(effectiveStats(state), stage.enemy, stage.rewards)
+  // Offline fights use the plan the player last committed to, not whichever
+  // plan happens to win — otherwise the payout contradicts every forecast they
+  // were shown before closing the tab.
+  const outcome = resolveBattle({
+    player: effectiveStats(state),
+    enemy: stage.enemy,
+    rewards: stage.rewards,
+    plan: state.settings.battlePlan,
+  })
   if (!outcome.win) return null
 
   const battles = Math.floor(creditedMs / BALANCE.idle.msPerBattle)

@@ -167,6 +167,25 @@ never downloads it.
   without ambushing new players.
 - Enrage is deterministic like the rest of combat, so the stage preview
   simulates it too — a boss the preview calls winnable is winnable.
+- Before each fight you commit to a **battle plan**: Brave Rush hits much harder
+  and takes more back, Cozy Guard softens every blow and mends as it goes,
+  Clever Trick slips past swings and lands the occasional huge hit. Each stage's
+  enemy has a **trait** — Slippery dodges, Fierce turns brutal below half health,
+  Mending heals itself — and the trait is what makes one plan beat another.
+- Prepare Battle simulates all three plans and marks one BEST. Measured across
+  the whole plausible stat range, hitting harder never turns a loss into a win —
+  it only ends a fight sooner — so the recommendation optimises for speed when a
+  win is comfortable and for survival when it is close.
+- Damage is a single product of multipliers **rounded once** at the end. Rounding
+  per step would make the result depend on the order the multipliers happen to be
+  written in, so every new effect would quietly rebalance the existing ones.
+  Dodging is a gate rather than a zero multiplier, because the minimum-1 floor
+  would otherwise undo it.
+- Healing fades out between turns 20 and 40, symmetrically for both sides. Without
+  it a defensive plan against a chip-damage enemy is literally unkillable, and the
+  turn cap would score that unlosable fight as a defeat. A fight neither side can
+  finish is reported as a **stalemate**, not a loss — the previous behaviour told
+  the player, the stage preview and the offline payout the same three lies.
 - Combat is a deterministic, precomputed auto-battle (`resolveBattle`) that the `BattleScene`
   animates — no twitch input, in keeping with the incremental/idle genre.
 - Idle-friendly: pick a battle speed (×1/×2/×4), skip the animation on stages you

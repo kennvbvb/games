@@ -16,7 +16,7 @@ export interface SaveOverrides {
 /** A mid-game save in the current schema, overridable per test. */
 export function makeSave(over: SaveOverrides = {}): string {
   return JSON.stringify({
-    schemaVersion: 9,
+    schemaVersion: 10,
     revision: 1,
     syncedRevision: 1,
     updatedAt: new Date().toISOString(),
@@ -38,6 +38,7 @@ export function makeSave(over: SaveOverrides = {}): string {
       reducedMotion: true,
       locale: 'en',
       analytics: false,
+      battlePlan: 'brave',
     },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },
     // Default past the tutorial so tips don't cover the buttons a test taps.
@@ -83,6 +84,14 @@ export class GamePage {
     if (!box) throw new Error('game canvas not found')
     await this.page.mouse.click(box.x + (x / GAME_W) * box.width, box.y + (y / GAME_H) * box.height)
     await this.page.waitForTimeout(500)
+  }
+
+  /**
+   * Commits a plan on Prepare Battle, which is what Fight/Farm now leads to.
+   * Rows are Brave, Cozy, Clever top to bottom.
+   */
+  async pickPlan(row: 0 | 1 | 2 = 0): Promise<void> {
+    await this.tap(372, [268, 380, 492][row])
   }
 
   /** CSS pixels per logical unit — how much Scale.FIT shrank the stage. */

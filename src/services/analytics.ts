@@ -16,7 +16,7 @@ import { getSupabase } from './supabaseClient'
  */
 
 export type AnalyticsEvent =
-  | { name: 'stage_attempt'; stage: number; boss: boolean; win: boolean; turns: number }
+  | { name: 'stage_attempt'; stage: number; boss: boolean; win: boolean; turns: number; plan: string }
   | { name: 'purchase'; kind: 'gear' | 'treat'; stage: number; level: number }
   | { name: 'achievement_claimed'; achievement: string; level: number }
   | { name: 'offline_collected'; battles: number; hours: number }
@@ -25,7 +25,9 @@ export type AnalyticsEventName = AnalyticsEvent['name']
 
 /** The only keys that may leave the device, per event. */
 const ALLOWED_FIELDS: Record<AnalyticsEventName, readonly string[]> = {
-  stage_attempt: ['stage', 'boss', 'win', 'turns'],
+  // `plan` matters more than any other field here: without it there is no way
+  // to tell a badly-tuned stage from a badly-chosen plan after release.
+  stage_attempt: ['stage', 'boss', 'win', 'turns', 'plan'],
   purchase: ['kind', 'stage', 'level'],
   achievement_claimed: ['achievement', 'level'],
   offline_collected: ['battles', 'hours'],

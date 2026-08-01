@@ -5,6 +5,7 @@ import { ACHIEVEMENT_BY_ID } from '../data/achievements'
 import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
+import { normalizePlan } from '../data/battlePlans'
 import { statsForLevel } from '../systems/leveling'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
@@ -121,6 +122,10 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       locale: isLocale(settingsRaw.locale) ? settingsRaw.locale : detectLocale(),
       // Consent is never inherited: anything but an explicit true is off.
       analytics: settingsRaw.analytics === true,
+      // Absent in pre-v10 saves. Brave Rush is the plan whose multipliers are
+      // closest to plain trading blows, so an upgraded save fights roughly the
+      // way it did before there were plans.
+      battlePlan: normalizePlan(settingsRaw.battlePlan),
     },
     idle: { farmingStageId, lastSeenAt },
     tutorialStep: clampInt(raw.tutorialStep, 0, TUTORIAL_DONE, 0),

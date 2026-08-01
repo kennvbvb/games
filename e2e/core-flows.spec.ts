@@ -52,6 +52,7 @@ test.describe('core flows', () => {
 
     await game.tap(MENU.stages.x, MENU.stages.y)
     await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y) // Fight stage 1
+    await game.pickPlan()
 
     await expect
       .poll(async () => (await game.save())?.stageProgress?.highestUnlocked ?? 0, { timeout: 20_000 })
@@ -80,6 +81,7 @@ test.describe('core flows', () => {
     await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y) // chapter 2
     await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y) // chapter 3 — stages 9 to 12
     await game.tap(BOSS_ROW.x, BOSS_ROW.y) // fight the final boss, well out of reach
+    await game.pickPlan()
 
     await page.waitForTimeout(6000)
     const save = await game.save()
@@ -228,6 +230,7 @@ test.describe('chapters and bosses', () => {
 
     await game.tap(MENU.stages.x, MENU.stages.y)
     await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the chapter-1 boss
+    await game.pickPlan()
 
     await expect
       .poll(async () => (await game.save())?.stageProgress?.highestUnlocked ?? 0, { timeout: 20_000 })
@@ -251,6 +254,7 @@ test.describe('chapters and bosses', () => {
     await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y)
     await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y)
     await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the final boss
+    await game.pickPlan()
     await page.waitForTimeout(6000)
 
     // The fight resolved one way or the other rather than hanging.
@@ -278,6 +282,7 @@ test.describe('analytics consent', () => {
     // Play enough to generate events if anything were listening.
     await game.tap(MENU.stages.x, MENU.stages.y)
     await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y)
+    await game.pickPlan()
     await page.waitForTimeout(6000)
 
     expect(posted.filter((url) => url.includes('analytics'))).toEqual([])

@@ -1,3 +1,6 @@
+import type { TraitId } from '../data/enemyTraits'
+import type { PlanId } from '../data/battlePlans'
+
 export interface PlayerStats {
   maxHp: number
   atk: number
@@ -34,7 +37,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 9
+export const SAVE_SCHEMA_VERSION = 10
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -54,6 +57,12 @@ export interface GameSettings {
   reducedMotion: boolean
   /** UI language; defaults from the browser on a new save. */
   locale: 'en' | 'th'
+  /**
+   * The plan committed to most recently. This is what offline farming fights
+   * under and what the stage cards forecast, so it has to be the player's own
+   * last choice rather than whichever plan happens to be best.
+   */
+  battlePlan: PlanId
   /**
    * Opt-in gameplay analytics. Always starts false, including on upgraded
    * saves — consent cannot be inherited from a version that never asked.
@@ -129,6 +138,12 @@ export interface EnemyConfig {
   def: number
   /** Present only on chapter bosses. */
   boss?: BossConfig
+  /**
+   * Absent means 'straightforward'. Lives here rather than on StageConfig so
+   * the difficulty preview and offline farming pick it up for free, the same
+   * way `boss` already does.
+   */
+  trait?: TraitId
 }
 
 export interface StageRewards {
@@ -157,17 +172,47 @@ export interface StageConfig {
   bg: StageBackground
 }
 
+/**
+ * Effects worth interrupting the battle log for. Each announces at most once
+ * per fight — recurring things like dodges and heals get sprite-level feedback
+ * instead, or the log would be unreadable.
+ */
+export type AnnounceKind = 'enraged' | 'fierce' | 'bloodrage' | 'precision' | 'attrition'
+
 export interface TurnEvent {
   turn: number
   attacker: 'player' | 'enemy'
+  /** 0 when dodged; otherwise at least 1. */
   damage: number
+  /** HP of the side that was struck, after the blow. */
   targetHpAfter: number
-  /** Set on the enemy blow where a boss first goes over its base attack. */
-  enraged?: boolean
+
+  /** The blow missed entirely — the only way to take 0 damage. */
+  dodged?: true
+  /** Went through a combo or first-strike multiplier; drives a bigger hit flash. */
+  crit?: true
+  /** How much the attacker restored to itself. Omitted when nothing was healed. */
+  healed?: number
+  /** The attacker's own HP after healing. Present exactly when `healed` is. */
+  selfHpAfter?: number
+
+  /** Latched: the one blow where this effect announces itself. */
+  announce?: AnnounceKind
 }
 
+export type BattleOutcome = 'win' | 'loss' | 'timeout'
+
 export interface BattleResult {
+  outcome: BattleOutcome
+  /** Always `outcome === 'win'`; kept so reward and result code needs no change. */
   win: boolean
   log: TurnEvent[]
+  /**
+   * Final HP, returned rather than re-derived from the log. Once healing can
+   * change a side's HP on its *own* attack event, walking the log for the last
+   * blow against that side silently reads a stale value.
+   */
+  playerHpLeft: number
+  enemyHpLeft: number
   rewards: StageRewards
 }

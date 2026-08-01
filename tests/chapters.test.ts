@@ -60,7 +60,7 @@ describe('boss stages', () => {
     // Combat is deterministic, so this is a fact about the numbers, not a sample.
     const strong: PlayerStats = { maxHp: 900, atk: 120, def: 40 }
     for (const chapter of CHAPTERS) {
-      expect(resolveBattle(strong, chapter.boss.enemy, chapter.boss.rewards).win).toBe(true)
+      expect(resolveBattle({ player: strong, enemy: chapter.boss.enemy, rewards: chapter.boss.rewards }).win).toBe(true)
     }
   })
 })
@@ -89,8 +89,8 @@ describe('enrage', () => {
   it('flags the turn it starts, once', () => {
     // A tank that cannot out-damage the boss will be ground down by the ramp.
     const tank: PlayerStats = { maxHp: 300, atk: 6, def: 4 }
-    const result = resolveBattle(tank, boss, { exp: 1, gold: 1 })
-    const flagged = result.log.filter((e) => e.enraged)
+    const result = resolveBattle({ player: tank, enemy: boss, rewards: { exp: 1, gold: 1 } })
+    const flagged = result.log.filter((e) => e.announce === 'enraged')
     expect(flagged).toHaveLength(1)
     expect(flagged[0].turn).toBe(4)
     expect(result.win).toBe(false)
@@ -100,8 +100,8 @@ describe('enrage', () => {
     // Same rough "power", split differently: damage clears the check, bulk does not.
     const bulky: PlayerStats = { maxHp: 1200, atk: 12, def: 8 }
     const sharp: PlayerStats = { maxHp: 300, atk: 60, def: 8 }
-    expect(resolveBattle(bulky, boss, { exp: 1, gold: 1 }).win).toBe(false)
-    expect(resolveBattle(sharp, boss, { exp: 1, gold: 1 }).win).toBe(true)
+    expect(resolveBattle({ player: bulky, enemy: boss, rewards: { exp: 1, gold: 1 } }).win).toBe(false)
+    expect(resolveBattle({ player: sharp, enemy: boss, rewards: { exp: 1, gold: 1 } }).win).toBe(true)
   })
 
   it('closes off the long attrition wins the real final boss would otherwise allow', () => {
@@ -112,11 +112,11 @@ describe('enrage', () => {
     const toothless = { ...final.enemy, boss: undefined }
     const grinder: PlayerStats = { maxHp: 2000, atk: 25, def: 25 }
 
-    const without = resolveBattle(grinder, toothless, final.rewards)
+    const without = resolveBattle({ player: grinder, enemy: toothless, rewards: final.rewards })
     expect(without.win).toBe(true)
     expect(without.log[without.log.length - 1].turn).toBeGreaterThan(40)
 
-    expect(resolveBattle(grinder, final.enemy, final.rewards).win).toBe(false)
+    expect(resolveBattle({ player: grinder, enemy: final.enemy, rewards: final.rewards }).win).toBe(false)
   })
 
   it('is visible in the stage preview', () => {

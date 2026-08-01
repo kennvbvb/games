@@ -203,7 +203,8 @@ export class StageSelectScene extends Phaser.Scene {
       () => {
         GameState.selectedStage = stage
         GameState.stopAutoBattle()
-        this.scene.start('Battle')
+        // Only this route asks for a plan; auto-battle streaks reuse the choice.
+        this.scene.start('PrepareBattle')
       },
       { minWidth: 90, fontSize: '14px', minHeight: 48 },
     )
