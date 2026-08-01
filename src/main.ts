@@ -29,3 +29,16 @@ window.addEventListener('beforeunload', () => {
     void persist(GameState.player, GameState.userId)
   }
 })
+
+// The worker is only emitted by the production build, and registration is
+// scoped to the deployment's base path so a project site under /games/ does
+// not claim the whole domain.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    const base = import.meta.env.BASE_URL
+    navigator.serviceWorker.register(`${base}sw.js`, { scope: base }).catch((err) => {
+      // Offline play is a bonus; a failed registration must not break the game.
+      console.warn('Service worker registration failed', err)
+    })
+  })
+}

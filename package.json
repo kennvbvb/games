@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "assets": "node scripts/fetch-assets.mjs"
+    "assets": "node scripts/fetch-assets.mjs",
+    "icons": "node scripts/make-icons.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

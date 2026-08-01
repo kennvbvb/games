@@ -204,6 +204,59 @@ test.describe('quests', () => {
   })
 })
 
+test.describe('installable and offline', () => {
+  test('a guest never downloads the cloud-accounts bundle', async ({ page }) => {
+    const requested: string[] = []
+    page.on('request', (r) => requested.push(r.url()))
+
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+    await game.settle()
+
+    expect(requested.some((url) => url.includes('supabaseSdk'))).toBe(false)
+    // Sanity check that the request log is actually recording chunk loads.
+    expect(requested.some((url) => url.includes('phaser-'))).toBe(true)
+  })
+
+  test('the manifest describes an installable app', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open()
+
+    const manifest = await page.evaluate(async () => {
+      const link = document.querySelector<HTMLLinkElement>('link[rel=manifest]')
+      if (!link) throw new Error('no manifest link')
+      return (await fetch(link.href)).json()
+    })
+    expect(manifest.display).toBe('standalone')
+    // Chromium needs a 192px and a 512px icon before it will offer to install.
+    const sizes = manifest.icons.map((icon: { sizes: string }) => icon.sizes)
+    expect(sizes).toContain('192x192')
+    expect(sizes).toContain('512x512')
+  })
+
+  test('the game boots with the network switched off', async ({ page, context }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    // The worker precaches on install; wait for it before pulling the plug.
+    await page.evaluate(() => navigator.serviceWorker.ready)
+    await expect
+      .poll(async () => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 10_000 })
+      .toBe(true)
+
+    await context.setOffline(true)
+    await page.reload()
+    await game.settle(1500)
+
+    await expect(page.locator('canvas')).toHaveCount(1)
+    await game.continueAsGuest()
+    await game.settle()
+    // Reaching the menu offline means the save, fonts and sprites all resolved.
+    expect((await game.save())?.name).toBe('Tester')
+    await context.setOffline(false)
+  })
+})
+
 test.describe('localization', () => {
   test('switching to Thai translates the UI and persists', async ({ page }) => {
     const game = new GamePage(page)

@@ -82,6 +82,26 @@ key to the emoji it came from, driving both the download script
 - `src/services/` — Supabase client, auth, and save/load (local + cloud)
 - `tests/` — vitest unit tests for the systems and save service
 - `e2e/` — Playwright specs driving the built game in a mobile viewport
+- `scripts/` — one-off asset tooling: `npm run assets` fetches the fonts and
+  emoji, `npm run icons` regenerates the home-screen icons from the cat avatar
+
+## Install and offline play
+
+The build emits a web app manifest and a service worker (both from
+`vite.config.ts` — no PWA plugin, because the asset set is small and fully
+known at build time). Installing puts the game on the home screen; after the
+first visit the worker has precached every chunk, font and sprite, so the game
+boots and plays with no network at all. Progress still saves locally, and syncs
+to the cloud the next time there is a connection.
+
+Navigations are network-first so a new deploy is picked up as soon as the
+device is online; everything else is served from the cache. The cache name is
+derived from the build's file list, so activating a new version drops the old
+one.
+
+The bundle is split so Phaser (the bulk of it) caches separately from game
+code, and the Supabase SDK loads only when someone actually signs in — a guest
+never downloads it.
 
 ## Gameplay notes (MVP scope)
 
