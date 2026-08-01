@@ -5,7 +5,18 @@
   "avatar_rabbit": "🐰",
   "avatar_panda": "🐼",
   "avatar_frog": "🐸",
-
+  "race_human_a": "🧑",
+  "race_human_b": "💂",
+  "race_elf_a": "🧝‍♂️",
+  "race_elf_b": "🧝‍♀️",
+  "race_dwarf_a": "🧔",
+  "race_dwarf_b": "👷",
+  "race_orc_a": "🧌",
+  "race_orc_b": "👹",
+  "race_fae_a": "🧚‍♀️",
+  "race_fae_b": "🧚‍♂️",
+  "race_undead_a": "🧟‍♂️",
+  "race_undead_b": "🧛‍♀️",
   "enemy_1": "🐛",
   "enemy_2": "🦔",
   "enemy_3": "🐗",
@@ -18,11 +29,9 @@
   "enemy_10": "🕷️",
   "enemy_11": "🦅",
   "enemy_12": "🐉",
-
   "treat_hp": "🍪",
   "treat_atk": "🍭",
   "treat_def": "🍩",
-
   "item_wooden-sword": "🗡️",
   "item_leather-shield": "🛡️",
   "item_lucky-ribbon": "🎀",
@@ -43,7 +52,6 @@
   "item_dragonscale-mail": "🐲",
   "item_storm-talisman": "⚡",
   "item_heros-emblem": "🌟",
-
   "icon_hp": "❤️",
   "icon_atk": "⚔️",
   "icon_def": "🛡️",
@@ -64,7 +72,6 @@
   "icon_bolt": "⚡",
   "icon_levelup": "🌟",
   "icon_face": "😺",
-
   "decor_tree": "🌲",
   "decor_leaf": "🍃",
   "decor_flower": "🌼",

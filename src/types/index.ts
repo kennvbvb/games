@@ -1,5 +1,6 @@
 import type { TraitId } from '../data/enemyTraits'
 import type { PlanId } from '../data/battlePlans'
+import type { RaceId } from '../data/races'
 
 export interface PlayerStats {
   maxHp: number
@@ -37,7 +38,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 10
+export const SAVE_SCHEMA_VERSION = 11
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -97,7 +98,15 @@ export interface PlayerState {
   /** ISO timestamp of the last persist, informational only. */
   updatedAt: string
   name: string
+  /**
+   * The animal buddy picked before races existed. Kept so nobody's original
+   * choice is thrown away, but the hero itself renders from `raceId`.
+   */
   avatar: string
+  /** Decides base stats, per-level growth and the passive. */
+  raceId: RaceId
+  /** Which of the race's looks; always one the race actually offers. */
+  appearanceId: string
   level: number
   exp: number
   gold: number

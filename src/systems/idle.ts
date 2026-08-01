@@ -2,6 +2,8 @@ import { BALANCE } from '../data/balance'
 import { STAGES } from '../data/stages'
 import { resolveBattle } from './combat'
 import { effectiveStats } from './upgrades'
+import { raceOf } from '../data/races'
+import { expWithRacePassive } from './rewards'
 import type { PlayerState, StageRewards } from '../types'
 
 export interface OfflineReport {
@@ -43,6 +45,7 @@ export function computeOfflineRewards(state: PlayerState, now: number): OfflineR
     enemy: stage.enemy,
     rewards: stage.rewards,
     plan: state.settings.battlePlan,
+    passive: raceOf(state.raceId).passive,
   })
   if (!outcome.win) return null
 
@@ -56,7 +59,8 @@ export function computeOfflineRewards(state: PlayerState, now: number): OfflineR
     stageName: stage.name,
     battles,
     rewards: {
-      exp: stage.rewards.exp * battles,
+      // Per battle, not on the total, so the figure matches what one fight pays.
+      exp: expWithRacePassive(stage.rewards.exp, state.raceId) * battles,
       gold: stage.rewards.gold * battles,
     },
   }

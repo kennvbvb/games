@@ -1,6 +1,7 @@
 import { resolveBattle } from './combat'
 import { effectiveStats } from './upgrades'
 import { PLAN_IDS } from '../data/battlePlans'
+import { raceOf } from '../data/races'
 import type { PlanId } from '../data/battlePlans'
 import type { BattleOutcome, PlayerState, StageConfig } from '../types'
 
@@ -52,6 +53,7 @@ export function stageOutlook(state: PlayerState, stage: StageConfig, plan?: Plan
     enemy: stage.enemy,
     rewards: stage.rewards,
     plan: plan ?? state.settings.battlePlan,
+    passive: raceOf(state.raceId).passive,
   })
 
   const hpRemaining = stats.maxHp > 0 ? Math.max(0, result.playerHpLeft) / stats.maxHp : 0

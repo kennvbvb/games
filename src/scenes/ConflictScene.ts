@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
+import { heroTexture } from '../data/races'
 import { resolveConflict } from '../services/saveService'
 import { summarize, suggestedSource } from '../systems/conflict'
 import { formatDuration } from '../systems/idle'
@@ -75,7 +76,7 @@ export class ConflictScene extends Phaser.Scene {
     makePanel(this, GAME_W / 2, y, 430, CARD_H)
     const top = y - CARD_H / 2
 
-    makeEmoji(this, 66, top + 32, `avatar_${info.avatar}`, 34)
+    makeEmoji(this, 66, top + 32, heroTexture(state), 34)
     const heading = this.add
       .text(96, top + 24, t(source === 'local' ? 'conflict.thisDevice' : 'conflict.cloudCopy'), {
         fontSize: '16px',

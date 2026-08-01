@@ -42,6 +42,13 @@ The 128px PNG emoji are used as sprites for hero avatars, enemies, shop items,
 UI icons, and stage scenery. `src/data/emojiAssets.json` maps each texture key
 to the emoji it was rendered from.
 
+The six playable kin are Noto's *people* emoji rather than its animal ones —
+elf, zombie, vampire, troll, fairy and so on — so the hero reads as humanoid
+while every sprite still comes from one source with one art style. Noto's
+framing is not uniform across them: some glyphs are head-and-shoulders and
+others full-body, and Orc's second look is a mask rather than a figure. That is
+the cost of holding to a single licensed source instead of mixing packs.
+
 The home-screen icons in `public/assets/icons/` are derived from the same
 source — `avatar_cat.png` scaled onto the game's background colour by
 `scripts/make-icons.mjs` — and are covered by the same license.
