@@ -9,6 +9,7 @@ import { CharacterScene } from '../scenes/CharacterScene'
 import { ShopScene } from '../scenes/ShopScene'
 import { EquipmentScene } from '../scenes/EquipmentScene'
 import { SettingsScene } from '../scenes/SettingsScene'
+import { AchievementsScene } from '../scenes/AchievementsScene'
 import { StageSelectScene } from '../scenes/StageSelectScene'
 import { BattleScene } from '../scenes/BattleScene'
 import { ResultScene } from '../scenes/ResultScene'
@@ -35,6 +36,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     ShopScene,
     EquipmentScene,
     SettingsScene,
+    AchievementsScene,
     StageSelectScene,
     BattleScene,
     ResultScene,

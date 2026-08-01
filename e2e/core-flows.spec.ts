@@ -2,7 +2,13 @@ import { test, expect } from '@playwright/test'
 import { GamePage, GUEST_KEY, QUARANTINE_KEY, makeSave, userKey } from './helpers'
 
 // Menu button positions in the game's logical coordinate space.
-const MENU = { stages: { x: 240, y: 340 }, character: { x: 240, y: 404 }, shop: { x: 240, y: 468 } }
+const MENU = {
+  stages: { x: 240, y: 334 },
+  character: { x: 240, y: 396 },
+  shop: { x: 240, y: 458 },
+  quests: { x: 240, y: 520 },
+  settings: { x: 148, y: 586 },
+}
 const STAGE_ROW_1 = { x: 372, y: 142 }
 
 test.describe('core flows', () => {
@@ -130,7 +136,7 @@ test.describe('idle and accessibility', () => {
 
     const afterCollect = (await game.save())?.gold
     // Bouncing through another scene must not pay a second time.
-    await game.tap(240, 404)
+    await game.tap(MENU.character.x, MENU.character.y)
     await game.settle()
     await game.tap(240, 622)
     await game.settle()
@@ -164,13 +170,47 @@ test.describe('idle and accessibility', () => {
   })
 })
 
+test.describe('quests', () => {
+  test('a completed achievement pays out exactly once', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        gold: 100,
+        level: 12,
+        // Enough for "First Steps" (1 stage) and the level milestones.
+        stageProgress: { highestUnlocked: 3, completedStageIds: ['stage-1'] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.quests.x, MENU.quests.y)
+    await game.tap(378, 140) // Claim the top row
+
+    await expect
+      .poll(async () => (await game.save())?.claimedAchievementIds?.length ?? 0, { timeout: 10_000 })
+      .toBeGreaterThan(0)
+
+    const afterClaim = await game.save()
+    expect(afterClaim?.gold).toBeGreaterThan(100)
+    // The claimed row drops to the bottom of the list, so the same tap must not re-pay.
+    const claimedIds = afterClaim?.claimedAchievementIds as string[]
+    await game.tap(378, 140)
+    await game.settle()
+    const after = await game.save()
+    expect(after?.claimedAchievementIds).not.toEqual(claimedIds)
+    expect(new Set(after?.claimedAchievementIds as string[]).size).toBe(
+      (after?.claimedAchievementIds as string[]).length,
+    )
+  })
+})
+
 test.describe('localization', () => {
   test('switching to Thai translates the UI and persists', async ({ page }) => {
     const game = new GamePage(page)
     await game.open(makeSave())
     await game.continueAsGuest()
 
-    await game.tap(240 - 92, 540) // Settings
+    await game.tap(MENU.settings.x, MENU.settings.y)
     // Language row sits below the three toggles.
     await game.tap(330 + 78, 236 + 3 * 96) // "ไทย"
     await expect.poll(async () => (await game.save())?.settings?.locale, { timeout: 10_000 }).toBe('th')

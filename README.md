@@ -107,6 +107,11 @@ key to the emoji it came from, driving both the download script
   nothing until it is worn; the Equipment screen swaps pieces freely.
 - A Character page shows level, EXP progress, effective stats (base + shop bonuses),
   gold, gear count, and stage completion.
+- Twelve achievements track stages cleared, levels reached, gear owned, treats
+  eaten, battles won and gold earned. Progress is derived from the save rather
+  than counted separately wherever possible, so nothing can drift out of sync.
+  Rewards are claimed by hand from the Quests screen, and the menu button shows
+  how many are waiting.
 - The canvas renders at 2x supersampling (`src/config/layout.ts`) so text and shapes
   stay crisp on high-DPI screens.
 - A three-step intro points new players at their first fight, their first win
