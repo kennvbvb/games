@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
-import { CHAPTERS, chapterCleared } from '../data/chapters'
+import { WORLDS, worldCleared, worldPageFor } from '../data/worlds'
 import { isBossStage } from '../data/stages'
 import { GameState } from '../state/GameState'
 import { DIFFICULTY_LABEL_KEYS, stageOutlook } from '../systems/difficulty'
@@ -12,17 +12,18 @@ import { makeTitle } from '../ui/components/makeTitle'
 import { advanceTutorial, makeTutorialTip } from '../ui/components/makeTutorialTip'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
-import type { Chapter } from '../data/chapters'
+import type { World } from '../data/worlds'
 import type { DifficultyTier } from '../systems/difficulty'
 import type { StageConfig } from '../types'
 import { t } from '../i18n'
 
-// One page is one chapter. The boss closes every chapter, so it gets the last
-// slot and a taller card.
-const ROW_YS = [150, 242, 334]
-const BOSS_Y = 436
-const CARD_H = 88
-const BOSS_CARD_H = 104
+// One page is one world: four ordinary stages, then the boss that closes it on
+// a taller card. Five rows in 480x720 is tight, so the cards are shorter than
+// the three-per-page layout they replace.
+const ROW_YS = [146, 226, 306, 386]
+const BOSS_Y = 472
+const CARD_H = 74
+const BOSS_CARD_H = 92
 
 const TIER_COLOR: Record<DifficultyTier, string> = {
   easy: COLORS.success,
@@ -37,68 +38,71 @@ export class StageSelectScene extends Phaser.Scene {
 
   create(): void {
     setupScene(this)
-    const page = Math.min(Math.max(GameState.stagePage, 0), CHAPTERS.length - 1)
+    // Open where the player actually is. With twelve worlds, defaulting to the
+    // first would mean up to eleven taps to reach the next fight.
+    if (GameState.stagePage < 0) GameState.stagePage = worldPageFor(GameState.player!)
+    const page = Math.min(Math.max(GameState.stagePage, 0), WORLDS.length - 1)
     GameState.stagePage = page
-    const chapter = CHAPTERS[page]
+    const world = WORLDS[page]
 
     advanceTutorial(1)
     makeTitle(this, 40, t('stages.title'), 'icon_atk')
-    this.renderChapterHeader(chapter)
+    this.renderWorldHeader(world)
 
-    chapter.stages.forEach((stage, i) => {
+    world.stages.forEach((stage, i) => {
       this.renderStageCard(stage, isBossStage(stage) ? BOSS_Y : ROW_YS[i])
     })
 
-    const pagerY = 526
+    const pagerY = 556
     makeButton(this, GAME_W / 2 - 110, pagerY, '◀', () => this.turnPage(-1), {
       disabled: page === 0,
       fontSize: '16px',
       minWidth: 64,
     })
     this.add
-      .text(GAME_W / 2, pagerY, t('stages.page', { current: page + 1, total: CHAPTERS.length }), {
+      .text(GAME_W / 2, pagerY, `${page + 1} / ${WORLDS.length}`, {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
     makeButton(this, GAME_W / 2 + 110, pagerY, '▶', () => this.turnPage(1), {
-      disabled: page >= CHAPTERS.length - 1,
+      disabled: page >= WORLDS.length - 1,
       fontSize: '16px',
       minWidth: 64,
     })
 
-    makeButton(this, GAME_W / 2, 592, t('common.back'), () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, 616, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '15px',
       minWidth: 160,
     })
 
-    makeTutorialTip(this, 1, t('tutorial.step1'), 656)
+    makeTutorialTip(this, 1, t('tutorial.step1'), 676)
   }
 
-  /** Chapter name and how much of it is done — the page number alone said nothing. */
-  private renderChapterHeader(chapter: Chapter): void {
+  /** World name and how much of it is done — the page number alone said nothing. */
+  private renderWorldHeader(world: World): void {
     const player = GameState.player!
-    const cleared = chapterCleared(player, chapter)
+    const cleared = worldCleared(player, world)
 
     const name = this.add
-      .text(GAME_W / 2 + 12, 74, t(chapter.nameKey), {
+      .text(GAME_W / 2 + 12, 74, t(world.nameKey), {
         fontSize: '19px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
         color: COLORS.text,
       })
       .setOrigin(0.5)
-    makeEmoji(this, name.x - name.width / 2 - 16, 74, chapter.icon, 20)
+    makeEmoji(this, name.x - name.width / 2 - 16, 74, world.icon, 20)
 
     this.add
       .text(
         GAME_W / 2,
         96,
-        `${t('chapter.label', { index: chapter.index })}  ·  ${t('chapter.progress', {
+        `${t('world.label', { index: world.index, total: WORLDS.length })}  ·  ${t('world.progress', {
           cleared,
-          total: chapter.stages.length,
+          total: world.stages.length,
         })}`,
         { fontSize: '12px', fontFamily: FONT.family, color: COLORS.textDim },
       )
@@ -119,13 +123,13 @@ export class StageSelectScene extends Phaser.Scene {
     makePanel(this, GAME_W / 2, y, 430, boss ? BOSS_CARD_H : CARD_H)
     const top = y - (boss ? BOSS_CARD_H : CARD_H) / 2
 
-    const sprite = makeEmoji(this, 60, top + 34, unlocked ? stage.enemy.sprite : 'icon_lock', boss ? 46 : 38)
+    const sprite = makeEmoji(this, 58, top + (boss ? 34 : 30), unlocked ? stage.enemy.sprite : 'icon_lock', boss ? 42 : 34)
     if (boss && unlocked) {
       ambientTween(this, { targets: sprite, scale: { from: sprite.scale, to: sprite.scale * 1.08 }, duration: 800, yoyo: true, repeat: -1 })
     }
 
     const title = this.add
-      .text(96, top + 20, `${stage.order}. ${stage.name}`, {
+      .text(92, top + 17, `${stage.order}. ${stage.name}`, {
         fontSize: '16px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -135,22 +139,22 @@ export class StageSelectScene extends Phaser.Scene {
 
     if (boss) {
       // Tag rides after the name so it reads as part of the title line.
-      const tagX = Math.min(96 + title.width + 10, 300)
+      const tagX = Math.min(92 + title.width + 8, 296)
       const tag = this.add
-        .text(tagX + 15, top + 20, t('stages.boss'), {
+        .text(tagX + 15, top + 17, t('stages.boss'), {
           fontSize: '11px',
           fontFamily: FONT.family,
           fontStyle: 'bold',
           color: COLORS.danger,
         })
         .setOrigin(0, 0.5)
-      makeEmoji(this, tagX + 6, top + 20, 'decor_skull', 13)
+      makeEmoji(this, tagX + 6, top + 17, 'decor_skull', 13)
       tag.setX(tagX + 15)
     }
 
     if (!unlocked) {
       this.add
-        .text(96, top + 46, t('stages.locked', { order: stage.order - 1 }), {
+        .text(92, top + 40, t('stages.locked', { order: stage.order - 1 }), {
           fontSize: '12px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
@@ -161,8 +165,8 @@ export class StageSelectScene extends Phaser.Scene {
 
     makeStatRow(
       this,
-      96,
-      top + 46,
+      92,
+      top + 39,
       [
         { icon: 'icon_exp', value: `+${stage.rewards.exp}` },
         { icon: 'icon_gold', value: `+${stage.rewards.gold}` },
@@ -174,8 +178,8 @@ export class StageSelectScene extends Phaser.Scene {
     const hpPct = Math.round(outlook.hpRemaining * 100)
     this.add
       .text(
-        96,
-        top + 68,
+        92,
+        top + 59,
         outlook.willWin
           ? t('stages.outlook', { tier: t(DIFFICULTY_LABEL_KEYS[outlook.tier]), hp: hpPct })
           : t('stages.outlookLose'),
@@ -185,7 +189,7 @@ export class StageSelectScene extends Phaser.Scene {
 
     if (boss) {
       this.add
-        .text(96, top + 88, t('stages.bossHint', { turn: stage.enemy.boss!.enrageAfterTurn }), {
+        .text(92, top + 78, t('stages.bossHint', { turn: stage.enemy.boss!.enrageAfterTurn }), {
           fontSize: '10px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
@@ -193,12 +197,12 @@ export class StageSelectScene extends Phaser.Scene {
         .setOrigin(0, 0.5)
     }
 
-    if (cleared) makeEmoji(this, 404, top + 18, 'icon_star', 18)
+    if (cleared) makeEmoji(this, 404, top + 15, 'icon_star', 16)
 
     makeButton(
       this,
-      372,
-      top + 50,
+      374,
+      top + (boss ? 52 : 44),
       cleared ? t('stages.farm') : t('stages.fight'),
       () => {
         GameState.selectedStage = stage
@@ -206,7 +210,7 @@ export class StageSelectScene extends Phaser.Scene {
         // Only this route asks for a plan; auto-battle streaks reuse the choice.
         this.scene.start('PrepareBattle')
       },
-      { minWidth: 90, fontSize: '14px', minHeight: 48 },
+      { minWidth: 86, fontSize: '13px', minHeight: 46 },
     )
   }
 
