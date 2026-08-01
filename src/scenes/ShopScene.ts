@@ -4,6 +4,7 @@ import { BALANCE } from '../data/balance'
 import { ITEMS } from '../data/items'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
+import { recordEvent } from '../services/analytics'
 import { buyItem, buyUpgrade, upgradeCost } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
@@ -119,7 +120,7 @@ export class ShopScene extends Phaser.Scene {
         onBuy: () => {
           const next = buyUpgrade(GameState.player!, type)
           if (!next) return
-          this.commit(next)
+          this.commit(next, 'treat')
         },
       })
     })
@@ -168,7 +169,7 @@ export class ShopScene extends Phaser.Scene {
       onBuy: () => {
         const next = buyItem(GameState.player!, item.id)
         if (!next) return
-        this.commit(next)
+        this.commit(next, 'gear')
       },
     })
   }
@@ -228,7 +229,10 @@ export class ShopScene extends Phaser.Scene {
     }
   }
 
-  private commit(next: NonNullable<ReturnType<typeof buyItem>>): void {
+  private commit(next: NonNullable<ReturnType<typeof buyItem>>, kind: 'gear' | 'treat'): void {
+    // Which stage the player was stuck on when they spent is the interesting
+    // part; the item itself is already implied by the level and kind.
+    recordEvent({ name: 'purchase', kind, stage: next.stageProgress.highestUnlocked, level: next.level })
     GameState.player = next
     void persist(next, GameState.userId).then((stamped) => {
       GameState.player = stamped

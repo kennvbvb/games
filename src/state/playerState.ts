@@ -28,6 +28,7 @@ export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT
       // Honour the OS preference for a brand new hero.
       reducedMotion: systemPrefersReducedMotion(),
       locale: detectLocale(),
+      analytics: false,
     },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },
     tutorialStep: 0,

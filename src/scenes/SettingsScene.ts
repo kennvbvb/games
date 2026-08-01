@@ -6,6 +6,7 @@ import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeTitle } from '../ui/components/makeTitle'
 import { setReducedMotionPreference } from '../ui/motion'
+import { setAnalyticsEnabled } from '../services/analytics'
 import { COLORS, FONT } from '../ui/styles'
 import type { BattleSpeed, GameSettings, PlayerState } from '../types'
 import { LOCALES, LOCALE_LABELS, setLocale, t, type Locale, type MessageKey } from '../i18n'
@@ -24,7 +25,12 @@ const TOGGLES: ToggleRow[] = [
   { key: 'skipCleared', labelKey: 'settings.skipCleared', hintKey: 'settings.skipClearedHint' },
   { key: 'autoAdvance', labelKey: 'settings.autoAdvance', hintKey: 'settings.autoAdvanceHint' },
   { key: 'reducedMotion', labelKey: 'settings.reducedMotion', hintKey: 'settings.reducedMotionHint' },
+  { key: 'analytics', labelKey: 'settings.analytics', hintKey: 'settings.analyticsHint' },
 ]
+
+const ROW_TOP = 224
+const ROW_GAP = 84
+const ROW_H = 74
 
 export class SettingsScene extends Phaser.Scene {
   constructor() {
@@ -55,11 +61,11 @@ export class SettingsScene extends Phaser.Scene {
     })
 
     TOGGLES.forEach((row, i) => {
-      const y = 236 + i * 96
+      const y = ROW_TOP + i * ROW_GAP
       const on = player.settings[row.key]
-      makePanel(this, GAME_W / 2, y, 430, 84)
+      makePanel(this, GAME_W / 2, y, 430, ROW_H)
       this.add
-        .text(66, y - 16, t(row.labelKey), {
+        .text(66, y - 15, t(row.labelKey), {
           fontSize: '16px',
           fontFamily: FONT.family,
           fontStyle: 'bold',
@@ -68,10 +74,10 @@ export class SettingsScene extends Phaser.Scene {
         .setOrigin(0, 0.5)
       this.add
         .text(66, y + 12, t(row.hintKey), {
-          fontSize: '12px',
+          fontSize: '11px',
           fontFamily: FONT.family,
           color: COLORS.textDim,
-          wordWrap: { width: 260 },
+          wordWrap: { width: 244 },
         })
         .setOrigin(0, 0.5)
       makeButton(this, 372, y, on ? t('settings.on') : t('settings.off'), () => this.applySetting({ [row.key]: !on } as Partial<GameSettings>), {
@@ -82,10 +88,10 @@ export class SettingsScene extends Phaser.Scene {
       })
     })
 
-    const langY = 236 + TOGGLES.length * 96
-    makePanel(this, GAME_W / 2, langY, 430, 84)
+    const langY = ROW_TOP + TOGGLES.length * ROW_GAP
+    makePanel(this, GAME_W / 2, langY, 430, ROW_H)
     this.add
-      .text(66, langY - 16, t('settings.language'), {
+      .text(66, langY - 15, t('settings.language'), {
         fontSize: '16px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -94,10 +100,11 @@ export class SettingsScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
     this.add
       .text(66, langY + 12, t('settings.languageHint'), {
-        fontSize: '12px',
+        fontSize: '11px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
-        wordWrap: { width: 240 },
+        // Narrower than the toggle rows: the language row carries two buttons.
+        wordWrap: { width: 208 },
       })
       .setOrigin(0, 0.5)
     LOCALES.forEach((locale, i) => {
@@ -110,14 +117,14 @@ export class SettingsScene extends Phaser.Scene {
     })
 
     this.add
-      .text(GAME_W / 2, 630, t('settings.keyboardHint'), {
+      .text(GAME_W / 2, langY + 58, t('settings.keyboardHint'), {
         fontSize: '12px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
 
-    makeButton(this, GAME_W / 2, 672, t('common.back'), () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, langY + 102, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       minWidth: 180,
       fontSize: '15px',
@@ -135,6 +142,9 @@ export class SettingsScene extends Phaser.Scene {
     const next: PlayerState = { ...player, settings: { ...player.settings, ...patch } }
     // Keep the motion module in step so the change applies on this very redraw.
     if (patch.reducedMotion !== undefined) setReducedMotionPreference(patch.reducedMotion)
+    // Opting out takes effect before the save that records it, so nothing is
+    // collected in the gap.
+    if (patch.analytics !== undefined) setAnalyticsEnabled(patch.analytics)
     GameState.player = next
     void persist(next, GameState.userId).then((stamped) => {
       GameState.player = stamped

@@ -112,6 +112,8 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
         typeof settingsRaw.reducedMotion === 'boolean' ? settingsRaw.reducedMotion : systemPrefersReducedMotion(),
       // Absent in pre-v6 saves: fall back to the browser's languages.
       locale: isLocale(settingsRaw.locale) ? settingsRaw.locale : detectLocale(),
+      // Consent is never inherited: anything but an explicit true is off.
+      analytics: settingsRaw.analytics === true,
     },
     idle: { farmingStageId, lastSeenAt },
     tutorialStep: clampInt(raw.tutorialStep, 0, TUTORIAL_DONE, 0),

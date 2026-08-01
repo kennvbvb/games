@@ -16,7 +16,7 @@ export interface SaveOverrides {
 /** A mid-game save in the current schema, overridable per test. */
 export function makeSave(over: SaveOverrides = {}): string {
   return JSON.stringify({
-    schemaVersion: 7,
+    schemaVersion: 8,
     revision: 1,
     updatedAt: new Date().toISOString(),
     name: 'Tester',
@@ -36,6 +36,7 @@ export function makeSave(over: SaveOverrides = {}): string {
       autoAdvance: false,
       reducedMotion: true,
       locale: 'en',
+      analytics: false,
     },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },
     // Default past the tutorial so tips don't cover the buttons a test taps.

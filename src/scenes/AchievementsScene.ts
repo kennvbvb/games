@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
+import { recordEvent } from '../services/analytics'
 import { achievementList, claimAchievement } from '../systems/achievements'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
@@ -130,6 +131,7 @@ export class AchievementsScene extends Phaser.Scene {
   private claim(id: string): void {
     const next = claimAchievement(GameState.player!, id)
     if (!next) return
+    recordEvent({ name: 'achievement_claimed', achievement: id, level: next.level })
     GameState.player = next
     void persist(next, GameState.userId).then((stamped) => {
       GameState.player = stamped

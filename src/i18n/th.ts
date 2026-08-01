@@ -119,6 +119,8 @@ export const th: Record<keyof typeof en, string> = {
   'settings.autoAdvanceHint': 'เลื่อนไปด่านถัดไประหว่างสู้อัตโนมัติ',
   'settings.reducedMotion': 'ลดการเคลื่อนไหว',
   'settings.reducedMotionHint': 'ปิดเอฟเฟกต์ลอยขึ้นลงและกะพริบต่างๆ',
+  'settings.analytics': 'แบ่งปันข้อมูลการเล่น',
+  'settings.analyticsHint': 'ปิดไว้เป็นค่าเริ่มต้น ส่งแค่ว่าคุณสู้และผ่านด่านไหน ไม่ส่งชื่อ และเฉพาะผู้ที่เข้าสู่ระบบ',
   'settings.language': 'ภาษา',
   'settings.languageHint': 'เลือกภาษาที่ใช้ในเกม',
   'settings.keyboardHint': 'เคล็ดลับ: ใช้ Tab และปุ่มลูกศรเลื่อน กด Enter เพื่อเลือก',

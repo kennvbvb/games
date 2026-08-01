@@ -8,6 +8,7 @@ import { claimableCount } from '../systems/achievements'
 import { applyExp } from '../systems/leveling'
 import { computeOfflineRewards, formatDuration } from '../systems/idle'
 import { persist } from '../services/saveService'
+import { recordEvent } from '../services/analytics'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
@@ -191,6 +192,11 @@ export class MainMenuScene extends Phaser.Scene {
       GAME_H / 2 + 112,
       t('idle.collect'),
       () => {
+        recordEvent({
+          name: 'offline_collected',
+          battles: report.battles,
+          hours: report.creditedMs / (60 * 60 * 1000),
+        })
         const collected = applyExp(
           {
             ...player,
