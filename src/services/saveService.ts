@@ -1,6 +1,6 @@
 import type { PlayerState } from '../types'
 import { parsePlayerState } from '../state/validate'
-import { supabase } from './supabaseClient'
+import { getSupabase } from './supabaseClient'
 import { setSyncStatus } from './syncStatus'
 import { setReducedMotionPreference } from '../ui/motion'
 import { setLocale } from '../i18n'
@@ -73,16 +73,18 @@ export function hasGuestSave(): boolean {
 }
 
 async function saveCloud(userId: string, state: PlayerState): Promise<void> {
-  if (!supabase) throw new Error('Cloud accounts are not configured')
-  const { error } = await supabase
+  const pending = getSupabase()
+  if (!pending) throw new Error('Cloud accounts are not configured')
+  const { error } = await (await pending)
     .from('saves')
     .upsert({ user_id: userId, state, revision: state.revision, updated_at: new Date().toISOString() })
   if (error) throw error
 }
 
 async function loadCloud(userId: string): Promise<PlayerState | null> {
-  if (!supabase) throw new Error('Cloud accounts are not configured')
-  const { data, error } = await supabase
+  const pending = getSupabase()
+  if (!pending) throw new Error('Cloud accounts are not configured')
+  const { data, error } = await (await pending)
     .from('saves')
     .select('state')
     .eq('user_id', userId)

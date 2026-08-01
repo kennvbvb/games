@@ -3,8 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const upsertMock = vi.fn().mockResolvedValue({ error: null })
 const fromMock = vi.fn(() => ({ upsert: upsertMock }))
 
+// The real client is loaded lazily, so the mock hands back a resolved promise
+// the same way getSupabase() does.
 vi.mock('../src/services/supabaseClient', () => ({
-  supabase: { from: fromMock },
+  getSupabase: () => Promise.resolve({ from: fromMock }),
   isSupabaseConfigured: true,
 }))
 

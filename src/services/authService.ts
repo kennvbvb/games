@@ -1,29 +1,38 @@
-import type { Session } from '@supabase/supabase-js'
-import { supabase, isSupabaseConfigured } from './supabaseClient'
+import type { Session, SupabaseClient } from '@supabase/supabase-js'
+import { getSupabase, isSupabaseConfigured } from './supabaseClient'
 
 export { isSupabaseConfigured }
 
+/** Resolves the lazily-loaded client, or null when cloud accounts are off. */
+function client(): Promise<SupabaseClient> | null {
+  return getSupabase()
+}
+
 export async function getSession(): Promise<Session | null> {
-  if (!supabase) return null
-  const { data } = await supabase.auth.getSession()
+  const pending = client()
+  if (!pending) return null
+  const { data } = await (await pending).auth.getSession()
   return data.session
 }
 
 export async function signUp(email: string, password: string): Promise<Session | null> {
-  if (!supabase) throw new Error('Cloud accounts are not configured')
-  const { data, error } = await supabase.auth.signUp({ email, password })
+  const pending = client()
+  if (!pending) throw new Error('Cloud accounts are not configured')
+  const { data, error } = await (await pending).auth.signUp({ email, password })
   if (error) throw error
   return data.session
 }
 
 export async function signIn(email: string, password: string): Promise<Session | null> {
-  if (!supabase) throw new Error('Cloud accounts are not configured')
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const pending = client()
+  if (!pending) throw new Error('Cloud accounts are not configured')
+  const { data, error } = await (await pending).auth.signInWithPassword({ email, password })
   if (error) throw error
   return data.session
 }
 
 export async function signOut(): Promise<void> {
-  if (!supabase) return
-  await supabase.auth.signOut()
+  const pending = client()
+  if (!pending) return
+  await (await pending).auth.signOut()
 }
