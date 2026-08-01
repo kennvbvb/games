@@ -1,6 +1,7 @@
 import type { TraitId } from '../data/enemyTraits'
 import type { PlanId } from '../data/battlePlans'
 import type { RaceId } from '../data/races'
+import type { StageVisual } from '../data/biomes'
 
 export interface PlayerStats {
   maxHp: number
@@ -178,7 +179,10 @@ export interface StageConfig {
   order: number
   enemy: EnemyConfig
   rewards: StageRewards
+  /** Flattened for the scenery painter; composed from `visual`. */
   bg: StageBackground
+  /** The composition it was built from, so tests can assert all 60 differ. */
+  visual: StageVisual
 }
 
 /**

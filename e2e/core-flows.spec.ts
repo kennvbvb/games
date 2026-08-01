@@ -9,12 +9,12 @@ const MENU = {
   quests: { x: 240, y: 520 },
   settings: { x: 148, y: 586 },
 }
-// Stage select is one chapter per page: three ordinary rows, then a taller
-// boss card that closes the chapter.
-const STAGE_ROW_1 = { x: 372, y: 156 }
-const BOSS_ROW = { x: 372, y: 434 }
-const CHAPTER_NEXT = { x: 350, y: 528 }
-const STAGES_BACK = { x: 240, y: 592 }
+// One page is one world: four ordinary rows, then the boss on a taller card.
+const STAGE_ROW_1 = { x: 374, y: 153 }
+const BOSS_ROW = { x: 374, y: 478 }
+const WORLD_NEXT = { x: 350, y: 556 }
+const WORLD_PREV = { x: 130, y: 556 }
+const STAGES_BACK = { x: 240, y: 616 }
 
 // Settings rows: four toggles from y=224 at 84 apart, then the language row.
 const SETTINGS = {
@@ -77,15 +77,15 @@ test.describe('core flows', () => {
         level: 2,
         gold: 500,
         stats: { maxHp: 62, atk: 13, def: 5 },
-        stageProgress: { highestUnlocked: 12, completedStageIds: [] },
+        // Everything unlocked, so stage select opens straight on the last
+        // world — no paging needed to reach a fight well out of reach.
+        stageProgress: { highestUnlocked: 60, completedStageIds: [] },
       }),
     )
     await game.continueAsGuest()
 
     await game.tap(MENU.stages.x, MENU.stages.y)
-    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y) // chapter 2
-    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y) // chapter 3 — stages 9 to 12
-    await game.tap(BOSS_ROW.x, BOSS_ROW.y) // fight the final boss, well out of reach
+    await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the final boss
     await game.pickPlan()
 
     await page.waitForTimeout(6000)
@@ -223,42 +223,43 @@ test.describe('quests', () => {
   })
 })
 
-test.describe('chapters and bosses', () => {
-  test('clearing a chapter boss unlocks the next chapter', async ({ page }) => {
+test.describe('worlds and bosses', () => {
+  test('clearing a world boss unlocks the next world', async ({ page }) => {
     const game = new GamePage(page)
     await game.open(
       makeSave({
         level: 30, // Stats are derived from level, so this is the real power.
-        stageProgress: { highestUnlocked: 4, completedStageIds: ['stage-1', 'stage-2', 'stage-3'] },
+        stageProgress: { highestUnlocked: 5, completedStageIds: ['stage-1', 'stage-2', 'stage-3', 'stage-4'] },
       }),
     )
     await game.continueAsGuest()
 
     await game.tap(MENU.stages.x, MENU.stages.y)
-    await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the chapter-1 boss
+    await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the World 1 boss
     await game.pickPlan()
 
     await expect
       .poll(async () => (await game.save())?.stageProgress?.highestUnlocked ?? 0, { timeout: 20_000 })
-      .toBeGreaterThan(4)
+      .toBeGreaterThan(5)
 
     const save = await game.save()
-    expect(save?.stageProgress?.completedStageIds).toContain('stage-4')
+    expect(save?.stageProgress?.completedStageIds).toContain('stage-5')
     // A boss pays far more than the stage before it — that is what makes the
     // wall worth breaking.
     expect(save?.gold).toBeGreaterThan(80)
   })
 
-  test('every chapter is reachable and ends in a boss', async ({ page }) => {
+  test('every world is reachable and ends in a boss', async ({ page }) => {
     const game = new GamePage(page)
-    await game.open(makeSave({ stageProgress: { highestUnlocked: 12, completedStageIds: [] } }))
+    await game.open(makeSave({ stageProgress: { highestUnlocked: 60, completedStageIds: [] } }))
     await game.continueAsGuest()
     await game.tap(MENU.stages.x, MENU.stages.y)
 
-    // Paging to the last chapter and back proves the pager bounds match the
-    // chapter count — an off-by-one here would strand the final boss.
-    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y)
-    await game.tap(CHAPTER_NEXT.x, CHAPTER_NEXT.y)
+    // Opening straight on the last world is the point: with twelve worlds, a
+    // player unlocked to the end must not have to page eleven times. Stepping
+    // back and forward from there also proves the pager bounds are right.
+    await game.tap(WORLD_PREV.x, WORLD_PREV.y)
+    await game.tap(WORLD_NEXT.x, WORLD_NEXT.y)
     await game.tap(BOSS_ROW.x, BOSS_ROW.y) // the final boss
     await game.pickPlan()
     await page.waitForTimeout(6000)

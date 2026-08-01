@@ -167,39 +167,16 @@ never downloads it.
 - Saves made before kin existed keep their animal avatar; it appears on the
   Character page as the hero's buddy rather than being thrown away.
 - Single character, no party/roster.
-- 12 hand-tuned stages with a difficulty curve and per-stage backdrop; each stage
-  unlocks the next on victory.
-- The stages are grouped into three chapters of four, and stage select shows one
-  chapter per page. Chapters are a slice of the stage list rather than separate
-  content, so the grouping cannot drift out of sync with `STAGES`.
-- Every chapter closes with a **boss**: more health, harder hits, 2.5× rewards,
-  and an *enrage* — from turn 6 the boss gains 15% of its base attack every
-  turn. That ends fights instead of letting them stall, which is what stops a
-  low-damage hero grinding a boss down over a hundred turns. Measured across the
-  plausible stat range, enrage changes the outcome for 6–9% of builds on the
-  later bosses and barely touches the first one, so it gates the late game
-  without ambushing new players.
-- Enrage is deterministic like the rest of combat, so the stage preview
-  simulates it too — a boss the preview calls winnable is winnable.
-- Before each fight you commit to a **battle plan**: Brave Rush hits much harder
-  and takes more back, Cozy Guard softens every blow and mends as it goes,
-  Clever Trick slips past swings and lands the occasional huge hit. Each stage's
-  enemy has a **trait** — Slippery dodges, Fierce turns brutal below half health,
-  Mending heals itself — and the trait is what makes one plan beat another.
-- Prepare Battle simulates all three plans and marks one BEST. Measured across
-  the whole plausible stat range, hitting harder never turns a loss into a win —
-  it only ends a fight sooner — so the recommendation optimises for speed when a
-  win is comfortable and for survival when it is close.
-- Damage is a single product of multipliers **rounded once** at the end. Rounding
-  per step would make the result depend on the order the multipliers happen to be
-  written in, so every new effect would quietly rebalance the existing ones.
-  Dodging is a gate rather than a zero multiplier, because the minimum-1 floor
-  would otherwise undo it.
-- Healing fades out between turns 20 and 40, symmetrically for both sides. Without
-  it a defensive plan against a chip-damage enemy is literally unkillable, and the
-  turn cap would score that unlosable fight as a defeat. A fight neither side can
-  finish is reported as a **stalemate**, not a loss — the previous behaviour told
-  the player, the stage preview and the offline payout the same three lies.
+- **60 stages across 12 worlds of five.** The fifth stage of every world is its
+  boss. Worlds are a fixed slice of the stage list rather than separate content,
+  so adding a stage cannot leave one half-defined.
+- Stage select shows one world per page, opens on the world holding your
+  furthest unlocked stage, and labels the pager `World 8 / 12` rather than
+  printing twelve dots.
+- Backgrounds are **composed, not hand-written**: a biome supplies the palette
+  and its props, and each stage adds a landmark and optional weather. All 60
+  combinations are distinct, and a test asserts it — 60 hand-authored palettes
+  would have been 60 chances to end up looking like nothing in particular.
 - Combat is a deterministic, precomputed auto-battle (`resolveBattle`) that the `BattleScene`
   animates — no twitch input, in keeping with the incremental/idle genre.
 - Idle-friendly: pick a battle speed (×1/×2/×4), skip the animation on stages you

@@ -1,5 +1,5 @@
 import { STAGES } from './stages'
-import { BOSS_STAGE_IDS } from './chapters'
+import { BOSS_STAGE_IDS } from './worlds'
 import type { MessageKey } from '../i18n'
 import type { PlayerState } from '../types'
 

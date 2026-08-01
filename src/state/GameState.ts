@@ -6,8 +6,12 @@ class GameStateStore {
   userId: string | null = null
   selectedStage: StageConfig | null = null
   lastBattleResult: BattleResult | null = null
-  /** Remembered stage-select page so post-battle flow returns where the player was. */
-  stagePage = 0
+  /**
+   * Remembered stage-select page, so the post-battle flow returns where the
+   * player was. -1 means "not chosen yet", which stage select reads as "open
+   * the world I am actually up to".
+   */
+  stagePage = -1
   /**
    * The plan chosen for the next fight. Null falls back to the saved default,
    * which is what lets an auto-battle streak skip the plan picker entirely.
