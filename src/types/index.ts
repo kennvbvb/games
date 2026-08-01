@@ -2,6 +2,7 @@ import type { TraitId } from '../data/enemyTraits'
 import type { PlanId } from '../data/battlePlans'
 import type { RaceId } from '../data/races'
 import type { StageVisual } from '../data/biomes'
+import type { DifficultyId } from '../data/difficulties'
 
 export interface PlayerStats {
   maxHp: number
@@ -39,7 +40,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 11
+export const SAVE_SCHEMA_VERSION = 12
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -65,6 +66,12 @@ export interface GameSettings {
    * last choice rather than whichever plan happens to be best.
    */
   battlePlan: PlanId
+  /**
+   * Campaign difficulty. Lives in settings rather than on the stage so a mode
+   * change re-rates every stage at once, including the previews and the
+   * offline payout, instead of only the fight about to be fought.
+   */
+  difficulty: DifficultyId
   /**
    * Opt-in gameplay analytics. Always starts false, including on upgraded
    * saves — consent cannot be inherited from a version that never asked.
@@ -115,6 +122,15 @@ export interface PlayerState {
   upgrades: UpgradeCounts
   ownedItemIds: string[]
   equipped: Equipment
+  /**
+   * Skills bought from the tree. The *points* that paid for them are derived
+   * from level and bosses cleared rather than stored, so an edited save can
+   * claim any list it likes and still only keep what the budget covers — see
+   * systems/skills.
+   */
+  unlockedSkillIds: string[]
+  /** Up to LOADOUT_SIZE unlocked skills, the ones a fight actually runs under. */
+  loadout: string[]
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState

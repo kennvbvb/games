@@ -6,6 +6,7 @@ import { heroTexture, raceOf } from '../data/races'
 import { expToNext } from '../systems/leveling'
 import { effectiveStats, equippedItems, totalBonus } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
+import { availableSkillPoints } from '../systems/skills'
 import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
 import { makeEmoji } from '../ui/components/makeEmoji'
@@ -142,15 +143,25 @@ export class CharacterScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
 
-    makeButton(this, GAME_W / 2 - 92, 604, t('character.equipment'), () => this.scene.start('Equipment'), {
-      minWidth: 168,
-      fontSize: '15px',
-      icon: 'icon_bag',
+    // Three across rather than two: the badge is the only thing that tells a
+    // player an unspent skill point is sitting there, so it has to be on the
+    // page they already visit to look at their build.
+    const points = availableSkillPoints(player)
+    makeButton(this, 84, 604, t('character.equipment'), () => this.scene.start('Equipment'), {
+      minWidth: 144,
+      fontSize: '13px',
     })
-    makeButton(this, GAME_W / 2 + 92, 604, t('menu.shop'), () => this.scene.start('Shop'), {
-      minWidth: 168,
-      fontSize: '15px',
-      icon: 'icon_cart',
+    makeButton(
+      this,
+      GAME_W / 2,
+      604,
+      points > 0 ? t('character.skillsBadge', { points }) : t('character.skills'),
+      () => this.scene.start('SkillTree'),
+      { variant: points > 0 ? 'primary' : 'secondary', minWidth: 144, fontSize: '13px' },
+    )
+    makeButton(this, 396, 604, t('menu.shop'), () => this.scene.start('Shop'), {
+      minWidth: 144,
+      fontSize: '13px',
     })
     makeButton(this, GAME_W / 2, 670, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',

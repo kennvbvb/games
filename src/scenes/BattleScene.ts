@@ -2,9 +2,10 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { isBossStage } from '../data/stages'
-import { heroTexture, raceOf } from '../data/races'
+import { heroTexture } from '../data/races'
 import { resolveBattle } from '../systems/combat'
-import { effectiveStats } from '../systems/upgrades'
+import { playerBattleInputs } from '../systems/playerBattle'
+import { enemyFor, rewardsFor } from '../data/difficulties'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
@@ -38,14 +39,14 @@ export class BattleScene extends Phaser.Scene {
     setupScene(this)
     const stage = GameState.selectedStage!
     const player = GameState.player!
-    const stats = effectiveStats(player)
+    const inputs = playerBattleInputs(player)
+    const stats = inputs.player
     const plan = GameState.selectedPlan ?? player.settings.battlePlan
     const result = resolveBattle({
-      player: stats,
-      enemy: stage.enemy,
-      rewards: stage.rewards,
+      ...inputs,
+      enemy: enemyFor(stage.enemy, player.settings.difficulty),
+      rewards: rewardsFor(stage.rewards, player.settings.difficulty),
       plan,
-      passive: raceOf(player.raceId).passive,
     })
     GameState.lastBattleResult = result
 

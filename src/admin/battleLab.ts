@@ -2,7 +2,7 @@ import { enemyFor, rewardsFor } from '../data/difficulties'
 import { PLAN_IDS } from '../data/battlePlans'
 import { RACE_IDS, raceOf } from '../data/races'
 import { resolveBattle } from '../systems/combat'
-import { effectiveStats } from '../systems/upgrades'
+import { playerBattleInputs } from '../systems/playerBattle'
 import { statsForLevel } from '../systems/leveling'
 import { expWithRacePassive } from '../systems/rewards'
 import type { DifficultyId } from '../data/difficulties'
@@ -138,15 +138,17 @@ export function runLab(run: LabRun): { result: BattleResult; metrics: LabMetrics
     run.raceId && run.raceId !== run.player.raceId
       ? { ...run.player, raceId: run.raceId, stats: statsForLevel(run.player.level, run.raceId) }
       : run.player
-  const stats = effectiveStats(base)
+  const inputs = playerBattleInputs(base)
+  const stats = inputs.player
   const enemy = enemyFor(run.stage.enemy, run.difficulty)
 
   const result = resolveBattle({
-    player: stats,
+    ...inputs,
+    // The race override has to reach the passive too, not just the stat block.
+    passive: raceOf(raceId).passive,
     enemy,
     rewards: rewardsFor(run.stage.rewards, run.difficulty),
     plan: run.plan ?? base.settings.battlePlan,
-    passive: raceOf(raceId).passive,
   })
 
   return { result, metrics: measure(result, stats.maxHp, enemy.maxHp, raceId) }

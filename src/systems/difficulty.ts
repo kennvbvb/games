@@ -1,7 +1,7 @@
 import { resolveBattle } from './combat'
-import { effectiveStats } from './upgrades'
+import { playerBattleInputs } from './playerBattle'
+import { enemyFor, rewardsFor } from '../data/difficulties'
 import { PLAN_IDS } from '../data/battlePlans'
-import { raceOf } from '../data/races'
 import type { PlanId } from '../data/battlePlans'
 import type { BattleOutcome, PlayerState, StageConfig } from '../types'
 
@@ -47,13 +47,13 @@ export const FORECAST_LABEL_KEYS = {
  * which is the one thing this function must never do.
  */
 export function stageOutlook(state: PlayerState, stage: StageConfig, plan?: PlanId): StageOutlook {
-  const stats = effectiveStats(state)
+  const inputs = playerBattleInputs(state)
+  const stats = inputs.player
   const result = resolveBattle({
-    player: stats,
-    enemy: stage.enemy,
-    rewards: stage.rewards,
+    ...inputs,
+    enemy: enemyFor(stage.enemy, state.settings.difficulty),
+    rewards: rewardsFor(stage.rewards, state.settings.difficulty),
     plan: plan ?? state.settings.battlePlan,
-    passive: raceOf(state.raceId).passive,
   })
 
   const hpRemaining = stats.maxHp > 0 ? Math.max(0, result.playerHpLeft) / stats.maxHp : 0

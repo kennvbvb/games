@@ -4,6 +4,7 @@ import type { RaceId } from '../data/races'
 import { statsForLevel } from '../systems/leveling'
 import { DEFAULT_AVATAR } from '../data/avatars'
 import { DEFAULT_PLAN } from '../data/battlePlans'
+import { DEFAULT_DIFFICULTY } from '../data/difficulties'
 import { DEFAULT_RACE, raceOf } from '../data/races'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale } from '../i18n'
@@ -30,6 +31,8 @@ export function createDefaultPlayerState(
     upgrades: { hp: 0, atk: 0, def: 0 },
     ownedItemIds: [],
     equipped: { weapon: null, armor: null, charm: null },
+    unlockedSkillIds: [],
+    loadout: [],
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
     settings: {
       battleSpeed: 1,
@@ -41,6 +44,7 @@ export function createDefaultPlayerState(
       locale: detectLocale(),
       analytics: false,
       battlePlan: DEFAULT_PLAN,
+      difficulty: DEFAULT_DIFFICULTY,
     },
     idle: { farmingStageId: null, lastSeenAt: Date.now() },
     tutorialStep: 0,

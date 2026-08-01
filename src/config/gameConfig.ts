@@ -8,6 +8,7 @@ import { MainMenuScene } from '../scenes/MainMenuScene'
 import { CharacterScene } from '../scenes/CharacterScene'
 import { ShopScene } from '../scenes/ShopScene'
 import { EquipmentScene } from '../scenes/EquipmentScene'
+import { SkillTreeScene } from '../scenes/SkillTreeScene'
 import { SettingsScene } from '../scenes/SettingsScene'
 import { AchievementsScene } from '../scenes/AchievementsScene'
 import { ConflictScene } from '../scenes/ConflictScene'
@@ -40,6 +41,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     CharacterScene,
     ShopScene,
     EquipmentScene,
+    SkillTreeScene,
     SettingsScene,
     AchievementsScene,
     StageSelectScene,

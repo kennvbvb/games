@@ -4,6 +4,7 @@ import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
 import { BATTLE_PLANS } from '../data/battlePlans'
 import { traitOf } from '../data/enemyTraits'
+import { equippedSkills } from '../systems/skills'
 import { isBossStage } from '../data/stages'
 import { FORECAST_LABEL_KEYS, planOutlooks, recommendPlan } from '../systems/difficulty'
 import { makeButton } from '../ui/components/makeButton'
@@ -75,6 +76,8 @@ export class PrepareBattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5)
 
+    this.renderLoadout()
+
     BATTLE_PLANS.forEach((plan, i) => {
       this.renderPlan(plan.id, outlooks[plan.id], ROW_YS[i], best?.plan === plan.id)
     })
@@ -96,6 +99,35 @@ export class PrepareBattleScene extends Phaser.Scene {
       minWidth: 180,
       fontSize: '15px',
     })
+  }
+
+  /**
+   * The build this forecast was computed under. Without it the numbers below
+   * look like a property of the stage, and a player who forgot to fill a slot
+   * has no way to see why the fight got harder.
+   */
+  private renderLoadout(): void {
+    const skills = equippedSkills(GameState.player!)
+    this.add
+      .text(66, 208, t('plan.loadout'), {
+        fontSize: '11px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.textDim,
+      })
+      .setOrigin(0, 0.5)
+
+    if (skills.length === 0) {
+      this.add
+        .text(132, 208, t('plan.noSkills'), {
+          fontSize: '11px',
+          fontFamily: FONT.family,
+          color: COLORS.textDisabled,
+        })
+        .setOrigin(0, 0.5)
+      return
+    }
+    skills.forEach((skill, i) => makeEmoji(this, 140 + i * 26, 208, skill.icon, 18))
   }
 
   private renderPlan(id: PlanId, outlook: StageOutlook, y: number, recommended: boolean): void {

@@ -6,8 +6,11 @@ import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
 import { normalizePlan } from '../data/battlePlans'
+import { normalizeDifficulty } from '../data/difficulties'
 import { normalizeAppearance, normalizeRace } from '../data/races'
 import { statsForLevel } from '../systems/leveling'
+import { POINTS_PER_BOSS, POINTS_PER_LEVEL, sanitizeLoadout, sanitizeSkills } from '../systems/skills'
+import { BOSS_STAGE_IDS } from '../data/worlds'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
 
@@ -78,6 +81,14 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
 
   const lifetimeRaw = isRecord(raw.lifetime) ? raw.lifetime : {}
 
+  // Skills come after progress because their budget is derived from it. A
+  // pre-v12 save has neither field and simply starts with an empty tree, which
+  // is exactly what a player who never spent a point would have.
+  const bossesCleared = completedStageIds.filter((id) => BOSS_STAGE_IDS.includes(id)).length
+  const skillBudget = (level - 1) * POINTS_PER_LEVEL + bossesCleared * POINTS_PER_BOSS
+  const unlockedSkillIds = sanitizeSkills(raw.unlockedSkillIds, raceId, skillBudget)
+  const loadout = sanitizeLoadout(raw.loadout, unlockedSkillIds)
+
   // v2 saves predate settings/idle; absent blocks fall back to defaults.
   const settingsRaw = isRecord(raw.settings) ? raw.settings : {}
   const idleRaw = isRecord(raw.idle) ? raw.idle : {}
@@ -114,6 +125,8 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     },
     ownedItemIds,
     equipped,
+    unlockedSkillIds,
+    loadout,
     stageProgress: {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,
@@ -134,6 +147,9 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       // closest to plain trading blows, so an upgraded save fights roughly the
       // way it did before there were plans.
       battlePlan: normalizePlan(settingsRaw.battlePlan),
+      // Absent in pre-v12 saves. Normal is the campaign as it was balanced, so
+      // an upgraded save keeps fighting exactly the numbers it always did.
+      difficulty: normalizeDifficulty(settingsRaw.difficulty),
     },
     idle: { farmingStageId, lastSeenAt },
     tutorialStep: clampInt(raw.tutorialStep, 0, TUTORIAL_DONE, 0),

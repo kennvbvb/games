@@ -419,3 +419,85 @@ test.describe('admin test lab', () => {
     expect(after.equals(before)).toBe(true)
   })
 })
+
+test.describe('skill tree', () => {
+  // Branch tabs sit at y=96; skill cards at 164/244/324/404 with the action
+  // button on the right; loadout slots at y=516.
+  const SKILLS_BUTTON = { x: 240, y: 604 }
+  const BRANCH = (i: number) => ({ x: 84 + i * 156, y: 96 })
+  const CARD_ACTION = (i: number) => ({ x: 386, y: [164, 244, 324, 404][i] })
+
+  test('unlocking and equipping a skill survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    // Level 12 with three bosses down: 11 + 3 = 14 points, plenty for a branch.
+    await game.open(
+      makeSave({
+        stageProgress: {
+          highestUnlocked: 20,
+          completedStageIds: ['stage-5', 'stage-10', 'stage-15'],
+        },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(SKILLS_BUTTON.x, SKILLS_BUTTON.y)
+
+    // Tier 1 of the first branch is the only thing buyable to start with.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await expect
+      .poll(async () => (await game.save())?.unlockedSkillIds, { timeout: 10_000 })
+      .toEqual(['human-1-1'])
+
+    // The same button is now Equip rather than Unlock.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await expect.poll(async () => (await game.save())?.loadout, { timeout: 10_000 }).toEqual(['human-1-1'])
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    const save = await game.save()
+    expect(save?.unlockedSkillIds).toEqual(['human-1-1'])
+    expect(save?.loadout).toEqual(['human-1-1'])
+  })
+
+  test('a tier stays locked until the one below it is bought', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ level: 30 }))
+    await game.continueAsGuest()
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(SKILLS_BUTTON.x, SKILLS_BUTTON.y)
+
+    // Tier 2 first: its button is disabled, so this tap must do nothing.
+    await game.tap(CARD_ACTION(1).x, CARD_ACTION(1).y)
+    await game.settle(400)
+    expect((await game.save())?.unlockedSkillIds).toEqual([])
+
+    // Buy tier 1, and tier 2 opens.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await game.settle(400)
+    await game.tap(CARD_ACTION(1).x, CARD_ACTION(1).y)
+    await expect
+      .poll(async () => (await game.save())?.unlockedSkillIds, { timeout: 10_000 })
+      .toEqual(['human-1-1', 'human-1-2'])
+  })
+
+  test('switching branches shows a different set of four', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ level: 30 }))
+    await game.continueAsGuest()
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(SKILLS_BUTTON.x, SKILLS_BUTTON.y)
+
+    const first = await page.locator('canvas').first().screenshot()
+    await game.tap(BRANCH(2).x, BRANCH(2).y)
+    const third = await page.locator('canvas').first().screenshot()
+    expect(third.equals(first)).toBe(false)
+
+    // And buying here lands in the third branch, not the first.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await expect
+      .poll(async () => (await game.save())?.unlockedSkillIds, { timeout: 10_000 })
+      .toEqual(['human-3-1'])
+  })
+})
