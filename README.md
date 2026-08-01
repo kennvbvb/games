@@ -151,7 +151,21 @@ never downloads it.
 
 ## Gameplay notes (MVP scope)
 
-- New players name their hero and pick an animal avatar before starting.
+- New players name their hero and choose one of six kin — Human, Elf, Dwarf,
+  Orc, Fae, Undead — each with its own starting stats, per-level growth and a
+  passive, plus two looks. Creation runs in two steps because name, kin and look
+  will not fit one 480×720 screen without shrinking the tap targets.
+- Stats are a function of **level and kin**, never read from the save, so an
+  edited stat block cannot stick and rebalancing a kin applies retroactively
+  with no migration. Human is defined from the pre-kin balance constants, which
+  is why every older save migrates to it with every number unchanged — including
+  its stage difficulty ratings, since Human's passive is the only one that never
+  touches combat.
+- `raceId` is a client-chosen value like `avatar`: editing a save to switch kin
+  is possible and not prevented. Stats stay bounded either way, because they are
+  still derived from one level and one value from a closed set.
+- Saves made before kin existed keep their animal avatar; it appears on the
+  Character page as the hero's buddy rather than being thrown away.
 - Single character, no party/roster.
 - 12 hand-tuned stages with a difficulty curve and per-stage backdrop; each stage
   unlocks the next on victory.

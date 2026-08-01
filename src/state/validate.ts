@@ -6,6 +6,7 @@ import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
 import { normalizePlan } from '../data/battlePlans'
+import { normalizeAppearance, normalizeRace } from '../data/races'
 import { statsForLevel } from '../systems/leveling'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
@@ -43,6 +44,11 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
 
   const level = clampInt(raw.level, 1, MAX_LEVEL, 1)
   const revision = clampInt(raw.revision, 0, Number.MAX_SAFE_INTEGER, 0)
+  // Must be resolved before stats are derived below: an unrecognised race would
+  // otherwise mean undefined growth, NaN stats, and a battle loop that only
+  // ends when it hits the turn cap. Pre-v11 saves become human, whose numbers
+  // are identical to the pre-race balance, so nobody's stats move.
+  const raceId = normalizeRace(raw.raceId)
   const upgradesRaw = isRecord(raw.upgrades) ? raw.upgrades : {}
   const progressRaw = isRecord(raw.stageProgress) ? raw.stageProgress : {}
 
@@ -95,10 +101,12 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
     name,
     avatar: normalizeAvatar(raw.avatar),
+    raceId,
+    appearanceId: normalizeAppearance(raceId, raw.appearanceId),
     level,
     exp: clampInt(raw.exp, 0, Number.MAX_SAFE_INTEGER, 0),
     gold: clampInt(raw.gold, 0, Number.MAX_SAFE_INTEGER, 0),
-    stats: statsForLevel(level),
+    stats: statsForLevel(level, raceId),
     upgrades: {
       hp: clampInt(upgradesRaw.hp, 0, MAX_UPGRADE_COUNT, 0),
       atk: clampInt(upgradesRaw.atk, 0, MAX_UPGRADE_COUNT, 0),

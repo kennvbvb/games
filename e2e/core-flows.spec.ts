@@ -31,11 +31,16 @@ test.describe('core flows', () => {
     // No save yet, so the hero creation screen should be showing.
     await expect(page.locator('#hero-name')).toBeVisible()
     await page.locator('#hero-name').fill('Newbie')
-    await game.tap(240, 574) // Start Adventure
+    // Kin grid is two columns: Elf is the right-hand card of the first row.
+    await game.tap(240 + 112, 216)
+    await game.tap(240, 644) // Next
+    await game.tap(240, 586) // Start Adventure
     await game.expectSaved()
 
     const save = await game.save()
-    expect(save).toMatchObject({ name: 'Newbie', level: 1, tutorialStep: 0 })
+    expect(save).toMatchObject({ name: 'Newbie', level: 1, tutorialStep: 0, raceId: 'elf' })
+    // Stats come from the race, not from a shared default.
+    expect(save?.stats).toEqual({ maxHp: 42, atk: 13, def: 3 })
     // The hero-name input is gone once we're past creation.
     await expect(page.locator('#hero-name')).toHaveCount(0)
   })
@@ -119,6 +124,7 @@ test.describe('core flows', () => {
 
     // Recovers into hero creation with the bad data set aside.
     await expect(page.locator('#hero-name')).toBeVisible()
+    expect(errors).toEqual([])
     const quarantined = await page.evaluate((k) => localStorage.getItem(k), QUARANTINE_KEY)
     expect(quarantined).toBe('{ not valid json')
     expect(errors).toEqual([])

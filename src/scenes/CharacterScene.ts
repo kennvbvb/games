@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { STAGES } from '../data/stages'
 import { GameState } from '../state/GameState'
+import { heroTexture, raceOf } from '../data/races'
 import { expToNext } from '../systems/leveling'
 import { effectiveStats, equippedItems, totalBonus } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
@@ -29,7 +30,7 @@ export class CharacterScene extends Phaser.Scene {
 
     // Hero card with level + EXP progress
     makePanel(this, GAME_W / 2, 170, 400, 170)
-    const hero = makeEmoji(this, GAME_W / 2, 138, `avatar_${player.avatar}`, 70)
+    const hero = makeEmoji(this, GAME_W / 2, 138, heroTexture(player), 70)
     ambientTween(this, { targets: hero, angle: { from: -4, to: 4 }, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
     this.add
       .text(GAME_W / 2, 192, `${player.name}  ·  Lv ${player.level}`, {
@@ -108,17 +109,50 @@ export class CharacterScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5)
 
-    makeButton(this, GAME_W / 2 - 92, 552, t('character.equipment'), () => this.scene.start('Equipment'), {
+    // Kin and passive, plus the animal buddy chosen before kin existed — kept
+    // so nobody's original pick is silently thrown away.
+    const race = raceOf(player.raceId)
+    this.add
+      .text(146, 528, `${t(race.nameKey)}  ·  ${t(race.passiveNameKey)}`, {
+        fontSize: '14px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.gold,
+      })
+      .setOrigin(0, 0.5)
+    makeEmoji(this, 128, 528, heroTexture(player), 17)
+
+    // Labelled, or the animal reads as a stray sprite rather than the buddy
+    // this player picked back when that was the whole choice.
+    makeEmoji(this, 402, 528, `avatar_${player.avatar}`, 17)
+    this.add
+      .text(390, 528, t('character.buddy'), {
+        fontSize: '11px',
+        fontFamily: FONT.family,
+        color: COLORS.textDim,
+      })
+      .setOrigin(1, 0.5)
+    this.add
+      .text(GAME_W / 2, 552, t(race.passiveDescriptionKey), {
+        fontSize: '11px',
+        fontFamily: FONT.family,
+        color: COLORS.textDim,
+        align: 'center',
+        wordWrap: { width: 380 },
+      })
+      .setOrigin(0.5)
+
+    makeButton(this, GAME_W / 2 - 92, 604, t('character.equipment'), () => this.scene.start('Equipment'), {
       minWidth: 168,
       fontSize: '15px',
       icon: 'icon_bag',
     })
-    makeButton(this, GAME_W / 2 + 92, 552, t('menu.shop'), () => this.scene.start('Shop'), {
+    makeButton(this, GAME_W / 2 + 92, 604, t('menu.shop'), () => this.scene.start('Shop'), {
       minWidth: 168,
       fontSize: '15px',
       icon: 'icon_cart',
     })
-    makeButton(this, GAME_W / 2, 622, t('common.back'), () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, 670, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '15px',
       minWidth: 160,

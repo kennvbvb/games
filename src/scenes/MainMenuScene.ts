@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_W, GAME_H, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
+import { heroTexture } from '../data/races'
 import { signOut } from '../services/authService'
 import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncStatus'
 import { effectiveStats } from '../systems/upgrades'
@@ -52,7 +53,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe)
 
     makePanel(this, GAME_W / 2, 210, 400, 150)
-    const hero = makeEmoji(this, 118, 210, `avatar_${player.avatar}`, 62)
+    const hero = makeEmoji(this, 118, 210, heroTexture(player), 62)
     ambientTween(this, { targets: hero, y: 203, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' })
 
     this.add
@@ -164,7 +165,7 @@ export class MainMenuScene extends Phaser.Scene {
         { fontSize: '14px', fontFamily: FONT.family, color: COLORS.textDim, align: 'center' },
       )
       .setOrigin(0.5)
-    const hero = makeEmoji(this, GAME_W / 2, GAME_H / 2 - 14, `avatar_${player.avatar}`, 52)
+    const hero = makeEmoji(this, GAME_W / 2, GAME_H / 2 - 14, heroTexture(player), 52)
     const battles = this.add
       .text(GAME_W / 2, GAME_H / 2 + 26, t('idle.battlesWon', { count: report.battles }), {
         fontSize: '14px',

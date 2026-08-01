@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { isBossStage } from '../data/stages'
+import { heroTexture, raceOf } from '../data/races'
 import { resolveBattle } from '../systems/combat'
 import { effectiveStats } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
@@ -38,7 +39,13 @@ export class BattleScene extends Phaser.Scene {
     const player = GameState.player!
     const stats = effectiveStats(player)
     const plan = GameState.selectedPlan ?? player.settings.battlePlan
-    const result = resolveBattle({ player: stats, enemy: stage.enemy, rewards: stage.rewards, plan })
+    const result = resolveBattle({
+      player: stats,
+      enemy: stage.enemy,
+      rewards: stage.rewards,
+      plan,
+      passive: raceOf(player.raceId).passive,
+    })
     GameState.lastBattleResult = result
 
     // Replaying a stage that's already been beaten is pure waiting, so the
@@ -66,7 +73,7 @@ export class BattleScene extends Phaser.Scene {
 
     makePanel(this, GAME_W / 2, 250, 430, 250)
 
-    const playerSprite = makeEmoji(this, 140, 218, `avatar_${player.avatar}`, 64)
+    const playerSprite = makeEmoji(this, 140, 218, heroTexture(player), 64)
     const enemySprite = makeEmoji(this, 340, 218, stage.enemy.sprite, 64)
 
     this.add

@@ -16,12 +16,14 @@ export interface SaveOverrides {
 /** A mid-game save in the current schema, overridable per test. */
 export function makeSave(over: SaveOverrides = {}): string {
   return JSON.stringify({
-    schemaVersion: 10,
+    schemaVersion: 11,
     revision: 1,
     syncedRevision: 1,
     updatedAt: new Date().toISOString(),
     name: 'Tester',
     avatar: 'fox',
+    raceId: 'human',
+    appearanceId: 'a',
     level: 12,
     exp: 0,
     gold: 800,
