@@ -6,10 +6,60 @@ import { parsePlayerState } from '../src/state/validate'
 import type { PlayerState } from '../src/types'
 
 describe('shop items', () => {
-  it('has 20 unique items and every level gate is on a meaningful bonus', () => {
-    expect(ITEMS).toHaveLength(20)
-    expect(new Set(ITEMS.map((i) => i.id)).size).toBe(20)
+  it('has unique ids and at least one level gate', () => {
+    expect(new Set(ITEMS.map((i) => i.id)).size).toBe(ITEMS.length)
     expect(ITEMS.some((i) => i.minLevel !== undefined)).toBe(true)
+  })
+
+  it('offers gear the whole way to the last world', () => {
+    // A 60-stage campaign where the shop stops mattering after World 3 makes
+    // gold pointless for two thirds of the run.
+    const gates = ITEMS.map((i) => i.minLevel ?? 1).sort((a, b) => a - b)
+    expect(Math.max(...gates)).toBeGreaterThanOrEqual(20)
+    for (const band of [
+      [1, 6],
+      [7, 12],
+      [13, 18],
+      [19, 30],
+    ]) {
+      const inBand = ITEMS.filter((i) => (i.minLevel ?? 1) >= band[0] && (i.minLevel ?? 1) <= band[1])
+      expect(inBand.length, `no gear gated in levels ${band[0]}-${band[1]}`).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('gives every slot something in the late game', () => {
+    for (const slot of ['weapon', 'armor', 'charm'] as const) {
+      const late = ITEMS.filter((i) => i.slot === slot && (i.minLevel ?? 1) >= 15)
+      expect(late.length, `${slot} has no late-game option`).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('has no item that is simply better than a cheaper one', () => {
+    // A piece that wins on every stat while costing less ends the slot as a
+    // choice — which is the whole point of one item per slot.
+    const stats = (i: (typeof ITEMS)[number]) => [i.bonus.hp ?? 0, i.bonus.atk ?? 0, i.bonus.def ?? 0]
+    for (const a of ITEMS) {
+      for (const b of ITEMS) {
+        if (a.id === b.id || a.slot !== b.slot) continue
+        const [ah, aa, ad] = stats(a)
+        const [bh, ba, bd] = stats(b)
+        const betterEverywhere = ah >= bh && aa >= ba && ad >= bd && (ah > bh || aa > ba || ad > bd)
+        const noDearer = a.cost <= b.cost && (a.minLevel ?? 1) <= (b.minLevel ?? 1)
+        expect(betterEverywhere && noDearer, `${b.id} is strictly dominated by ${a.id}`).toBe(false)
+      }
+    }
+  })
+
+  it('keeps cost climbing with power', () => {
+    const power = (i: (typeof ITEMS)[number]) =>
+      (i.bonus.hp ?? 0) / 4 + (i.bonus.atk ?? 0) * 1.5 + (i.bonus.def ?? 0)
+    const sorted = [...ITEMS].sort((a, b) => a.cost - b.cost)
+    // Not strictly monotonic — same-tier alternates trade off — but the
+    // cheapest third must not out-power the dearest third.
+    const third = Math.floor(sorted.length / 3)
+    const cheapest = Math.max(...sorted.slice(0, third).map(power))
+    const dearest = Math.min(...sorted.slice(-third).map(power))
+    expect(cheapest).toBeLessThan(dearest)
   })
 
   it('buying deducts gold and adds the item once', () => {

@@ -187,6 +187,10 @@ never downloads it.
 - Stage select previews each fight: rewards, plus an exact difficulty read
   (Easy / Fair / Hard and the HP you would have left) simulated from the real
   deterministic combat.
+- The shop carries gear the whole way to World 12, in four tiers. Within a tier
+  each slot forks — raw power, or power with some padding — so no piece is
+  simply better than a cheaper one, and a test asserts that no item dominates
+  another on all three stats while costing less.
 - Stats grow automatically on level-up; the shop sells repeatable treats
   (Heart Cookie / Sword Candy / Shield Donut, escalating costs) plus 20 one-of-a-kind
   gear pieces — the strongest are level-gated.
