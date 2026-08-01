@@ -41,6 +41,7 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
   if (typeof raw.name !== 'string' && typeof raw.level !== 'number') return null
 
   const level = clampInt(raw.level, 1, MAX_LEVEL, 1)
+  const revision = clampInt(raw.revision, 0, Number.MAX_SAFE_INTEGER, 0)
   const upgradesRaw = isRecord(raw.upgrades) ? raw.upgrades : {}
   const progressRaw = isRecord(raw.stageProgress) ? raw.stageProgress : {}
 
@@ -83,7 +84,13 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
 
   return {
     schemaVersion: SAVE_SCHEMA_VERSION,
-    revision: clampInt(raw.revision, 0, Number.MAX_SAFE_INTEGER, 0),
+    revision,
+    // Pre-v9 saves have no sync marker. Defaulting it to the current revision
+    // means "assume in sync", so upgrading cannot manufacture a conflict out of
+    // a device that was perfectly up to date; a real divergence after this
+    // point still moves both sides past it. Never trust a marker from the
+    // future either — that would hide a genuine conflict.
+    syncedRevision: Math.min(clampInt(raw.syncedRevision, 0, Number.MAX_SAFE_INTEGER, revision), revision),
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
     name,
     avatar: normalizeAvatar(raw.avatar),

@@ -34,7 +34,7 @@ export interface ShopItem {
   minLevel?: number
 }
 
-export const SAVE_SCHEMA_VERSION = 8
+export const SAVE_SCHEMA_VERSION = 9
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -77,8 +77,14 @@ export interface IdleState {
 export interface PlayerState {
   /** Bump SAVE_SCHEMA_VERSION and add a migration step when this shape changes. */
   schemaVersion: number
-  /** Monotonic save counter; the higher revision wins when local and cloud disagree. */
+  /** Monotonic save counter, bumped on every persist. */
   revision: number
+  /**
+   * The revision at which this copy last matched the cloud. A counter alone
+   * cannot tell "the cloud is behind" from "both copies moved independently";
+   * comparing each side against this shared ancestor can. See detectConflict.
+   */
+  syncedRevision: number
   /** ISO timestamp of the last persist, informational only. */
   updatedAt: string
   name: string

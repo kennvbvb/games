@@ -40,11 +40,37 @@ Progress is namespaced so profiles can never bleed into each other:
 - `incremental-rpg-save-v2:user:<id>` — one slot per signed-in account
 
 A signed-in account never silently adopts guest progress; if a guest save exists
-when you first sign in, the game asks whether to import it. Saves carry a
-`schemaVersion` and a monotonic `revision`, so when the local and cloud copies
-disagree the newer one wins and is re-synced. Anything unreadable is moved to
-`incremental-rpg-save-v2:quarantine` rather than crashing the game, and every
-loaded save is re-validated (bounds-checked, unknown item/stage ids dropped).
+when you first sign in, the game asks whether to import it. Anything unreadable
+is moved to `incremental-rpg-save-v2:quarantine` rather than crashing the game,
+and every loaded save is re-validated (bounds-checked, unknown item/stage ids
+dropped).
+
+### When two devices disagree
+
+A monotonic `revision` cannot tell "the cloud is simply behind" from "both
+devices played on independently" — in both cases one number is larger, so
+picking the winner by size silently discards whichever pile of progress happens
+to be smaller. Saves therefore also carry `syncedRevision`: the revision at
+which this device last confirmed it matched the cloud, advanced only when a
+cloud write actually succeeds.
+
+| local moved since sync | cloud moved since sync | outcome |
+| --- | --- | --- |
+| no | yes | adopt the cloud copy |
+| yes | no | keep local and re-push it |
+| yes | yes | **ask the player** |
+
+The last row opens a screen showing both saves side by side — hero, level,
+stages cleared, gold, when each was last played — with the further-along one
+marked. There is deliberately no merge: combining two divergent saves would
+invent a state neither device ever had. Whichever copy loses is kept in
+`incremental-rpg-save-v2:conflict-backup` rather than deleted, and the winner is
+stamped above both revisions so the other device adopts it instead of forking
+again.
+
+An unreachable cloud is not a fork, and a save upgraded from before the marker
+existed defaults to "assume in sync", so neither situation can pop the dialog
+spuriously.
 
 ## Analytics
 

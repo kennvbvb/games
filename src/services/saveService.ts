@@ -3,6 +3,7 @@ import { parsePlayerState } from '../state/validate'
 import { getSupabase } from './supabaseClient'
 import { setSyncStatus } from './syncStatus'
 import { flushAnalytics, setAnalyticsEnabled, shouldFlush } from './analytics'
+import { detectConflict } from '../systems/conflict'
 import { setReducedMotionPreference } from '../ui/motion'
 import { setLocale } from '../i18n'
 
@@ -12,6 +13,8 @@ import { setLocale } from '../i18n'
 const KEY_PREFIX = 'incremental-rpg-save-v2'
 const LEGACY_KEY = 'incremental-rpg-save-v1'
 const QUARANTINE_KEY = `${KEY_PREFIX}:quarantine`
+/** Holds the copy the player rejected the last time two saves forked. */
+const CONFLICT_BACKUP_KEY = `${KEY_PREFIX}:conflict-backup`
 
 function localKey(userId: string | null): string {
   return userId ? `${KEY_PREFIX}:user:${userId}` : `${KEY_PREFIX}:guest`
@@ -101,7 +104,7 @@ async function loadCloud(userId: string): Promise<PlayerState | null> {
  * Returns the stamped state so callers can keep the new revision in memory.
  */
 export async function persist(state: PlayerState, userId: string | null): Promise<PlayerState> {
-  const stamped: PlayerState = {
+  let stamped: PlayerState = {
     ...state,
     revision: state.revision + 1,
     updatedAt: new Date().toISOString(),
@@ -111,6 +114,10 @@ export async function persist(state: PlayerState, userId: string | null): Promis
     setSyncStatus('saving')
     try {
       await saveCloud(userId, stamped)
+      // Record the point at which the two copies agree. Everything after this
+      // is unsynced local work, which is what makes a fork detectable later.
+      stamped = { ...stamped, syncedRevision: stamped.revision }
+      saveLocal(stamped, userId)
       setSyncStatus('synced')
     } catch (err) {
       console.error('Cloud save failed, progress is still safe on this device', err)
@@ -126,16 +133,25 @@ export async function persist(state: PlayerState, userId: string | null): Promis
   return stamped
 }
 
+export interface LoadResult {
+  /** The save to play, or null when there is nothing yet — or a choice to make. */
+  state: PlayerState | null
+  /** Set only when both copies moved independently; the player must pick one. */
+  conflict: { local: PlayerState; cloud: PlayerState } | null
+}
+
 /**
  * Loads the state for one namespace only — a signed-in user never falls back
- * to the guest slot (see importGuestSave for the explicit path). When local
- * and cloud disagree, the higher revision wins and is re-synced.
+ * to the guest slot (see importGuestSave for the explicit path).
+ *
+ * When local and cloud have both changed since they last agreed, this returns
+ * a conflict instead of choosing: see systems/conflict.
  */
-export async function loadState(userId: string | null): Promise<PlayerState | null> {
+export async function loadState(userId: string | null): Promise<LoadResult> {
   const local = loadLocal(userId)
   if (!userId) {
     setSyncStatus('guest')
-    return local
+    return { state: local, conflict: null }
   }
 
   let cloud: PlayerState | null = null
@@ -147,14 +163,58 @@ export async function loadState(userId: string | null): Promise<PlayerState | nu
     cloudFailed = true
   }
 
-  if (local && (!cloud || local.revision > cloud.revision)) {
-    // This device is ahead (e.g. an earlier cloud write failed); push it back up.
-    if (!cloudFailed) void persist(local, userId)
-    else setSyncStatus('error')
-    return local
+  // An unreachable cloud is not a fork — there is nothing to compare against,
+  // so play on locally and let the next successful save sort it out.
+  if (cloudFailed) {
+    setSyncStatus('error')
+    return { state: local, conflict: null }
   }
-  setSyncStatus(cloudFailed ? 'error' : 'synced')
-  return cloud ?? null
+
+  const resolution = detectConflict(local, cloud)
+  if (resolution.kind === 'conflict') {
+    setSyncStatus('error')
+    return { state: null, conflict: { local: local!, cloud: cloud! } }
+  }
+
+  if (resolution.source === 'local' && local) {
+    // This device is ahead (e.g. an earlier cloud write failed); push it back up.
+    if (cloud || local.revision > 0) void persist(local, userId)
+    return { state: local, conflict: null }
+  }
+  setSyncStatus('synced')
+  return { state: cloud ?? null, conflict: null }
+}
+
+/**
+ * Commits the player's choice. The rejected copy is kept in a backup key
+ * rather than dropped — a mis-tap here would otherwise cost real progress —
+ * and the winner is stamped above both revisions so it wins everywhere next
+ * time instead of re-forking on the other device.
+ */
+export async function resolveConflict(
+  userId: string,
+  keep: PlayerState,
+  discard: PlayerState,
+): Promise<PlayerState> {
+  try {
+    localStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify(discard))
+  } catch (err) {
+    // A full quota must not block the player from getting back into the game.
+    console.warn('Could not stash the discarded save', err)
+  }
+  const winner: PlayerState = { ...keep, revision: Math.max(keep.revision, discard.revision) }
+  return persist(winner, userId)
+}
+
+/** The copy set aside by the last conflict resolution, if any. */
+export function conflictBackup(): PlayerState | null {
+  const raw = localStorage.getItem(CONFLICT_BACKUP_KEY)
+  if (raw === null) return null
+  try {
+    return parsePlayerState(JSON.parse(raw))
+  } catch {
+    return null
+  }
 }
 
 /** Copies the guest save into an account's namespace (guest copy is kept). */
