@@ -15,6 +15,8 @@ import { StageSelectScene } from '../scenes/StageSelectScene'
 import { PrepareBattleScene } from '../scenes/PrepareBattleScene'
 import { BattleScene } from '../scenes/BattleScene'
 import { ResultScene } from '../scenes/ResultScene'
+import { AdminScene } from '../scenes/AdminScene'
+import { BattleLabScene } from '../scenes/BattleLabScene'
 import { COLORS } from '../ui/styles'
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -44,5 +46,8 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     PrepareBattleScene,
     BattleScene,
     ResultScene,
+    // Reachable only through the Test Lab gate; see admin/AdminAccess.
+    AdminScene,
+    BattleLabScene,
   ],
 }

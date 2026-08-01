@@ -25,6 +25,7 @@ const ANNOUNCEMENTS: Record<AnnounceKind, (enemy: string) => [string, string]> =
   bloodrage: () => ['icon_hit', t('battle.bloodrage')],
   precision: () => ['icon_star', t('battle.precision')],
   attrition: () => ['decor_fog', t('battle.attrition')],
+  execute: () => ['icon_hit', t('battle.execute')],
 }
 const SPEEDS: BattleSpeed[] = [1, 2, 4]
 

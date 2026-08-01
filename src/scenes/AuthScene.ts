@@ -2,8 +2,10 @@ import Phaser from 'phaser'
 import { GAME_W, GAME_H, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { getSession, signIn, signUp, isSupabaseConfigured } from '../services/authService'
+import { resolveAdminGrant } from '../admin/AdminAccess'
 import { loadState, hasGuestSave, importGuestSave } from '../services/saveService'
 import { makeButton } from '../ui/components/makeButton'
+import { makeDom } from '../ui/components/makeDom'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeTitle } from '../ui/components/makeTitle'
@@ -62,7 +64,7 @@ export class AuthScene extends Phaser.Scene {
         <button id="guest" type="button" style="padding:14px;font-size:16px;font-weight:bold;cursor:pointer;border:2px solid #ff8fab;border-radius:14px;background:#fff;color:#ff8fab;font-family:inherit">${t('auth.guest')}</button>
       </div>
     `
-    this.form = this.add.dom(GAME_W / 2, GAME_H / 2 + 60).createFromHTML(formHtml)
+    this.form = makeDom(this, GAME_W / 2, GAME_H / 2 + 60, formHtml)
 
     const emailInput = this.form.getChildByID('email') as HTMLInputElement
     const passwordInput = this.form.getChildByID('password') as HTMLInputElement
@@ -88,8 +90,12 @@ export class AuthScene extends Phaser.Scene {
     void this.tryResumeSession()
   }
 
-  private async enterWithUser(userId: string): Promise<void> {
+  private async enterWithUser(user: { id: string }): Promise<void> {
+    const userId = user.id
     GameState.userId = userId
+    // Resolved once, from the session the server issued. A dev build resolves
+    // the same way with no session at all; see admin/AdminAccess.
+    GameState.adminGrant = resolveAdminGrant({ user })
     const { state, conflict } = await loadState(userId)
     GameState.player = state
     if (conflict) {
@@ -153,7 +159,7 @@ export class AuthScene extends Phaser.Scene {
   private async tryResumeSession(): Promise<void> {
     const session = await getSession()
     if (session?.user) {
-      await this.enterWithUser(session.user.id)
+      await this.enterWithUser(session.user)
     }
   }
 
@@ -166,7 +172,7 @@ export class AuthScene extends Phaser.Scene {
     try {
       const session = mode === 'signin' ? await signIn(email, password) : await signUp(email, password)
       if (session?.user) {
-        await this.enterWithUser(session.user.id)
+        await this.enterWithUser(session.user)
       } else {
         this.statusText.setColor(COLORS.textDim)
         this.statusText.setText(t('auth.confirmEmail'))
@@ -179,6 +185,7 @@ export class AuthScene extends Phaser.Scene {
 
   private async continueAsGuest(): Promise<void> {
     GameState.userId = null
+    GameState.adminGrant = resolveAdminGrant(null)
     GameState.player = (await loadState(null)).state
     this.scene.start(GameState.player ? 'MainMenu' : 'CreateHero')
   }

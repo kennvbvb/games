@@ -250,6 +250,22 @@ export const th: Record<keyof typeof en, string> = {
   'menu.quests': 'ภารกิจ',
   'menu.questsBadge': 'ภารกิจ ({count})',
 
+  'difficulty.normal': 'ปกติ',
+  'difficulty.normalHint': 'แคมเปญตามที่ออกแบบไว้',
+  'difficulty.veteran': 'ผ่านศึก',
+  'difficulty.veteranHint': 'ศัตรูแกร่งขึ้น รางวัลดีขึ้น',
+  'difficulty.nightmare': 'ฝันร้าย',
+  'difficulty.nightmareHint': 'สำหรับบิลด์ที่สมบูรณ์แล้วเท่านั้น',
+  'difficulty.locked': 'ผ่าน {worlds} โลกเพื่อปลดล็อก',
+  'difficulty.label': 'ความยาก',
+
+  'battle.execute': 'จัดการให้จบ!',
+  'loss.stalemate': 'ไม่มีฝ่ายไหนล้มกันได้ — ต้องเพิ่มดาเมจ',
+  'loss.damage': 'แทบไม่ระคายเลย ต้องเพิ่มพลังโจมตี หรือเปลี่ยนแผนที่ตีแรงกว่านี้',
+  'loss.survivability': 'ตีไปได้เกินครึ่ง แล้วเลือดหมดก่อน',
+  'loss.narrow': 'เฉียดมาก — เหลืออีกนิดเดียว อัปเกรดอีกอย่างน่าจะพอ',
+  'loss.tryPlan': 'ลองใช้ {plan} ดู — แผนนี้ผ่านได้',
+
   'common.back': 'กลับ',
   'common.continue': 'ต่อไป',
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, GAME_H, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { heroTexture } from '../data/races'
+import { isAdminGranted } from '../admin/AdminAccess'
 import { signOut } from '../services/authService'
 import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncStatus'
 import { effectiveStats } from '../systems/upgrades'
@@ -118,7 +119,38 @@ export class MainMenuScene extends Phaser.Scene {
     )
 
     makeTutorialTip(this, 0, t('tutorial.step0'), 656)
+    this.installTestLabEntry()
     this.showOfflineRewards()
+  }
+
+  /**
+   * The way into the Test Lab, for whoever holds a grant. Both routes are here
+   * on purpose: the hotkey is what a developer reaches for, and the button is
+   * what makes the lab discoverable to a production admin who was told it
+   * exists but not told a key combination.
+   *
+   * Rendering this is not what keeps anyone out — see admin/AdminAccess.
+   */
+  private installTestLabEntry(): void {
+    if (!isAdminGranted(GameState.adminGrant)) return
+
+    this.input.keyboard?.on('keydown-A', (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey) this.scene.start('Admin')
+    })
+
+    const badge = this.add.graphics()
+    badge.fillStyle(0x3c3348, 1).fillRoundedRect(GAME_W - 92, 22, 74, 26, 7)
+    badge.lineStyle(1, 0xffd166, 1).strokeRoundedRect(GAME_W - 92, 22, 74, 26, 7)
+    const label = this.add
+      .text(GAME_W - 55, 35, 'TEST LAB', {
+        fontSize: '11px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: '#ffd166',
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+    label.on('pointerdown', () => this.scene.start('Admin'))
   }
 
   /**

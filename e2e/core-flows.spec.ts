@@ -394,3 +394,28 @@ test.describe('localization', () => {
     expect((await game.save())?.settings?.locale).toBe('th')
   })
 })
+
+test.describe('admin test lab', () => {
+  test('is not reachable from a production build', async ({ page }) => {
+    // This suite runs against the real production bundle, which is the only
+    // place this can be proven: `devAdminEnabled` reads `import.meta.env.DEV`,
+    // and a unit test cannot observe what the production define does to it.
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+
+    const before = await page.locator('canvas').first().screenshot()
+
+    // Both documented routes in: the hotkey, and the corner the TEST LAB badge
+    // occupies when a grant exists.
+    await page.keyboard.press('Control+Shift+A')
+    await game.settle(400)
+    await game.tap(425, 35)
+    await game.settle(400)
+
+    // The lab paints a near-black backdrop over the whole screen, so if it had
+    // opened these two would not be within a pixel of each other.
+    const after = await page.locator('canvas').first().screenshot()
+    expect(after.equals(before)).toBe(true)
+  })
+})

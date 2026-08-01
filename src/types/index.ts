@@ -190,7 +190,13 @@ export interface StageConfig {
  * per fight — recurring things like dodges and heals get sprite-level feedback
  * instead, or the log would be unreadable.
  */
-export type AnnounceKind = 'enraged' | 'fierce' | 'bloodrage' | 'precision' | 'attrition'
+export type AnnounceKind =
+  | 'enraged'
+  | 'fierce'
+  | 'bloodrage'
+  | 'precision'
+  | 'attrition'
+  | 'execute'
 
 export interface TurnEvent {
   turn: number
@@ -206,8 +212,16 @@ export interface TurnEvent {
   crit?: true
   /** How much the attacker restored to itself. Omitted when nothing was healed. */
   healed?: number
-  /** The attacker's own HP after healing. Present exactly when `healed` is. */
+  /** Healing past Max HP banked as shield instead of being discarded. */
+  barriered?: number
+  /** The attacker's own HP after healing or barriering. */
   selfHpAfter?: number
+  /** Part of this blow that shield ate rather than health. */
+  absorbed?: number
+  /** Damage the player dealt back on a dodge, on the enemy's own event. */
+  counter?: number
+  /** Enemy HP after the counter landed. Present exactly when `counter` is. */
+  counterHpAfter?: number
 
   /** Latched: the one blow where this effect announces itself. */
   announce?: AnnounceKind
@@ -227,5 +241,7 @@ export interface BattleResult {
    */
   playerHpLeft: number
   enemyHpLeft: number
+  /** Shield still standing at the end; 0 unless a shield effect was running. */
+  shieldLeft: number
   rewards: StageRewards
 }

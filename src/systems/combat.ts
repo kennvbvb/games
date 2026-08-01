@@ -1,5 +1,6 @@
-import { PLAN_BY_ID } from '../data/battlePlans'
 import { traitOf } from '../data/enemyTraits'
+import { NEUTRAL, foldModifiers, planModifiers } from './combatModifiers'
+import type { CombatModifiers, ModifierSource } from './combatModifiers'
 import type { PlanId } from '../data/battlePlans'
 import type {
   AnnounceKind,
@@ -35,13 +36,6 @@ export function healScale(turn: number): number {
   return (HEAL_ZERO_FROM_TURN - turn) / (HEAL_ZERO_FROM_TURN - HEAL_FULL_UNTIL_TURN)
 }
 
-/** Returns how much was actually restored, so overflow past Max HP cannot happen. */
-function healAmount(currentHp: number, maxHp: number, fraction: number, turn: number): number {
-  if (fraction <= 0) return 0
-  const raw = Math.round(maxHp * fraction * healScale(turn))
-  return Math.max(0, Math.min(raw, maxHp - currentHp))
-}
-
 /**
  * A boss ramps its attack once the grace period is over, so a fight cannot be
  * ground out by soaking hits with a big HP pool and a weak weapon. Ordinary
@@ -57,7 +51,10 @@ export function enemyAttackAt(enemy: EnemyConfig, turn: number): number {
   return Math.round(enemy.atk * (1 + enragedTurns * boss.enrageAtkPerTurn))
 }
 
-/** Passive hooks a race can contribute to the turn loop. All deterministic. */
+/**
+ * Passive hooks a race contributes. Kept as its own shape because it is what
+ * `data/races` is written in; `raceModifiers` translates it.
+ */
 export interface RaceCombatPassive {
   /** Multiplier on the first player attack that actually lands. */
   firstStrike?: number
@@ -77,6 +74,19 @@ export interface RaceCombatPassive {
   healEvery?: number
 }
 
+export function raceModifiers(passive: RaceCombatPassive | undefined): ModifierSource | undefined {
+  if (!passive) return undefined
+  return {
+    firstStrike: passive.firstStrike,
+    lowHp: passive.lowHp,
+    lowHpBelow: passive.lowHpBelow,
+    incoming: passive.damageTaken,
+    dodgeEvery: passive.dodgeEvery,
+    heal: passive.heal,
+    healEvery: passive.healEvery,
+  }
+}
+
 export interface BattleContext {
   player: PlayerStats
   enemy: EnemyConfig
@@ -85,6 +95,22 @@ export interface BattleContext {
   plan?: PlanId
   /** Omitted means no racial passive. */
   passive?: RaceCombatPassive
+  /**
+   * Anything else bending the fight — equipped skills, gear affixes, set
+   * bonuses. Folded into the same product as the plan and the passive, so a
+   * new system cannot reorder the existing ones.
+   */
+  modifiers?: (ModifierSource | undefined)[]
+}
+
+/** The player's stat block after percentage modifiers, rounded once. */
+function scaledStats(stats: PlayerStats, mods: CombatModifiers): PlayerStats {
+  if (mods.hpScale === 1 && mods.atkScale === 1 && mods.defScale === 1) return stats
+  return {
+    maxHp: Math.max(1, Math.round(stats.maxHp * mods.hpScale)),
+    atk: Math.max(1, Math.round(stats.atk * mods.atkScale)),
+    def: Math.max(0, Math.round(stats.def * mods.defScale)),
+  }
 }
 
 /**
@@ -102,13 +128,22 @@ export interface BattleContext {
  * floor, and `enemyAttackAt`.
  */
 export function resolveBattle(ctx: BattleContext): BattleResult {
-  const { player, enemy, rewards } = ctx
-  const plan = ctx.plan ? PLAN_BY_ID.get(ctx.plan) : undefined
+  const { enemy, rewards } = ctx
   const trait = traitOf(enemy.trait)
-  const passive = ctx.passive ?? {}
+  const mods = foldModifiers([
+    planModifiers(ctx.plan),
+    raceModifiers(ctx.passive),
+    ...(ctx.modifiers ?? []),
+  ])
+  const player = scaledStats(ctx.player, mods)
+  const isBoss = enemy.boss !== undefined
 
   let playerHp = player.maxHp
   let enemyHp = enemy.maxHp
+  // Shield sits in front of health and is spent first. It is deliberately not
+  // part of Max HP: a build that runs on shields should read as fragile on the
+  // health bar, because it is — nothing refills it once the sources stop.
+  let shield = Math.round(player.maxHp * mods.shield)
   // Counters advance on every *attempted* attack, dodged or not. One counter
   // per side means a dodge cannot silently shift an unrelated effect's cadence,
   // and the player can predict every proc by counting blows on screen.
@@ -119,9 +154,6 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
   const log: TurnEvent[] = []
   let turn = 0
 
-  // Both heals are percentages of Max HP, so resolve the fractions once.
-  const playerHeal = (plan?.heal ?? 0) + (passive.heal ?? 0)
-  const playerHealEvery = plan?.healEvery || passive.healEvery || 0
   const enemyHeal = trait.heal
   const enemyHealEvery = trait.healEvery
 
@@ -130,6 +162,30 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     if (announced.has(kind) || event.announce !== undefined) return
     event.announce = kind
     announced.add(kind)
+  }
+
+  /**
+   * Restores health, then turns any excess into shield when a barrier effect is
+   * running. Returning both parts keeps overflow past Max HP structurally
+   * impossible whether or not a barrier is in play.
+   */
+  const applyHeal = (fraction: number): { healed: number; banked: number } => {
+    if (fraction <= 0) return { healed: 0, banked: 0 }
+    const raw = Math.round(player.maxHp * fraction * healScale(turn))
+    if (raw <= 0) return { healed: 0, banked: 0 }
+    const healed = Math.min(raw, player.maxHp - playerHp)
+    const banked = mods.barrier ? raw - healed : 0
+    playerHp += healed
+    shield += banked
+    return { healed, banked }
+  }
+
+  /** Applies a blow to the player, spending shield before health. */
+  const strikePlayer = (damage: number): number => {
+    const absorbed = Math.min(shield, damage)
+    shield -= absorbed
+    playerHp = Math.max(0, playerHp - (damage - absorbed))
+    return absorbed
   }
 
   while (playerHp > 0 && enemyHp > 0 && turn < MAX_TURNS) {
@@ -143,36 +199,39 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       // A gate, not a zero multiplier — the minimum-1 floor would undo a zero.
       playerEvent.dodged = true
     } else {
-      let multiplier = plan?.outgoing ?? 1
-      const combo = plan !== undefined && plan.comboEvery > 0 && playerAttacks % plan.comboEvery === 0
-      const firstStrike = passive.firstStrike !== undefined && !firstStrikeSpent
+      let multiplier = mods.outgoing
+      const combo = mods.comboEvery > 0 && playerAttacks % mods.comboEvery === 0
+      const firstStrike = mods.firstStrike !== 1 && !firstStrikeSpent
       // Thresholds read HP as it stands *before* this blow lands.
-      const lowHp =
-        passive.lowHp !== undefined && playerHp < player.maxHp * (passive.lowHpBelow ?? 0.5)
+      const lowHp = mods.lowHp !== 1 && playerHp < player.maxHp * mods.lowHpBelow
+      const execute = mods.execute !== 1 && enemyHp <= enemy.maxHp * mods.executeBelow
 
-      if (combo) multiplier *= plan!.combo
-      if (firstStrike) multiplier *= passive.firstStrike!
-      if (lowHp) multiplier *= passive.lowHp!
+      if (combo) multiplier *= mods.combo
+      if (firstStrike) multiplier *= mods.firstStrike
+      if (lowHp) multiplier *= mods.lowHp
+      if (execute) multiplier *= mods.execute
+      if (isBoss) multiplier *= mods.bossDamage
 
       const damage = Math.max(1, Math.round((player.atk - enemy.def) * multiplier))
       enemyHp = Math.max(0, enemyHp - damage)
       playerEvent.damage = damage
-      if (combo || firstStrike) playerEvent.crit = true
+      if (combo || firstStrike || execute) playerEvent.crit = true
       // Spent only on a landed hit; burning it on a whiff would read as a bug.
       if (firstStrike) {
         firstStrikeSpent = true
         announce(playerEvent, 'precision')
       }
       if (lowHp) announce(playerEvent, 'bloodrage')
+      if (execute) announce(playerEvent, 'execute')
     }
     playerEvent.targetHpAfter = enemyHp
 
     // No healing after a killing blow, so the log always ends on the kill.
-    if (enemyHp > 0 && playerHealEvery > 0 && playerAttacks % playerHealEvery === 0) {
-      const healed = healAmount(playerHp, player.maxHp, playerHeal, turn)
-      if (healed > 0) {
-        playerHp += healed
-        playerEvent.healed = healed
+    if (enemyHp > 0 && mods.healEvery > 0 && playerAttacks % mods.healEvery === 0) {
+      const { healed, banked } = applyHeal(mods.heal)
+      if (healed > 0 || banked > 0) {
+        if (healed > 0) playerEvent.healed = healed
+        if (banked > 0) playerEvent.barriered = banked
         playerEvent.selfHpAfter = playerHp
       }
       if (healScale(turn) < 1) announce(playerEvent, 'attrition')
@@ -185,32 +244,35 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     enemyAttacks += 1
     const enemyEvent: TurnEvent = { turn, attacker: 'enemy', damage: 0, targetHpAfter: playerHp }
 
-    const planDodge = plan !== undefined && plan.dodgeEvery > 0 && enemyAttacks % plan.dodgeEvery === 0
-    const raceDodge =
-      passive.dodgeEvery !== undefined &&
-      passive.dodgeEvery > 0 &&
-      enemyAttacks % passive.dodgeEvery === 0
-
-    if (planDodge || raceDodge) {
+    if (mods.dodgeEvery > 0 && enemyAttacks % mods.dodgeEvery === 0) {
       enemyEvent.dodged = true
+      // A counter rides on the dodge rather than taking its own turn, so a
+      // dodge build still trades in the same number of turns as everyone else.
+      if (mods.counter > 0) {
+        const damage = Math.max(1, Math.round((player.atk - enemy.def) * mods.counter))
+        enemyHp = Math.max(0, enemyHp - damage)
+        enemyEvent.counter = damage
+        enemyEvent.counterHpAfter = enemyHp
+      }
     } else {
       const attack = enemyAttackAt(enemy, turn)
-      let multiplier = plan?.incoming ?? 1
+      let multiplier = mods.incoming
       const fierce = trait.fierce > 1 && enemyHp <= enemy.maxHp * trait.fierceBelow
 
       if (fierce) multiplier *= trait.fierce
-      if (passive.damageTaken !== undefined) multiplier *= passive.damageTaken
 
       const damage = Math.max(1, Math.round((attack - player.def) * multiplier))
-      playerHp = Math.max(0, playerHp - damage)
+      const absorbed = strikePlayer(damage)
       enemyEvent.damage = damage
+      if (absorbed > 0) enemyEvent.absorbed = absorbed
       if (attack > enemy.atk) announce(enemyEvent, 'enraged')
       if (fierce) announce(enemyEvent, 'fierce')
     }
     enemyEvent.targetHpAfter = playerHp
 
-    if (playerHp > 0 && enemyHealEvery > 0 && enemyAttacks % enemyHealEvery === 0) {
-      const healed = healAmount(enemyHp, enemy.maxHp, enemyHeal, turn)
+    if (playerHp > 0 && enemyHp > 0 && enemyHealEvery > 0 && enemyAttacks % enemyHealEvery === 0) {
+      const raw = Math.round(enemy.maxHp * enemyHeal * healScale(turn))
+      const healed = Math.max(0, Math.min(raw, enemy.maxHp - enemyHp))
       if (healed > 0) {
         enemyHp += healed
         enemyEvent.healed = healed
@@ -220,6 +282,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     }
 
     log.push(enemyEvent)
+    if (enemyHp <= 0) break
   }
 
   const outcome: BattleOutcome =
@@ -231,6 +294,9 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     log,
     playerHpLeft: playerHp,
     enemyHpLeft: enemyHp,
+    shieldLeft: shield,
     rewards: outcome === 'win' ? rewards : { exp: 0, gold: 0 },
   }
 }
+
+export { NEUTRAL }

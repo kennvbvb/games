@@ -248,6 +248,22 @@ export const en = {
   'menu.quests': 'Quests',
   'menu.questsBadge': 'Quests ({count})',
 
+  'difficulty.normal': 'Normal',
+  'difficulty.normalHint': 'The campaign as it was designed',
+  'difficulty.veteran': 'Veteran',
+  'difficulty.veteranHint': 'Tougher enemies, better rewards',
+  'difficulty.nightmare': 'Nightmare',
+  'difficulty.nightmareHint': 'For a finished build only',
+  'difficulty.locked': 'Clear {worlds} worlds to unlock',
+  'difficulty.label': 'Difficulty',
+
+  'battle.execute': 'Finish it!',
+  'loss.stalemate': 'Neither side could finish the other — bring more damage.',
+  'loss.damage': 'You barely dented it. More attack, or a plan that hits harder.',
+  'loss.survivability': 'You got over halfway, then ran out of health.',
+  'loss.narrow': 'So close — it survived on a sliver. One upgrade should do it.',
+  'loss.tryPlan': 'Try {plan} instead — it clears this fight.',
+
   'common.back': 'Back',
   'common.continue': 'Continue',
 } as const
