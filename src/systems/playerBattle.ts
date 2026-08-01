@@ -1,5 +1,5 @@
 import { raceOf } from '../data/races'
-import { effectiveStats } from './upgrades'
+import { effectiveStats, gearModifiers } from './upgrades'
 import { skillModifiers } from './skills'
 import type { BattleContext } from './combat'
 import type { PlayerState } from '../types'
@@ -19,6 +19,6 @@ export function playerBattleInputs(
   return {
     player: effectiveStats(state),
     passive: raceOf(state.raceId).passive,
-    modifiers: skillModifiers(state),
+    modifiers: [...skillModifiers(state), ...gearModifiers(state)],
   }
 }

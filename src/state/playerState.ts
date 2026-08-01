@@ -2,6 +2,7 @@ import { SAVE_SCHEMA_VERSION } from '../types'
 import type { PlayerState } from '../types'
 import type { RaceId } from '../data/races'
 import { statsForLevel } from '../systems/leveling'
+import { EMPTY_EQUIPMENT } from '../systems/upgrades'
 import { DEFAULT_AVATAR } from '../data/avatars'
 import { DEFAULT_PLAN } from '../data/battlePlans'
 import { DEFAULT_DIFFICULTY } from '../data/difficulties'
@@ -30,7 +31,7 @@ export function createDefaultPlayerState(
     stats: statsForLevel(1, raceId),
     upgrades: { hp: 0, atk: 0, def: 0 },
     ownedItemIds: [],
-    equipped: { weapon: null, armor: null, charm: null },
+    equipped: { ...EMPTY_EQUIPMENT },
     unlockedSkillIds: [],
     loadout: [],
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },

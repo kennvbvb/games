@@ -7,6 +7,7 @@ import { expToNext } from '../systems/leveling'
 import { effectiveStats, equippedItems, totalBonus } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { availableSkillPoints } from '../systems/skills'
+import { EQUIP_SLOTS } from '../systems/upgrades'
 import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
 import { makeEmoji } from '../ui/components/makeEmoji'
@@ -103,7 +104,7 @@ export class CharacterScene extends Phaser.Scene {
     const worn = equippedItems(player).length
     makeEmoji(this, 128, 500, 'icon_bag', 17)
     this.add
-      .text(146, 500, t('character.gearSummary', { worn, owned: player.ownedItemIds.length }), {
+      .text(146, 500, t('character.gearSummary', { worn, slots: EQUIP_SLOTS.length, owned: player.ownedItemIds.length }), {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.textDim,

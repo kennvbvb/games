@@ -184,5 +184,15 @@
   "decor_coral": "🪸",
   "decor_bubble": "🫧",
   "decor_bone": "🦴",
-  "decor_ring": "💍"
+  "decor_ring": "💍",
+  "item_iron-helm": "⛑️",
+  "item_hood-of-whispers": "🥷",
+  "item_horned-casque": "🪖",
+  "item_crown-of-dawn": "🌅",
+  "item_studded-greaves": "🥾",
+  "item_silent-steps": "🩰",
+  "item_ironshod-stompers": "🦿",
+  "item_windwalkers": "🪽",
+  "item_starlit-sandals": "✨",
+  "item_treads-of-the-titan": "🗿"
 }

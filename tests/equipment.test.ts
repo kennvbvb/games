@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { ITEMS, ITEMS_BY_SLOT, ITEM_BY_ID } from '../src/data/items'
+import { ITEMS, ITEMS_BY_KIND, ITEM_BY_ID, ITEM_KINDS, itemsForSlot } from '../src/data/items'
 import {
+  EMPTY_EQUIPMENT,
   EQUIP_SLOTS,
   bestOwnedPerSlot,
   buyItem,
@@ -15,12 +16,15 @@ import { parsePlayerState } from '../src/state/validate'
 const rich = () => ({ ...createDefaultPlayerState('Smith'), gold: 99999, level: 30 })
 
 describe('equipment data', () => {
-  it('gives every item a slot and every slot a ladder', () => {
-    expect(ITEMS.every((i) => EQUIP_SLOTS.includes(i.slot))).toBe(true)
-    for (const slot of EQUIP_SLOTS) {
-      expect(ITEMS_BY_SLOT[slot].length).toBeGreaterThanOrEqual(5)
+  it('gives every kind a ladder, and every worn slot something to put in it', () => {
+    expect(ITEMS.every((i) => ITEM_KINDS.includes(i.kind))).toBe(true)
+    for (const kind of ITEM_KINDS) {
+      expect(ITEMS_BY_KIND[kind].length, kind).toBeGreaterThanOrEqual(7)
     }
-    expect(ITEMS_BY_SLOT.weapon.length + ITEMS_BY_SLOT.armor.length + ITEMS_BY_SLOT.charm.length).toBe(ITEMS.length)
+    expect(ITEM_KINDS.reduce((n, k) => n + ITEMS_BY_KIND[k].length, 0)).toBe(ITEMS.length)
+    // Six worn slots, and the two accessory ones share a kind.
+    expect(EQUIP_SLOTS).toHaveLength(6)
+    for (const slot of EQUIP_SLOTS) expect(itemsForSlot(slot).length).toBeGreaterThan(0)
   })
 })
 
@@ -35,7 +39,11 @@ describe('equipping', () => {
     let state = buyItem(rich(), 'wooden-sword')!
     state = buyItem(state, 'leather-shield')!
     state = buyItem(state, 'iron-sword')!
-    expect(state.equipped).toEqual({ weapon: 'iron-sword', armor: 'leather-shield', charm: null })
+    expect(state.equipped).toEqual({
+      ...EMPTY_EQUIPMENT,
+      weapon: 'iron-sword',
+      body: 'leather-shield',
+    })
     // The replaced weapon is still owned, just not worn.
     expect(state.ownedItemIds).toContain('wooden-sword')
   })
@@ -46,7 +54,7 @@ describe('equipping', () => {
     const wornOnly = effectiveStats(state)
 
     // Both swords are owned; only the iron one should be contributing.
-    const base = effectiveStats({ ...state, equipped: { weapon: null, armor: null, charm: null } })
+    const base = effectiveStats({ ...state, equipped: { ...EMPTY_EQUIPMENT } })
     expect(wornOnly.atk).toBe(base.atk + (ITEM_BY_ID.get('iron-sword')!.bonus.atk ?? 0))
   })
 
@@ -76,8 +84,16 @@ describe('migration from pre-equipment saves', () => {
     const owned = ['wooden-sword', 'iron-sword', 'leather-shield', 'lucky-ribbon']
     const equipped = bestOwnedPerSlot(owned)
     expect(equipped.weapon).toBe('iron-sword') // pricier than the wooden one
-    expect(equipped.armor).toBe('leather-shield')
-    expect(equipped.charm).toBe('lucky-ribbon')
+    expect(equipped.body).toBe('leather-shield')
+    expect(equipped.accessory1).toBe('lucky-ribbon')
+  })
+
+  it('fills both accessory slots with the two dearest trinkets', () => {
+    // Dearest first, not first-in-list first: otherwise the two slots take
+    // whichever two happened to be bought earliest.
+    const equipped = bestOwnedPerSlot(['lucky-ribbon', 'ruby-ring', 'wizard-orb'])
+    expect(equipped.accessory1).toBe('wizard-orb')
+    expect(equipped.accessory2).toBe('ruby-ring')
   })
 
   it('fills slots when loading a save that predates equipment', () => {
@@ -90,8 +106,27 @@ describe('migration from pre-equipment saves', () => {
     }
     const migrated = parsePlayerState(legacy)!
     expect(migrated.equipped.weapon).toBe('knight-blade')
-    expect(migrated.equipped.armor).toBe('cozy-hat')
-    expect(migrated.equipped.charm).toBeNull()
+    expect(migrated.equipped.head).toBe('cozy-hat')
+    expect(migrated.equipped.body).toBeNull()
+  })
+
+  it('carries a three-slot save across to six without dropping a piece', () => {
+    // Armour becomes body and the charm becomes the first accessory, so a
+    // returning player finds everything still worn and two new slots empty —
+    // rather than an unexplained stat drop and a bag full of gear.
+    const v12 = {
+      name: 'Vet',
+      level: 20,
+      ownedItemIds: ['iron-sword', 'knight-armor', 'ruby-ring'],
+      equipped: { weapon: 'iron-sword', armor: 'knight-armor', charm: 'ruby-ring' },
+    }
+    const migrated = parsePlayerState(v12)!
+    expect(migrated.equipped).toEqual({
+      ...EMPTY_EQUIPMENT,
+      weapon: 'iron-sword',
+      body: 'knight-armor',
+      accessory1: 'ruby-ring',
+    })
   })
 
   it('drops equipped ids that are not owned or sit in the wrong slot', () => {
@@ -99,12 +134,12 @@ describe('migration from pre-equipment saves', () => {
       name: 'Cheater',
       level: 5,
       ownedItemIds: ['wooden-sword'],
-      equipped: { weapon: 'dragonfang', armor: 'wooden-sword', charm: 'nonsense' },
+      equipped: { weapon: 'dragonfang', body: 'wooden-sword', accessory1: 'nonsense' },
     }
     const parsed = parsePlayerState(tampered)!
     expect(parsed.equipped.weapon).toBeNull() // not owned
-    expect(parsed.equipped.armor).toBeNull() // owned, but it's a weapon
-    expect(parsed.equipped.charm).toBeNull()
+    expect(parsed.equipped.body).toBeNull() // owned, but it's a weapon
+    expect(parsed.equipped.accessory1).toBeNull()
   })
 
   it('keeps a valid equipped block untouched', () => {

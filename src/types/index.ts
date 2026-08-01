@@ -3,6 +3,7 @@ import type { PlanId } from '../data/battlePlans'
 import type { RaceId } from '../data/races'
 import type { StageVisual } from '../data/biomes'
 import type { DifficultyId } from '../data/difficulties'
+import type { Rarity } from '../data/affixes'
 
 export interface PlayerStats {
   maxHp: number
@@ -25,22 +26,38 @@ export interface StatBonus {
   def?: number
 }
 
-export type EquipSlot = 'weapon' | 'armor' | 'charm'
+/**
+ * Six worn slots. Two accessory slots rather than one because a set needs four
+ * pieces to be assemblable at all, and three armour slots plus one trinket left
+ * no room for a second half of any set.
+ */
+export type EquipSlot = 'weapon' | 'head' | 'body' | 'boots' | 'accessory1' | 'accessory2'
+
+/**
+ * What an item *is*, as opposed to where it goes. One accessory kind fits
+ * either accessory slot, so a player can wear two charms without the catalogue
+ * having to duplicate every trinket.
+ */
+export type ItemKind = 'weapon' | 'head' | 'body' | 'boots' | 'accessory'
 
 /** One item may be equipped per slot; the rest stay in the bag. */
 export type Equipment = Record<EquipSlot, string | null>
 
 export interface ShopItem {
   id: string
-  slot: EquipSlot
+  kind: ItemKind
   name: string
   emoji: string
   bonus: StatBonus
   cost: number
   minLevel?: number
+  /** Drives affix count and how the card reads; see data/affixes. */
+  rarity: Rarity
+  /** Members of the same set count towards its 2- and 4-piece bonuses. */
+  setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 12
+export const SAVE_SCHEMA_VERSION = 13
 
 export type BattleSpeed = 1 | 2 | 4
 

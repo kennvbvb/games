@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ITEMS, ITEM_BY_ID } from '../src/data/items'
+import { ITEMS, ITEM_BY_ID, ITEM_KINDS } from '../src/data/items'
 import { buyItem, effectiveStats } from '../src/systems/upgrades'
 import { createDefaultPlayerState } from '../src/state/playerState'
 import { parsePlayerState } from '../src/state/validate'
@@ -27,20 +27,23 @@ describe('shop items', () => {
     }
   })
 
-  it('gives every slot something in the late game', () => {
-    for (const slot of ['weapon', 'armor', 'charm'] as const) {
-      const late = ITEMS.filter((i) => i.slot === slot && (i.minLevel ?? 1) >= 15)
-      expect(late.length, `${slot} has no late-game option`).toBeGreaterThanOrEqual(2)
+  it('gives every kind something in the late game', () => {
+    for (const kind of ITEM_KINDS) {
+      const late = ITEMS.filter((i) => i.kind === kind && (i.minLevel ?? 1) >= 15)
+      expect(late.length, `${kind} has no late-game option`).toBeGreaterThanOrEqual(2)
     }
   })
 
   it('has no item that is simply better than a cheaper one', () => {
     // A piece that wins on every stat while costing less ends the slot as a
-    // choice — which is the whole point of one item per slot.
+    // choice — which is the whole point of one item per slot. Affixes are
+    // deliberately not counted here: they are the *reason* two similarly
+    // statted pieces differ, so folding them in would let a dominant stat
+    // block hide behind a weaker affix.
     const stats = (i: (typeof ITEMS)[number]) => [i.bonus.hp ?? 0, i.bonus.atk ?? 0, i.bonus.def ?? 0]
     for (const a of ITEMS) {
       for (const b of ITEMS) {
-        if (a.id === b.id || a.slot !== b.slot) continue
+        if (a.id === b.id || a.kind !== b.kind) continue
         const [ah, aa, ad] = stats(a)
         const [bh, ba, bd] = stats(b)
         const betterEverywhere = ah >= bh && aa >= ba && ad >= bd && (ah > bh || aa > ba || ad > bd)
@@ -92,7 +95,7 @@ describe('shop items', () => {
     const owned = { ...state, ownedItemIds: ['ruby-ring'] }
     expect(effectiveStats(owned)).toEqual(base)
 
-    const worn = effectiveStats({ ...owned, equipped: { ...state.equipped, charm: 'ruby-ring' } })
+    const worn = effectiveStats({ ...owned, equipped: { ...state.equipped, accessory1: 'ruby-ring' } })
     expect(worn.maxHp).toBe(base.maxHp + (ring.bonus.hp ?? 0))
     expect(worn.atk).toBe(base.atk + (ring.bonus.atk ?? 0))
     expect(worn.def).toBe(base.def)

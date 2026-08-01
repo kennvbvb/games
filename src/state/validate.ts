@@ -2,7 +2,7 @@ import { SAVE_SCHEMA_VERSION, TUTORIAL_DONE } from '../types'
 import type { Equipment, PlayerState } from '../types'
 import { ITEM_BY_ID } from '../data/items'
 import { ACHIEVEMENT_BY_ID } from '../data/achievements'
-import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
+import { EMPTY_EQUIPMENT, EQUIP_SLOTS, bestOwnedPerSlot, slotsForKind } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
 import { normalizePlan } from '../data/battlePlans'
@@ -39,6 +39,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * recognisable save object at all returns null; recognisable saves get every
  * field coerced into safe bounds and unknown ids dropped.
  */
+/**
+ * Reads the worn-gear block, across two schema changes at once.
+ *
+ * - Pre-v4 saves have no block at all: fill from the best owned pieces rather
+ *   than silently stripping stats those players already had.
+ * - Pre-v13 saves have the three-slot shape (`weapon`/`armor`/`charm`). Armour
+ *   becomes body and the charm becomes the first accessory, so a returning
+ *   player finds every piece still worn and two new slots empty — rather than
+ *   an unexplained stat drop and a bag full of gear.
+ *
+ * Either way an id is only kept if the player owns it *and* it fits the slot,
+ * so an edited save cannot wear a weapon on its head.
+ */
+function parseEquipment(raw: unknown, ownedItemIds: string[]): Equipment {
+  if (!isRecord(raw)) return bestOwnedPerSlot(ownedItemIds)
+
+  const legacy = 'armor' in raw || 'charm' in raw
+  const source: Record<string, unknown> = legacy
+    ? { weapon: raw.weapon, body: raw.armor, accessory1: raw.charm }
+    : raw
+
+  return EQUIP_SLOTS.reduce((acc, slot) => {
+    const id = source[slot]
+    const item = typeof id === 'string' ? ITEM_BY_ID.get(id) : undefined
+    const fits = item !== undefined && slotsForKind(item.kind).includes(slot)
+    acc[slot] = fits && ownedItemIds.includes(id as string) ? (id as string) : null
+    return acc
+  }, { ...EMPTY_EQUIPMENT })
+}
+
 export function parsePlayerState(raw: unknown): PlayerState | null {
   if (!isRecord(raw)) return null
   // Require at least one signature field so arbitrary objects don't "recover"
@@ -66,18 +96,7 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
 
   const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 14) : 'Hero'
 
-  // Pre-v4 saves have no `equipped` block. Rather than silently stripping the
-  // stats those players already had, fill each slot with the best thing they own.
-  const equippedRaw = isRecord(raw.equipped) ? raw.equipped : null
-  const equipped = equippedRaw
-    ? EQUIP_SLOTS.reduce((acc, slot) => {
-        const id = equippedRaw[slot]
-        // Only keep an equipped id the player actually owns and that fits the slot.
-        acc[slot] =
-          typeof id === 'string' && ownedItemIds.includes(id) && ITEM_BY_ID.get(id)?.slot === slot ? id : null
-        return acc
-      }, { weapon: null, armor: null, charm: null } as Equipment)
-    : bestOwnedPerSlot(ownedItemIds)
+  const equipped = parseEquipment(raw.equipped, ownedItemIds)
 
   const lifetimeRaw = isRecord(raw.lifetime) ? raw.lifetime : {}
 
