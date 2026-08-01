@@ -9,6 +9,7 @@ export function createDefaultPlayerState(name = 'Hero', avatar: string = DEFAULT
   return {
     schemaVersion: SAVE_SCHEMA_VERSION,
     revision: 0,
+    syncedRevision: 0,
     updatedAt: new Date().toISOString(),
     name,
     avatar,

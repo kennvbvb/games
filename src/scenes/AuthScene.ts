@@ -10,6 +10,7 @@ import { makeTitle } from '../ui/components/makeTitle'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 import { t } from '../i18n'
+import type { ConflictSceneData } from './ConflictScene'
 
 export class AuthScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text
@@ -89,8 +90,12 @@ export class AuthScene extends Phaser.Scene {
 
   private async enterWithUser(userId: string): Promise<void> {
     GameState.userId = userId
-    GameState.player = await loadState(userId)
-    if (GameState.player) {
+    const { state, conflict } = await loadState(userId)
+    GameState.player = state
+    if (conflict) {
+      // Two devices played on from the same point; only the player can choose.
+      this.scene.start('Conflict', conflict satisfies ConflictSceneData)
+    } else if (GameState.player) {
       this.scene.start('MainMenu')
     } else if (hasGuestSave()) {
       this.showImportChoice(userId)
@@ -174,7 +179,7 @@ export class AuthScene extends Phaser.Scene {
 
   private async continueAsGuest(): Promise<void> {
     GameState.userId = null
-    GameState.player = await loadState(null)
+    GameState.player = (await loadState(null)).state
     this.scene.start(GameState.player ? 'MainMenu' : 'CreateHero')
   }
 }
