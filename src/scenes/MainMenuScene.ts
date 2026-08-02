@@ -7,6 +7,7 @@ import { signOut } from '../services/authService'
 import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncStatus'
 import { effectiveStats } from '../systems/upgrades'
 import { claimableCount } from '../systems/achievements'
+import { bestFloor, towerUnlocked } from '../systems/tower'
 import { applyExp } from '../systems/leveling'
 import { computeOfflineRewards, formatDuration } from '../systems/idle'
 import { persist } from '../services/saveService'
@@ -90,15 +91,27 @@ export class MainMenuScene extends Phaser.Scene {
       icon: 'icon_cart',
     })
 
-    // The badge is the only nudge the player gets that a reward is waiting.
+    // Quests shares its row with the tower rather than taking the full width.
+    // The tower is endgame content most saves cannot open yet, so it does not
+    // earn a row of its own — but it does have to be visible from the menu, or
+    // finishing the campaign would end at a screen with nothing after it.
     const claimable = claimableCount(player)
     makeButton(
       this,
-      GAME_W / 2,
+      GAME_W / 2 - 92,
       520,
       claimable > 0 ? t('menu.questsBadge', { count: claimable }) : t('menu.quests'),
       () => this.scene.start('Achievements'),
-      { variant: claimable > 0 ? 'primary' : 'secondary', minWidth: 240, fontSize: '16px', icon: 'icon_star' },
+      { variant: claimable > 0 ? 'primary' : 'secondary', minWidth: 168, fontSize: '15px', icon: 'icon_star' },
+    )
+    const climbed = towerUnlocked(player) ? bestFloor(player) : 0
+    makeButton(
+      this,
+      GAME_W / 2 + 92,
+      520,
+      climbed > 0 ? t('menu.towerBadge', { floor: climbed }) : t('menu.tower'),
+      () => this.scene.start('Tower'),
+      { variant: 'secondary', minWidth: 168, fontSize: '15px', icon: 'decor_tower' },
     )
 
     makeButton(this, GAME_W / 2 - 92, 586, t('menu.settings'), () => this.scene.start('Settings'), {

@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { STAGES, isBossStage } from '../data/stages'
+import { isTowerStageId, towerFloor } from '../data/tower'
+import { recordFloorCleared } from '../systems/tower'
 import { recordEvent } from '../services/analytics'
 import { GameState } from '../state/GameState'
 import { applyRewards } from '../systems/rewards'
@@ -35,8 +37,16 @@ export class ResultScene extends Phaser.Scene {
     const stage = GameState.selectedStage!
     const prevLevel = GameState.player!.level
 
+    const inTower = isTowerStageId(stage.id)
+
     let player = applyRewards(GameState.player!, result)
-    if (result.win) {
+    // A tower floor is not campaign progress. Its id is outside the `stage-`
+    // namespace, so recording it as a cleared stage would be dropped by the
+    // validator on the next load, and setting it as the farming target would
+    // silently switch offline rewards off. The climb has its own record.
+    if (result.win && inTower) {
+      player = recordFloorCleared(player, stage.order)
+    } else if (result.win) {
       const nextUnlock = Math.max(player.stageProgress.highestUnlocked, stage.order + 1)
       const completedStageIds = player.stageProgress.completedStageIds.includes(stage.id)
         ? player.stageProgress.completedStageIds
@@ -66,8 +76,14 @@ export class ResultScene extends Phaser.Scene {
     if (!result.win) GameState.stopAutoBattle()
     if (result.win) advanceTutorial(2)
 
-    const nextStage = STAGES.find((s) => s.order === stage.order + 1) ?? null
-    const nextUnlocked = nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
+    const nextStage = inTower
+      ? towerFloor(stage.order + 1)
+      : (STAGES.find((s) => s.order === stage.order + 1) ?? null)
+    // In the tower the next floor is only ever offered after a win, which is
+    // exactly the rule `canAttempt` enforces — one past the deepest beaten.
+    const nextUnlocked = inTower
+      ? result.win
+      : nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
 
     drawStageScenery(this, stage.bg, stage.order, { horizon: 470 })
     this.renderOutcome(result.win, player, prevLevel, stage)
@@ -76,7 +92,7 @@ export class ResultScene extends Phaser.Scene {
       this.runAutoBattle(player, stage, nextStage, nextUnlocked)
       return
     }
-    this.renderActions(result.win, stage, nextStage, nextUnlocked)
+    this.renderActions(result.win, stage, nextStage, nextUnlocked, inTower)
   }
 
   private renderOutcome(win: boolean, player: PlayerState, prevLevel: number, stage: StageConfig): void {
@@ -213,6 +229,7 @@ export class ResultScene extends Phaser.Scene {
     stage: StageConfig,
     nextStage: StageConfig | null,
     nextUnlocked: boolean,
+    inTower: boolean,
   ): void {
     const startRun = (target: StageConfig, runs: number) => {
       GameState.selectedStage = target
@@ -259,12 +276,14 @@ export class ResultScene extends Phaser.Scene {
       fontSize: '14px',
       minHeight: 50,
     })
-    makeButton(this, GAME_W / 2 + 92, 522, t('result.stageSelect'), () => this.scene.start('StageSelect'), {
-      variant: 'secondary',
-      minWidth: 168,
-      fontSize: '14px',
-      minHeight: 50,
-    })
+    makeButton(
+      this,
+      GAME_W / 2 + 92,
+      522,
+      inTower ? t('tower.leave') : t('result.stageSelect'),
+      () => this.scene.start(inTower ? 'Tower' : 'StageSelect'),
+      { variant: 'secondary', minWidth: 168, fontSize: '14px', minHeight: 50 },
+    )
 
     makeTutorialTip(this, 2, t('tutorial.step2'), 606)
   }

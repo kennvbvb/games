@@ -393,6 +393,22 @@ export const th: Record<keyof typeof en, string> = {
   'relic.undeadGrave': 'ป้ายที่จมดิน',
   'relic.undeadGraveHint': 'รับดาเมจลดลง 12% และออกดาเมจเพิ่ม 8%',
 
+  'tower.title': 'หอคอยไร้จุดจบ',
+  'tower.best': 'ชั้นที่ลึกที่สุด: {floor}',
+  'tower.nextUp': 'ชั้นถัดไป: ชั้น {floor}',
+  'tower.explain':
+    'ทุกชั้นยากกว่าชั้นก่อน และต่างจากแคมเปญตรงที่มันทบต้น — มันถูกออกแบบมาให้หยุดคุณ จุดที่หยุดคุณได้คือคะแนน',
+  'tower.floor': 'ชั้น {floor}',
+  'tower.sealed': 'ปิดอยู่จนกว่าจะผ่านชั้นล่าง',
+  'tower.again': 'อีกครั้ง',
+  'tower.up': 'ขึ้นไป',
+  'tower.down': 'ลงมา',
+  'tower.leave': 'ออกจากหอคอย',
+  'tower.locked': 'หอคอยจะเปิดเมื่อผ่านครบทุกโลก',
+  'tower.lockedHint': 'ผ่านแคมเปญให้ครบทั้ง 20 โลก แล้วกลับมาดูว่าคุณไปได้ไกลแค่ไหน',
+  'menu.tower': 'หอคอย',
+  'menu.towerBadge': 'หอคอย · {floor}',
+
   'plan.loadout': 'ชุดของคุณ',
   'plan.noSkills': 'ยังไม่ได้ติดตั้งทักษะ',
 

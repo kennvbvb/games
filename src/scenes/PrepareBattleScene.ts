@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
+import { isTowerStageId } from '../data/tower'
 import { persist } from '../services/saveService'
 import { BATTLE_PLANS } from '../data/battlePlans'
 import { traitOf } from '../data/enemyTraits'
@@ -101,7 +102,9 @@ export class PrepareBattleScene extends Phaser.Scene {
         .setOrigin(0.5)
     }
 
-    makeButton(this, GAME_W / 2, 648, t('common.back'), () => this.scene.start('StageSelect'), {
+    // Back goes where the fight was picked, not always to stage select: a
+    // tower floor reached from the tower has no row on the campaign screen.
+    makeButton(this, GAME_W / 2, 648, t('common.back'), () => this.scene.start(isTowerStageId(stage.id) ? 'Tower' : 'StageSelect'), {
       variant: 'secondary',
       minWidth: 180,
       fontSize: '15px',

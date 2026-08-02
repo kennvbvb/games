@@ -258,6 +258,19 @@ never downloads it.
   defaults from the OS `prefers-reduced-motion` setting.
 - Losing a stage has no penalty — just try again after leveling up or shopping.
 
+- **The Endless Tower.** Opens once all twenty worlds are cleared, and then
+  goes up forever: floors are *computed* from the floor number rather than
+  authored, so floor 4,000 exists and has a stat block, a trait, a backdrop and
+  a boss schedule without anyone typing it out. Unlike the campaign the curve
+  compounds — health at 3.5% a floor, attack at 2.2% — which is what makes a run
+  end, because player power grows from levels and gear and both of those
+  flatten. The growth rates were swept, not guessed: measured against a hero who
+  has just finished the campaign, x1.075/x1.045 walled at floor 20-30 and
+  x1.035/x1.022 walls at 40-60, which is the one chosen. Every wall lands on a
+  boss floor. Defence is capped rather than scaled, because defence is
+  subtracted before the minimum-1 damage floor and a growing one would make a
+  low-attack kin arithmetically unable to win rather than merely outmatched.
+
 ### Known balance state
 
 `tests/campaign.test.ts` walks all hundred stages for each of the six kin,

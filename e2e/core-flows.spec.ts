@@ -615,3 +615,91 @@ test.describe('kin mastery', () => {
     expect((await game.save())?.equippedRelicId).toBeNull()
   })
 })
+
+test.describe('endless tower', () => {
+  const TOWER_BUTTON = { x: 332, y: 520 }
+  // Five floor rows from y=250, 74 apart, with the Fight button at x=396.
+  const FLOOR_ACTION = (i: number) => ({ x: 396, y: 250 + i * 74 })
+  const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
+  // The tower is balanced against a hero who bought gear on the way through the
+  // campaign, not a bare level-34 stat block — without it even floor 1 is a loss.
+  const EQUIPPED = {
+    weapon: 'worldbreaker',
+    head: 'crown-of-dawn',
+    body: 'aegis-of-dawn',
+    boots: 'treads-of-the-titan',
+    accessory1: 'heros-emblem',
+    accessory2: 'eternity-shard',
+  }
+  const geared = {
+    level: 34,
+    gold: 40_000,
+    ownedItemIds: Object.values(EQUIPPED),
+    equipped: EQUIPPED,
+  }
+
+  test('stays shut until the whole campaign is cleared', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ stageProgress: { highestUnlocked: 100, completedStageIds: allStages.slice(0, 99) } }))
+    await game.continueAsGuest()
+    await game.tap(TOWER_BUTTON.x, TOWER_BUTTON.y)
+    await game.settle(500)
+
+    // The locked screen has no floor rows, so tapping where one would be does
+    // nothing and the record stays at zero.
+    await game.tap(FLOOR_ACTION(0).x, FLOOR_ACTION(0).y)
+    await game.settle(500)
+    expect((await game.save())?.tower).toEqual({ bestFloor: 0 })
+  })
+
+  test('a graduate can climb, and the record survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ ...geared, stageProgress: { highestUnlocked: 100, completedStageIds: allStages } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(TOWER_BUTTON.x, TOWER_BUTTON.y)
+    await game.settle(600)
+
+    // The window opens on floor 1, which is the only one open.
+    await game.tap(FLOOR_ACTION(0).x, FLOOR_ACTION(0).y)
+    await game.settle(600)
+    await game.pickPlan()
+    await expect
+      .poll(async () => (await game.save())?.tower, { timeout: 30_000 })
+      .toEqual({ bestFloor: 1 })
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.tower).toEqual({ bestFloor: 1 })
+  })
+
+  test('a floor is never recorded as campaign progress', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        ...geared,
+        tower: { bestFloor: 4 },
+        idle: { farmingStageId: 'stage-3', lastSeenAt: Date.now() },
+        stageProgress: { highestUnlocked: 100, completedStageIds: allStages },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(TOWER_BUTTON.x, TOWER_BUTTON.y)
+    await game.settle(600)
+
+    // Window opens with floor 4 on top, so floor 5 is the second row.
+    await game.tap(FLOOR_ACTION(1).x, FLOOR_ACTION(1).y)
+    await game.settle(600)
+    await game.pickPlan()
+    await expect.poll(async () => (await game.save())?.tower, { timeout: 30_000 }).toEqual({ bestFloor: 5 })
+
+    const save = await game.save()
+    // A tower id in the cleared list would be dropped by the validator, and a
+    // tower id as the farming target would switch offline rewards off.
+    expect((save as unknown as { stageProgress: { completedStageIds: string[] } }).stageProgress.completedStageIds)
+      .toHaveLength(100)
+    expect((save as unknown as { idle: { farmingStageId: string } }).idle.farmingStageId).toBe('stage-3')
+  })
+})

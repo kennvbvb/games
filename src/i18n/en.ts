@@ -391,6 +391,22 @@ export const en = {
   'relic.undeadGrave': 'Sunken Marker',
   'relic.undeadGraveHint': 'Take 12% less damage and deal 8% more.',
 
+  'tower.title': 'Endless Tower',
+  'tower.best': 'Deepest floor: {floor}',
+  'tower.nextUp': 'Next up: Floor {floor}',
+  'tower.explain':
+    'Every floor is harder than the last, and unlike the campaign the climb compounds — it is meant to stop you. Where it stops you is the score.',
+  'tower.floor': 'Floor {floor}',
+  'tower.sealed': 'Sealed until the floor below is cleared',
+  'tower.again': 'Again',
+  'tower.up': 'Higher',
+  'tower.down': 'Lower',
+  'tower.leave': 'Leave tower',
+  'tower.locked': 'The tower opens once every world is cleared',
+  'tower.lockedHint': 'Finish all twenty worlds of the campaign, then come back and see how far you get.',
+  'menu.tower': 'Tower',
+  'menu.towerBadge': 'Tower · {floor}',
+
   'plan.loadout': 'Your build',
   'plan.noSkills': 'No skills equipped',
 

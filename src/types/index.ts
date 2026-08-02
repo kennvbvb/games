@@ -58,7 +58,7 @@ export interface ShopItem {
   setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 14
+export const SAVE_SCHEMA_VERSION = 15
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -95,6 +95,11 @@ export interface GameSettings {
    * saves — consent cannot be inherited from a version that never asked.
    */
   analytics: boolean
+}
+
+export interface TowerProgress {
+  /** Deepest floor beaten; 0 before the first climb. */
+  bestFloor: number
 }
 
 /** Running totals that cannot be derived from the current state alone. */
@@ -155,6 +160,12 @@ export interface PlayerState {
    * player chooses, so it is the only part written down — see systems/mastery.
    */
   equippedRelicId: string | null
+  /**
+   * Endless Tower record. The only progress in the save that is stored rather
+   * than derived, because there is nothing to derive it from — see
+   * systems/tower for why that is safe here and nowhere else.
+   */
+  tower: TowerProgress
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState

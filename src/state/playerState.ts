@@ -35,6 +35,7 @@ export function createDefaultPlayerState(
     unlockedSkillIds: [],
     loadout: [],
     equippedRelicId: null,
+    tower: { bestFloor: 0 },
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
     settings: {
       battleSpeed: 1,
