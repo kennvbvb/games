@@ -138,7 +138,7 @@ export function runLab(run: LabRun): { result: BattleResult; metrics: LabMetrics
     run.raceId && run.raceId !== run.player.raceId
       ? { ...run.player, raceId: run.raceId, stats: statsForLevel(run.player.level, run.raceId) }
       : run.player
-  const inputs = playerBattleInputs(base)
+  const inputs = playerBattleInputs(base, run.stage)
   const enemy = enemyFor(run.stage.enemy, run.difficulty)
 
   const result = resolveBattle({

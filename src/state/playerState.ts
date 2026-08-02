@@ -36,6 +36,7 @@ export function createDefaultPlayerState(
     loadout: [],
     equippedRelicId: null,
     tower: { bestFloor: 0 },
+    rift: { clearedWeek: -1 },
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
     settings: {
       battleSpeed: 1,

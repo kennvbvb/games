@@ -12,6 +12,7 @@ import { statsForLevel } from '../systems/leveling'
 import { POINTS_PER_BOSS, POINTS_PER_LEVEL, sanitizeLoadout, sanitizeSkills } from '../systems/skills'
 import { masteryXpFor, rankForXp, sanitizeRelic } from '../systems/mastery'
 import { sanitizeTower } from '../systems/tower'
+import { sanitizeRift } from '../systems/rift'
 import { BOSS_STAGE_IDS } from '../data/worlds'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
@@ -161,6 +162,8 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     // Absent in pre-v15 saves, which simply start the tower at zero — there is
     // no campaign progress that implies a climb, so there is nothing to infer.
     tower: sanitizeTower(raw.tower),
+    // Absent in pre-v16 saves, which read as "never cleared a rift".
+    rift: sanitizeRift(raw.rift),
     stageProgress: {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,

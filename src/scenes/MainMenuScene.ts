@@ -8,6 +8,7 @@ import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncSt
 import { effectiveStats } from '../systems/upgrades'
 import { claimableCount } from '../systems/achievements'
 import { bestFloor, towerUnlocked } from '../systems/tower'
+import { riftAvailable } from '../systems/rift'
 import { applyExp } from '../systems/leveling'
 import { computeOfflineRewards, formatDuration } from '../systems/idle'
 import { persist } from '../services/saveService'
@@ -91,27 +92,44 @@ export class MainMenuScene extends Phaser.Scene {
       icon: 'icon_cart',
     })
 
-    // Quests shares its row with the tower rather than taking the full width.
-    // The tower is endgame content most saves cannot open yet, so it does not
-    // earn a row of its own — but it does have to be visible from the menu, or
-    // finishing the campaign would end at a screen with nothing after it.
+    // Three side by side rather than three more full-width rows. Both the tower
+    // and the rift are gated content most saves cannot open yet, so neither
+    // earns a row of its own — but both have to be reachable from the menu, or
+    // finishing a campaign world would lead to a screen with nothing after it.
+    //
+    // Each carries a badge only when it wants attention: an unclaimed quest, a
+    // floor already climbed, a rift not yet taken this week.
     const claimable = claimableCount(player)
     makeButton(
       this,
-      GAME_W / 2 - 92,
+      84,
       520,
       claimable > 0 ? t('menu.questsBadge', { count: claimable }) : t('menu.quests'),
       () => this.scene.start('Achievements'),
-      { variant: claimable > 0 ? 'primary' : 'secondary', minWidth: 168, fontSize: '15px', icon: 'icon_star' },
+      { variant: claimable > 0 ? 'primary' : 'secondary', minWidth: 148, fontSize: '13px', icon: 'icon_star' },
     )
     const climbed = towerUnlocked(player) ? bestFloor(player) : 0
     makeButton(
       this,
-      GAME_W / 2 + 92,
+      GAME_W / 2,
       520,
       climbed > 0 ? t('menu.towerBadge', { floor: climbed }) : t('menu.tower'),
       () => this.scene.start('Tower'),
-      { variant: 'secondary', minWidth: 168, fontSize: '15px', icon: 'decor_tower' },
+      { variant: 'secondary', minWidth: 148, fontSize: '13px', icon: 'decor_tower' },
+    )
+    const riftWaiting = riftAvailable(player)
+    makeButton(
+      this,
+      396,
+      520,
+      riftWaiting ? t('menu.riftBadge') : t('menu.rift'),
+      () => this.scene.start('Rift'),
+      {
+        variant: riftWaiting ? 'primary' : 'secondary',
+        minWidth: 148,
+        fontSize: '13px',
+        icon: 'decor_portal',
+      },
     )
 
     makeButton(this, GAME_W / 2 - 92, 586, t('menu.settings'), () => this.scene.start('Settings'), {

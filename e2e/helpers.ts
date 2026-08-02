@@ -16,7 +16,7 @@ export interface SaveOverrides {
 /** A mid-game save in the current schema, overridable per test. */
 export function makeSave(over: SaveOverrides = {}): string {
   return JSON.stringify({
-    schemaVersion: 15,
+    schemaVersion: 16,
     revision: 1,
     syncedRevision: 1,
     updatedAt: new Date().toISOString(),
@@ -35,6 +35,7 @@ export function makeSave(over: SaveOverrides = {}): string {
     loadout: [],
     equippedRelicId: null,
     tower: { bestFloor: 0 },
+    rift: { clearedWeek: -1 },
     stageProgress: { highestUnlocked: 6, completedStageIds: ['stage-1'] },
     settings: {
       battleSpeed: 4,

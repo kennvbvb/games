@@ -617,7 +617,7 @@ test.describe('kin mastery', () => {
 })
 
 test.describe('endless tower', () => {
-  const TOWER_BUTTON = { x: 332, y: 520 }
+  const TOWER_BUTTON = { x: 240, y: 520 }
   // Five floor rows from y=250, 74 apart, with the Fight button at x=396.
   const FLOOR_ACTION = (i: number) => ({ x: 396, y: 250 + i * 74 })
   const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
@@ -701,5 +701,78 @@ test.describe('endless tower', () => {
     expect((save as unknown as { stageProgress: { completedStageIds: string[] } }).stageProgress.completedStageIds)
       .toHaveLength(100)
     expect((save as unknown as { idle: { farmingStageId: string } }).idle.farmingStageId).toBe('stage-3')
+  })
+})
+
+test.describe('realm rift', () => {
+  const RIFT_BUTTON = { x: 396, y: 520 }
+  const ENTER = { x: 240, y: 556 }
+  const eightWorlds = Array.from({ length: 40 }, (_, i) => `stage-${i + 1}`)
+
+  test('stays shut until eight worlds are cleared', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ stageProgress: { highestUnlocked: 40, completedStageIds: eightWorlds.slice(0, 39) } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(RIFT_BUTTON.x, RIFT_BUTTON.y)
+    await game.settle(600)
+
+    // The locked screen has no Enter button, so this tap cannot start a fight.
+    await game.tap(ENTER.x, ENTER.y)
+    await game.settle(600)
+    expect((await game.save())?.rift).toEqual({ clearedWeek: -1 })
+  })
+
+  test('clearing it marks the week, and never campaign progress', async ({ page }) => {
+    const game = new GamePage(page)
+    const EQUIPPED = {
+      weapon: 'worldbreaker',
+      head: 'crown-of-dawn',
+      body: 'aegis-of-dawn',
+      boots: 'treads-of-the-titan',
+      accessory1: 'heros-emblem',
+      accessory2: 'eternity-shard',
+    }
+    await game.open(
+      makeSave({
+        level: 40,
+        gold: 40_000,
+        ownedItemIds: Object.values(EQUIPPED),
+        equipped: EQUIPPED,
+        idle: { farmingStageId: 'stage-3', lastSeenAt: Date.now() },
+        stageProgress: { highestUnlocked: 41, completedStageIds: eightWorlds },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(RIFT_BUTTON.x, RIFT_BUTTON.y)
+    await game.settle(600)
+    await game.tap(ENTER.x, ENTER.y)
+    await game.settle(600)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.rift?.clearedWeek ?? -1, { timeout: 30_000 })
+      .toBeGreaterThan(-1)
+
+    const save = await game.save()
+    // A rift id in the cleared list would be dropped by the validator, and one
+    // as the farming target would switch offline rewards off.
+    expect(save?.stageProgress?.completedStageIds).toHaveLength(40)
+    expect(save?.idle?.farmingStageId).toBe('stage-3')
+    expect(save?.tower).toEqual({ bestFloor: 0 })
+  })
+
+  test('a save claiming a future week is pulled back to the current one', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        rift: { clearedWeek: 99_999 },
+        stageProgress: { highestUnlocked: 41, completedStageIds: eightWorlds },
+      }),
+    )
+    await game.continueAsGuest()
+    const week = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000))
+    expect((await game.save())?.rift).toEqual({ clearedWeek: week })
   })
 })

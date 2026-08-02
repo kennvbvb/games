@@ -58,7 +58,7 @@ export interface ShopItem {
   setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 15
+export const SAVE_SCHEMA_VERSION = 16
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -100,6 +100,11 @@ export interface GameSettings {
 export interface TowerProgress {
   /** Deepest floor beaten; 0 before the first climb. */
   bestFloor: number
+}
+
+export interface RiftProgress {
+  /** Week index of the last rift beaten; -1 before the first one. */
+  clearedWeek: number
 }
 
 /** Running totals that cannot be derived from the current state alone. */
@@ -166,6 +171,13 @@ export interface PlayerState {
    * systems/tower for why that is safe here and nowhere else.
    */
   tower: TowerProgress
+  /**
+   * Which week's Realm Rift has been beaten. Stored for the same reason the
+   * tower record is — there is nothing in the save to derive it from — and
+   * deliberately worth only gold and EXP, because the week comes from the
+   * device clock. See data/rifts.
+   */
+  rift: RiftProgress
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState

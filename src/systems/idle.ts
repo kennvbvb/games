@@ -42,7 +42,7 @@ export function computeOfflineRewards(state: PlayerState, now: number): OfflineR
   // plan happens to win — otherwise the payout contradicts every forecast they
   // were shown before closing the tab.
   const outcome = resolveBattle({
-    ...playerBattleInputs(state),
+    ...playerBattleInputs(state, stage),
     enemy: enemyFor(stage.enemy, activeDifficulty(state)),
     rewards: rewardsFor(stage.rewards, activeDifficulty(state)),
     plan: state.settings.battlePlan,

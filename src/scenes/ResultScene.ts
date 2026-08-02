@@ -2,6 +2,8 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { STAGES, isBossStage } from '../data/stages'
 import { isTowerStageId, towerFloor } from '../data/tower'
+import { isRiftStageId } from '../data/rifts'
+import { recordRiftCleared, riftAvailable } from '../systems/rift'
 import { recordFloorCleared } from '../systems/tower'
 import { recordEvent } from '../services/analytics'
 import { GameState } from '../state/GameState'
@@ -38,14 +40,27 @@ export class ResultScene extends Phaser.Scene {
     const prevLevel = GameState.player!.level
 
     const inTower = isTowerStageId(stage.id)
+    const inRift = isRiftStageId(stage.id)
+    // Read before the win is recorded: once the week is marked cleared the
+    // answer flips, and a rift beaten twice in a week would pay twice.
+    const riftPays = inRift && riftAvailable(GameState.player!)
 
-    let player = applyRewards(GameState.player!, result)
+    // A rift already cleared this week still counts as a battle won — it just
+    // does not pay. Zeroing the payout rather than skipping `applyRewards`
+    // outright keeps the lifetime tally (and the achievements built on it)
+    // honest about a fight that really did happen.
+    let player = applyRewards(
+      GameState.player!,
+      inRift && !riftPays ? { ...result, rewards: { exp: 0, gold: 0 } } : result,
+    )
     // A tower floor is not campaign progress. Its id is outside the `stage-`
     // namespace, so recording it as a cleared stage would be dropped by the
     // validator on the next load, and setting it as the farming target would
     // silently switch offline rewards off. The climb has its own record.
     if (result.win && inTower) {
       player = recordFloorCleared(player, stage.order)
+    } else if (result.win && inRift) {
+      player = recordRiftCleared(player)
     } else if (result.win) {
       const nextUnlock = Math.max(player.stageProgress.highestUnlocked, stage.order + 1)
       const completedStageIds = player.stageProgress.completedStageIds.includes(stage.id)
@@ -76,14 +91,18 @@ export class ResultScene extends Phaser.Scene {
     if (!result.win) GameState.stopAutoBattle()
     if (result.win) advanceTutorial(2)
 
-    const nextStage = inTower
-      ? towerFloor(stage.order + 1)
-      : (STAGES.find((s) => s.order === stage.order + 1) ?? null)
+    const nextStage = inRift
+      ? null
+      : inTower
+        ? towerFloor(stage.order + 1)
+        : (STAGES.find((s) => s.order === stage.order + 1) ?? null)
     // In the tower the next floor is only ever offered after a win, which is
     // exactly the rule `canAttempt` enforces — one past the deepest beaten.
-    const nextUnlocked = inTower
-      ? result.win
-      : nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
+    const nextUnlocked = inRift
+      ? false
+      : inTower
+        ? result.win
+        : nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
 
     drawStageScenery(this, stage.bg, stage.order, { horizon: 470 })
     this.renderOutcome(result.win, player, prevLevel, stage)
@@ -92,7 +111,7 @@ export class ResultScene extends Phaser.Scene {
       this.runAutoBattle(player, stage, nextStage, nextUnlocked)
       return
     }
-    this.renderActions(result.win, stage, nextStage, nextUnlocked, inTower)
+    this.renderActions(result.win, stage, nextStage, nextUnlocked, inTower, inRift)
   }
 
   private renderOutcome(win: boolean, player: PlayerState, prevLevel: number, stage: StageConfig): void {
@@ -230,6 +249,7 @@ export class ResultScene extends Phaser.Scene {
     nextStage: StageConfig | null,
     nextUnlocked: boolean,
     inTower: boolean,
+    inRift: boolean,
   ): void {
     const startRun = (target: StageConfig, runs: number) => {
       GameState.selectedStage = target
@@ -245,6 +265,19 @@ export class ResultScene extends Phaser.Scene {
         fontSize: '16px',
       })
       makeButton(this, GAME_W / 2, 452, t('result.farmTen'), () => startRun(stage, 10), {
+        variant: 'secondary',
+        minWidth: 280,
+        fontSize: '15px',
+      })
+    } else if (win && inRift) {
+      // No farm button here. The rift pays once a week, so ten runs of it would
+      // be ten fights for nothing — offering it would read as a reward loop.
+      makeButton(this, GAME_W / 2, 384, t('rift.again'), () => startRun(stage, 0), {
+        minWidth: 280,
+        fontSize: '16px',
+        icon: 'decor_portal',
+      })
+      makeButton(this, GAME_W / 2, 452, t('rift.leave'), () => this.scene.start('Rift'), {
         variant: 'secondary',
         minWidth: 280,
         fontSize: '15px',
@@ -280,8 +313,8 @@ export class ResultScene extends Phaser.Scene {
       this,
       GAME_W / 2 + 92,
       522,
-      inTower ? t('tower.leave') : t('result.stageSelect'),
-      () => this.scene.start(inTower ? 'Tower' : 'StageSelect'),
+      inRift ? t('rift.leave') : inTower ? t('tower.leave') : t('result.stageSelect'),
+      () => this.scene.start(inRift ? 'Rift' : inTower ? 'Tower' : 'StageSelect'),
       { variant: 'secondary', minWidth: 168, fontSize: '14px', minHeight: 50 },
     )
 

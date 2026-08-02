@@ -41,7 +41,7 @@ export class BattleScene extends Phaser.Scene {
     setupScene(this)
     const stage = GameState.selectedStage!
     const player = GameState.player!
-    const inputs = playerBattleInputs(player)
+    const inputs = playerBattleInputs(player, stage)
     const stats = inputs.player
     const plan = GameState.selectedPlan ?? player.settings.battlePlan
     const result = resolveBattle({

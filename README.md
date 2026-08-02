@@ -271,6 +271,30 @@ never downloads it.
   subtracted before the minimum-1 damage floor and a growing one would make a
   low-attack kin arithmetically unable to win rather than merely outmatched.
 
+- **The Realm Rift.** One fight, rebuilt every week from the week number, so
+  everybody sees the same rift all week. It hands the player a **boon** and the
+  enemy a **bane**, walked off the week with co-prime pool sizes (7 and 6) so
+  the pairing takes 42 weeks to come round rather than 7. Clearing it pays once
+  a week; losing does not consume the week, because a rift you cannot beat yet
+  should still be there when you come back with a better build.
+
+  Its numbers scale to the last world boss you actually beat, rather than being
+  fixed. That was measured, not assumed: a fixed stat block sized for the
+  endgame was beaten in **0 of 42 weeks** by every kin at the eight-world gate,
+  and a block sized for the gate would be trivial later. Scaled, the same walk
+  wins 14–36 of 42 weeks at the gate and 39–42 after the full campaign. Two
+  players in the same week are fighting the same boon, bane, name and backdrop;
+  they are simply not fighting the same health bar.
+
+  The rift deliberately pays **only gold and EXP**. The week comes from the
+  device clock and there is no server to check it against, so a player who
+  moves their clock can claim as many weeks as they have patience for — and
+  every fix for that needs a server. Rather than pretend otherwise, the reward
+  is something the game already gives away without limit through idle farming,
+  which makes the hole not worth crawling through. That is why relics stayed on
+  the mastery track, where they are earned from campaign progress a clock
+  cannot fake.
+
 ### Known balance state
 
 `tests/campaign.test.ts` walks all hundred stages for each of the six kin,

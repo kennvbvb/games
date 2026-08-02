@@ -48,7 +48,7 @@ export const FORECAST_LABEL_KEYS = {
  * which is the one thing this function must never do.
  */
 export function stageOutlook(state: PlayerState, stage: StageConfig, plan?: PlanId): StageOutlook {
-  const inputs = playerBattleInputs(state)
+  const inputs = playerBattleInputs(state, stage)
   const result = resolveBattle({
     ...inputs,
     enemy: enemyFor(stage.enemy, activeDifficulty(state)),
