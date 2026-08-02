@@ -139,7 +139,6 @@ export function runLab(run: LabRun): { result: BattleResult; metrics: LabMetrics
       ? { ...run.player, raceId: run.raceId, stats: statsForLevel(run.player.level, run.raceId) }
       : run.player
   const inputs = playerBattleInputs(base)
-  const stats = inputs.player
   const enemy = enemyFor(run.stage.enemy, run.difficulty)
 
   const result = resolveBattle({
@@ -151,7 +150,7 @@ export function runLab(run: LabRun): { result: BattleResult; metrics: LabMetrics
     plan: run.plan ?? base.settings.battlePlan,
   })
 
-  return { result, metrics: measure(result, stats.maxHp, enemy.maxHp, raceId) }
+  return { result, metrics: measure(result, result.playerMaxHp, enemy.maxHp, raceId) }
 }
 
 /** Every plan against one stage — the comparison the Prepare screen shows. */

@@ -427,6 +427,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     win: outcome === 'win',
     log,
     playerHpLeft: playerHp,
+    playerMaxHp: player.maxHp,
     enemyHpLeft: enemyHp,
     shieldLeft: shield,
     phasesEntered,

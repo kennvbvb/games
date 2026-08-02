@@ -307,6 +307,13 @@ export interface BattleResult {
    * blow against that side silently reads a stale value.
    */
   playerHpLeft: number
+  /**
+   * The Max HP the fight was actually resolved with. Skills and gear can scale
+   * the player's health pool, so dividing `playerHpLeft` by the *unscaled*
+   * stat block reports more than 100% left — which is what the stage preview
+   * did until this was returned alongside it.
+   */
+  playerMaxHp: number
   enemyHpLeft: number
   /** Shield still standing at the end; 0 unless a shield effect was running. */
   shieldLeft: number

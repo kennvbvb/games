@@ -49,7 +49,6 @@ export const FORECAST_LABEL_KEYS = {
  */
 export function stageOutlook(state: PlayerState, stage: StageConfig, plan?: PlanId): StageOutlook {
   const inputs = playerBattleInputs(state)
-  const stats = inputs.player
   const result = resolveBattle({
     ...inputs,
     enemy: enemyFor(stage.enemy, activeDifficulty(state)),
@@ -57,7 +56,10 @@ export function stageOutlook(state: PlayerState, stage: StageConfig, plan?: Plan
     plan: plan ?? state.settings.battlePlan,
   })
 
-  const hpRemaining = stats.maxHp > 0 ? Math.max(0, result.playerHpLeft) / stats.maxHp : 0
+  // Against the pool the fight was fought with, not the pre-skill one: a hero
+  // whose build scales Max HP would otherwise be told it has 110% left.
+  const hpRemaining =
+    result.playerMaxHp > 0 ? Math.max(0, result.playerHpLeft) / result.playerMaxHp : 0
   const turns = result.log.length > 0 ? result.log[result.log.length - 1].turn : 0
 
   if (!result.win) return { tier: 'hard', hpRemaining, willWin: false, outcome: result.outcome, turns }

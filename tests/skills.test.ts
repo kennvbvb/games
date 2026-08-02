@@ -24,6 +24,7 @@ import { parsePlayerState } from '../src/state/validate'
 import { resolveBattle } from '../src/systems/combat'
 import { foldModifiers } from '../src/systems/combatModifiers'
 import { statsForLevel } from '../src/systems/leveling'
+import { stageOutlook } from '../src/systems/difficulty'
 import type { PlayerState } from '../src/types'
 
 /** A hero with enough points to buy anything, so tests can isolate one rule. */
@@ -380,5 +381,36 @@ describe('skill validation', () => {
     expect(sanitizeLoadout(['human-1-1'], [])).toEqual([])
     expect(sanitizeLoadout(['a', 'b', 'c', 'd', 'e'], ['a', 'b', 'c', 'd', 'e'])).toHaveLength(LOADOUT_SIZE)
     expect(sanitizeLoadout('nope', ['a'])).toEqual([])
+  })
+})
+
+describe('health-scaling builds report honest numbers', () => {
+  const enemy = { name: 'Dummy', sprite: 'enemy_1', maxHp: 60, atk: 5, def: 0 }
+  const rewards = { exp: 0, gold: 0 }
+  const player = { maxHp: 200, atk: 60, def: 40 }
+
+  it('returns the Max HP the fight actually used', () => {
+    const plain = resolveBattle({ player, enemy, rewards })
+    expect(plain.playerMaxHp).toBe(player.maxHp)
+
+    const bulked = resolveBattle({ player, enemy, rewards, modifiers: [{ hpScale: 1.5 }] })
+    expect(bulked.playerMaxHp).toBe(300)
+    expect(bulked.playerHpLeft).toBeGreaterThan(player.maxHp)
+  })
+
+  it('never previews more than 100% health remaining', () => {
+    // The visible bug: a Dwarf running Reinforced Plate was told "110% HP
+    // left", because the preview divided the health left after a scaled fight
+    // by the *unscaled* stat block.
+    let state = rich('dwarf', 40)
+    for (const id of ['dwarf-3-1']) state = unlockSkill(state, id)!
+    state = equipSkill(state, 'dwarf-3-1')
+    expect(skillModifiers(state)[0].hpScale).toBeGreaterThan(1)
+
+    for (const stage of STAGES.slice(0, 12)) {
+      const outlook = stageOutlook(state, stage)
+      expect(outlook.hpRemaining, `${stage.id} previews ${outlook.hpRemaining}`).toBeLessThanOrEqual(1)
+      expect(outlook.hpRemaining).toBeGreaterThanOrEqual(0)
+    }
   })
 })
