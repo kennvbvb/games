@@ -14,6 +14,11 @@ import { drawStageScenery } from '../ui/scenery'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 import type { PlayerState, StageConfig } from '../types'
+import { LOSS_REASON_KEYS, diagnoseLoss } from '../admin/battleLab'
+import { enemyFor } from '../data/difficulties'
+import { activeDifficulty } from '../systems/campaignModes'
+import { recommendPlan } from '../systems/difficulty'
+import { PLAN_BY_ID } from '../data/battlePlans'
 import { t } from '../i18n'
 
 /** How long the result screen lingers before the next queued auto-battle. */
@@ -65,7 +70,7 @@ export class ResultScene extends Phaser.Scene {
     const nextUnlocked = nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
 
     drawStageScenery(this, stage.bg, stage.order, { horizon: 470 })
-    this.renderOutcome(result.win, player, prevLevel)
+    this.renderOutcome(result.win, player, prevLevel, stage)
 
     if (GameState.autoRunsRemaining > 0) {
       this.runAutoBattle(player, stage, nextStage, nextUnlocked)
@@ -74,7 +79,7 @@ export class ResultScene extends Phaser.Scene {
     this.renderActions(result.win, stage, nextStage, nextUnlocked)
   }
 
-  private renderOutcome(win: boolean, player: PlayerState, prevLevel: number): void {
+  private renderOutcome(win: boolean, player: PlayerState, prevLevel: number, stage: StageConfig): void {
     const result = GameState.lastBattleResult!
     const banner = makeEmoji(this, GAME_W / 2, 120, win ? 'icon_victory' : 'icon_defeat', 76)
     this.tweens.add({
@@ -129,15 +134,37 @@ export class ResultScene extends Phaser.Scene {
     } else {
       // A stalemate is not a defeat — telling the player to level up when the
       // real problem is that nobody can finish would be the wrong advice.
+      const reason = diagnoseLoss(result, enemyFor(stage.enemy, activeDifficulty(player)).maxHp)
       this.add
-        .text(GAME_W / 2, 292, result.outcome === 'timeout' ? t('battle.stalemate') : t('result.noRewards'), {
-          fontSize: '14px',
-          fontFamily: FONT.family,
-          color: COLORS.textDim,
-          align: 'center',
-          wordWrap: { width: 330 },
-        })
+        .text(
+          GAME_W / 2,
+          286,
+          reason ? t(LOSS_REASON_KEYS[reason]) : t('result.noRewards'),
+          {
+            fontSize: '14px',
+            fontFamily: FONT.family,
+            color: COLORS.textDim,
+            align: 'center',
+            wordWrap: { width: 340 },
+          },
+        )
         .setOrigin(0.5)
+
+      // "Get stronger" is advice the player can already guess. If a plan they
+      // did not pick would have cleared it, that is the thing worth saying.
+      const better = recommendPlan(player, stage)
+      if (better && better.plan !== (GameState.selectedPlan ?? player.settings.battlePlan)) {
+        this.add
+          .text(GAME_W / 2, 320, t('loss.tryPlan', { plan: t(PLAN_BY_ID.get(better.plan)!.nameKey) }), {
+            fontSize: '12px',
+            fontFamily: FONT.family,
+            fontStyle: 'bold',
+            color: COLORS.gold,
+            align: 'center',
+            wordWrap: { width: 340 },
+          })
+          .setOrigin(0.5)
+      }
     }
   }
 

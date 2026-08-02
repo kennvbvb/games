@@ -1,4 +1,15 @@
 import { traitOf } from '../data/enemyTraits'
+import {
+  applyStatus,
+  attackScale,
+  cleanse,
+  decayStatuses,
+  defenceScale,
+  healingScale,
+  reflectFraction,
+  tickStatuses,
+} from './status'
+import type { StatusBag } from './status'
 import { NEUTRAL, foldModifiers, planModifiers } from './combatModifiers'
 import type { CombatModifiers, ModifierSource } from './combatModifiers'
 import type { PlanId } from '../data/battlePlans'
@@ -140,6 +151,17 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
 
   let playerHp = player.maxHp
   let enemyHp = enemy.maxHp
+  // Statuses ride on the side they afflict, not the side that applied them.
+  let playerStatuses: StatusBag = []
+  let enemyStatuses: StatusBag = []
+  let playerHitsTaken = 0
+  let enemyHitsTaken = 0
+  let phasesEntered = 0
+  const phases = [...(enemy.boss?.phases ?? [])].sort((a, b) => b.atHpBelow - a.atHpBelow)
+  let phaseAtk = 1
+  let phaseDef = 1
+  let enemyShield = 0
+  let activeTrait = trait
   // Shield sits in front of health and is spent first. It is deliberately not
   // part of Max HP: a build that runs on shields should read as fragile on the
   // health bar, because it is — nothing refills it once the sources stop.
@@ -154,8 +176,8 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
   const log: TurnEvent[] = []
   let turn = 0
 
-  const enemyHeal = trait.heal
-  const enemyHealEvery = trait.healEvery
+  // A Shielded enemy starts behind one; a phase can grant another later.
+  enemyShield = Math.round(enemy.maxHp * (trait.shield ?? 0))
 
   /** At most one announcement per blow; a loser stays unlatched and tries again. */
   const announce = (event: TurnEvent, kind: AnnounceKind) => {
@@ -188,6 +210,33 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     return absorbed
   }
 
+  /** Applies a blow to the enemy, spending its shield before its health. */
+  const strikeEnemy = (damage: number): number => {
+    const absorbed = Math.min(enemyShield, damage)
+    enemyShield -= absorbed
+    enemyHp = Math.max(0, enemyHp - (damage - absorbed))
+    return absorbed
+  }
+
+  /**
+   * Enters every phase the boss has crossed into. One-way on purpose: a boss
+   * healed back above a threshold does not un-transform, because a fight that
+   * could re-enter a phase could re-enter it forever.
+   */
+  const checkPhases = (event: TurnEvent) => {
+    while (phasesEntered < phases.length && enemyHp > 0 && enemyHp <= enemy.maxHp * phases[phasesEntered].atHpBelow) {
+      const phase = phases[phasesEntered]
+      phasesEntered += 1
+      phaseAtk *= phase.atkScale ?? 1
+      phaseDef *= phase.defScale ?? 1
+      if (phase.shield) enemyShield += Math.round(enemy.maxHp * phase.shield)
+      if (phase.cleanse) enemyStatuses = cleanse(enemyStatuses)
+      if (phase.trait) activeTrait = traitOf(phase.trait)
+      if (phase.inflict) playerStatuses = applyStatus(playerStatuses, phase.inflict, 'enemy')
+      announce(event, 'phase')
+    }
+  }
+
   while (playerHp > 0 && enemyHp > 0 && turn < MAX_TURNS) {
     turn++
 
@@ -195,7 +244,25 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     playerAttacks += 1
     const playerEvent: TurnEvent = { turn, attacker: 'player', damage: 0, targetHpAfter: enemyHp }
 
-    if (trait.dodgeEvery > 0 && playerAttacks % trait.dodgeEvery === 0) {
+    // Statuses resolve before the blow: a burn that kills should kill, rather
+    // than being outrun by the attack it would have prevented.
+    const playerTick = tickStatuses(playerStatuses, player.maxHp, playerHitsTaken)
+    if (playerTick.damage > 0) {
+      playerHp = Math.max(0, playerHp - playerTick.damage)
+      playerEvent.statusDamage = playerTick.damage
+    }
+    if (playerTick.heal > 0) {
+      playerHp = Math.min(player.maxHp, playerHp + Math.round(playerTick.heal * healingScale(playerStatuses)))
+    }
+    if (playerHp <= 0) {
+      playerEvent.targetHpAfter = enemyHp
+      log.push(playerEvent)
+      break
+    }
+
+    if (playerTick.skipsTurn) {
+      playerEvent.frozen = true
+    } else if (activeTrait.dodgeEvery > 0 && playerAttacks % activeTrait.dodgeEvery === 0) {
       // A gate, not a zero multiplier — the minimum-1 floor would undo a zero.
       playerEvent.dodged = true
     } else {
@@ -212,9 +279,22 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       if (execute) multiplier *= mods.execute
       if (isBoss) multiplier *= mods.bossDamage
 
-      const damage = Math.max(1, Math.round((player.atk - enemy.def) * multiplier))
-      enemyHp = Math.max(0, enemyHp - damage)
+      // Weaken cuts the player's attack; Armor Break and the enemy's own
+      // traits and phases move its defence.
+      const atk = player.atk * attackScale(playerStatuses)
+      const def = enemy.def * (activeTrait.defScale ?? 1) * phaseDef * defenceScale(enemyStatuses)
+      const damage = Math.max(1, Math.round((atk - def) * multiplier))
+      const absorbed = strikeEnemy(damage)
+      enemyHitsTaken += 1
       playerEvent.damage = damage
+      if (absorbed > 0) playerEvent.absorbed = absorbed
+
+      // Countering sends part of the blow straight back, on the same event.
+      const thrownBack = Math.round(damage * ((activeTrait.reflect ?? 0) + reflectFraction(enemyStatuses)))
+      if (thrownBack > 0) {
+        strikePlayer(thrownBack)
+        playerEvent.counter = thrownBack
+      }
       if (combo || firstStrike || execute) playerEvent.crit = true
       // Spent only on a landed hit; burning it on a whiff would read as a bug.
       if (firstStrike) {
@@ -225,10 +305,11 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       if (execute) announce(playerEvent, 'execute')
     }
     playerEvent.targetHpAfter = enemyHp
+    checkPhases(playerEvent)
 
     // No healing after a killing blow, so the log always ends on the kill.
     if (enemyHp > 0 && mods.healEvery > 0 && playerAttacks % mods.healEvery === 0) {
-      const { healed, banked } = applyHeal(mods.heal)
+      const { healed, banked } = applyHeal(mods.heal * healingScale(playerStatuses))
       if (healed > 0 || banked > 0) {
         if (healed > 0) playerEvent.healed = healed
         if (banked > 0) playerEvent.barriered = banked
@@ -238,13 +319,27 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     }
 
     log.push(playerEvent)
-    if (enemyHp <= 0) break
+    if (enemyHp <= 0 || playerHp <= 0) break
 
     // ---- enemy attacks ----
     enemyAttacks += 1
     const enemyEvent: TurnEvent = { turn, attacker: 'enemy', damage: 0, targetHpAfter: playerHp }
 
-    if (mods.dodgeEvery > 0 && enemyAttacks % mods.dodgeEvery === 0) {
+    const enemyTick = tickStatuses(enemyStatuses, enemy.maxHp, enemyHitsTaken)
+    if (enemyTick.damage > 0) {
+      enemyHp = Math.max(0, enemyHp - enemyTick.damage)
+      enemyEvent.statusDamage = enemyTick.damage
+    }
+    if (enemyTick.heal > 0) enemyHp = Math.min(enemy.maxHp, enemyHp + enemyTick.heal)
+    if (enemyHp <= 0) {
+      enemyEvent.targetHpAfter = playerHp
+      log.push(enemyEvent)
+      break
+    }
+
+    if (enemyTick.skipsTurn) {
+      enemyEvent.frozen = true
+    } else if (mods.dodgeEvery > 0 && enemyAttacks % mods.dodgeEvery === 0) {
       enemyEvent.dodged = true
       // A counter rides on the dodge rather than taking its own turn, so a
       // dodge build still trades in the same number of turns as everyone else.
@@ -255,23 +350,55 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
         enemyEvent.counterHpAfter = enemyHp
       }
     } else {
-      const attack = enemyAttackAt(enemy, turn)
-      let multiplier = mods.incoming
-      const fierce = trait.fierce > 1 && enemyHp <= enemy.maxHp * trait.fierceBelow
+      // An Unstable enemy alternates between a wilder swing and a wider
+      // opening; both halves key off the turn number, so it stays predictable.
+      const swinging = activeTrait.alternateEvery
+        ? turn % activeTrait.alternateEvery === 0
+        : false
+      const attack =
+        enemyAttackAt(enemy, turn) *
+        phaseAtk *
+        attackScale(enemyStatuses) *
+        (swinging ? (activeTrait.alternateAtk ?? 1) : 1)
+      let multiplier = mods.incoming * (swinging ? (activeTrait.alternateIncoming ?? 1) : 1)
+      const fierce = activeTrait.fierce > 1 && enemyHp <= enemy.maxHp * activeTrait.fierceBelow
 
-      if (fierce) multiplier *= trait.fierce
+      if (fierce) multiplier *= activeTrait.fierce
 
-      const damage = Math.max(1, Math.round((attack - player.def) * multiplier))
+      const def = player.def * defenceScale(playerStatuses)
+      const damage = Math.max(1, Math.round((attack - def) * multiplier))
       const absorbed = strikePlayer(damage)
+      playerHitsTaken += 1
       enemyEvent.damage = damage
       if (absorbed > 0) enemyEvent.absorbed = absorbed
-      if (attack > enemy.atk) announce(enemyEvent, 'enraged')
+      if (enemyAttackAt(enemy, turn) > enemy.atk) announce(enemyEvent, 'enraged')
       if (fierce) announce(enemyEvent, 'fierce')
+
+      // Vampiric drinks back part of what it dealt; the player's own Reflect
+      // sends part of it home.
+      if (activeTrait.drain) {
+        enemyHp = Math.min(enemy.maxHp, enemyHp + Math.round(damage * activeTrait.drain))
+        enemyEvent.selfHpAfter = enemyHp
+      }
+      const sentBack = Math.round(damage * reflectFraction(playerStatuses))
+      if (sentBack > 0) {
+        strikeEnemy(sentBack)
+        enemyEvent.counter = sentBack
+        enemyEvent.counterHpAfter = enemyHp
+      }
+
+      // Statuses land only on a blow that connected, so a dodge is a clean
+      // escape rather than "you avoided the hit but caught the poison".
+      const inflict = activeTrait.inflict
+      if (inflict && (!inflict.everyN || enemyAttacks % inflict.everyN === 0)) {
+        playerStatuses = applyStatus(playerStatuses, inflict, 'enemy')
+        enemyEvent.applied = [inflict.id]
+      }
     }
     enemyEvent.targetHpAfter = playerHp
 
-    if (playerHp > 0 && enemyHp > 0 && enemyHealEvery > 0 && enemyAttacks % enemyHealEvery === 0) {
-      const raw = Math.round(enemy.maxHp * enemyHeal * healScale(turn))
+    if (playerHp > 0 && enemyHp > 0 && activeTrait.healEvery > 0 && enemyAttacks % activeTrait.healEvery === 0) {
+      const raw = Math.round(enemy.maxHp * activeTrait.heal * healScale(turn))
       const healed = Math.max(0, Math.min(raw, enemy.maxHp - enemyHp))
       if (healed > 0) {
         enemyHp += healed
@@ -281,8 +408,15 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       if (healScale(turn) < 1) announce(enemyEvent, 'attrition')
     }
 
+    enemyEvent.targetHpAfter = playerHp
+    checkPhases(enemyEvent)
     log.push(enemyEvent)
     if (enemyHp <= 0) break
+
+    // Durations count down once per full turn, at the end, so a status applied
+    // this turn is still running when its owner next acts.
+    playerStatuses = decayStatuses(playerStatuses)
+    enemyStatuses = decayStatuses(enemyStatuses)
   }
 
   const outcome: BattleOutcome =
@@ -295,6 +429,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     playerHpLeft: playerHp,
     enemyHpLeft: enemyHp,
     shieldLeft: shield,
+    phasesEntered,
     rewards: outcome === 'win' ? rewards : { exp: 0, gold: 0 },
   }
 }

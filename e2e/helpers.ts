@@ -96,7 +96,7 @@ export class GamePage {
    * Rows are Brave, Cozy, Clever top to bottom.
    */
   async pickPlan(row: 0 | 1 | 2 = 0): Promise<void> {
-    await this.tap(372, [268, 380, 492][row])
+    await this.tap(372, [288, 400, 512][row])
   }
 
   /** CSS pixels per logical unit — how much Scale.FIT shrank the stage. */

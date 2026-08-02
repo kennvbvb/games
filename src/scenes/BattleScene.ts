@@ -28,6 +28,7 @@ const ANNOUNCEMENTS: Record<AnnounceKind, (enemy: string) => [string, string]> =
   precision: () => ['icon_star', t('battle.precision')],
   attrition: () => ['decor_fog', t('battle.attrition')],
   execute: () => ['icon_hit', t('battle.execute')],
+  phase: (enemy) => ['decor_portal', t('battle.phase', { enemy })],
 }
 const SPEEDS: BattleSpeed[] = [1, 2, 4]
 

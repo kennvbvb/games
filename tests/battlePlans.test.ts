@@ -49,7 +49,7 @@ describe('damage pipeline', () => {
     expect(both.log[1].damage).toBe(62) // round(100 * 0.6175), not round(100 * 0.60) = 60
   })
 
-  it('never deals less than 1 except on a dodge, which deals exactly 0', () => {
+  it('never deals less than 1 except when the blow did not happen', () => {
     for (const plan of PLAN_IDS) {
       for (const trait of TRAIT_IDS) {
         const result = resolveBattle({
@@ -59,8 +59,12 @@ describe('damage pipeline', () => {
           plan,
         })
         for (const event of result.log) {
+          // Three ways a blow can land for nothing: it was dodged, the attacker
+          // was frozen, or the attacker died to a status before it could swing.
+          // Everything else is subject to the minimum-1 floor.
+          const missed = event.dodged || event.frozen || event.statusDamage !== undefined
           if (event.dodged) expect(event.damage).toBe(0)
-          else expect(event.damage).toBeGreaterThanOrEqual(1)
+          else if (!missed) expect(event.damage).toBeGreaterThanOrEqual(1)
         }
       }
     }

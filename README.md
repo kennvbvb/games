@@ -218,6 +218,19 @@ never downloads it.
   scaling it would turn "harder" into "impossible" for a low-attack build. The
   chosen mode is re-checked against progress on every read, so a save that
   names a mode it never earned quietly falls back to Normal.
+- **Status effects and boss phases.** Nine statuses — burn, poison, bleed,
+  freeze, weaken, armour break, curse, regen, reflect — with a fixed resolution
+  order: damage before healing (so a burn that would kill is not undone by a
+  regen in the same instant), and control last (being frozen is not immunity to
+  what is already running). Eight new enemy traits carry them into the back half
+  of the campaign. Bosses gain phases with depth: enrage alone to World 8, one
+  transformation to World 12, two from 13, three from 17 — and every transition
+  is listed on the Prepare Battle screen before you commit, because a phase that
+  only reveals itself at 30% health is a rewind for anyone who brought the wrong
+  build.
+- Losing tells you *why* — barely dented it, got over halfway and ran out of
+  health, so close it survived on a sliver, or neither side could finish — and
+  names a plan that would have cleared it, if one would.
 - Twelve achievements track stages cleared, levels reached, gear owned, treats
   eaten, battles won and gold earned. Progress is derived from the save rather
   than counted separately wherever possible, so nothing can drift out of sync.

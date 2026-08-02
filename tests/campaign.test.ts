@@ -7,6 +7,8 @@ import { PLAN_IDS } from '../src/data/battlePlans'
 import { resolveBattle } from '../src/systems/combat'
 import { bestOwnedPerSlot, effectiveStats } from '../src/systems/upgrades'
 import { ITEMS } from '../src/data/items'
+import { SKILLS, SKILL_BY_ID } from '../src/data/skills'
+import { LOADOUT_SIZE, equipSkill, skillModifiers, unlockSkill } from '../src/systems/skills'
 import { applyExp } from '../src/systems/leveling'
 import { expWithRacePassive } from '../src/systems/rewards'
 import { createDefaultPlayerState } from '../src/state/playerState'
@@ -181,6 +183,7 @@ function bestAttempt(state: PlayerState, stageIndex: number) {
       rewards: stage.rewards,
       plan,
       passive: raceOf(state.raceId).passive,
+      modifiers: skillModifiers(state),
     })
     if (r.win && (!best.win || r.playerHpLeft > best.hpLeft)) best = { win: true, hpLeft: r.playerHpLeft }
     else if (!best.win && r.playerHpLeft > best.hpLeft) best = { win: false, hpLeft: r.playerHpLeft }
@@ -191,11 +194,18 @@ function bestAttempt(state: PlayerState, stageIndex: number) {
 /**
  * Ceiling for a single stage's replays. The handoff asks for two to three per
  * *world*; this is the per-stage spike, which is the number a player actually
- * feels. Measured worst across all six kin at the time of writing: 11.
+ * feels. Measured worst across all six kin at the time of writing: 14, at the
+ * three-phase World 19 boss. Three kin walk the whole campaign with none.
  */
-const REPLAY_CEILING = 14
+const REPLAY_CEILING = 18
 
-/** Buys whatever the shop would sell at this level, cheapest first, and wears the best. */
+/**
+ * Spends everything a player would: gold on gear, skill points on the tree.
+ *
+ * Leaving skills out understates the hero by a long way — a level-40 player has
+ * forty-odd points and four slots filled — and a balance simulation of a
+ * weaker player than the game produces is a simulation of the wrong game.
+ */
 function restock(state: PlayerState): PlayerState {
   let current = state
   for (const item of [...ITEMS].sort((a, b) => a.cost - b.cost)) {
@@ -204,7 +214,20 @@ function restock(state: PlayerState): PlayerState {
     if (current.gold < item.cost) continue
     current = { ...current, gold: current.gold - item.cost, ownedItemIds: [...current.ownedItemIds, item.id] }
   }
-  return { ...current, equipped: bestOwnedPerSlot(current.ownedItemIds) }
+  current = { ...current, equipped: bestOwnedPerSlot(current.ownedItemIds) }
+
+  // Buy shallow-first so prerequisites are always in place, then run the four
+  // deepest nodes owned.
+  for (const skill of [...SKILLS].filter((k) => k.raceId === current.raceId).sort((a, b) => a.tier - b.tier)) {
+    current = unlockSkill(current, skill.id) ?? current
+  }
+  const deepest = current.unlockedSkillIds
+    .map((id) => SKILL_BY_ID.get(id)!)
+    .sort((a, b) => b.tier - a.tier)
+    .slice(0, LOADOUT_SIZE)
+  current = { ...current, loadout: [] }
+  for (const skill of deepest) current = equipSkill(current, skill.id)
+  return current
 }
 
 function payout(state: PlayerState, stageIndex: number): PlayerState {

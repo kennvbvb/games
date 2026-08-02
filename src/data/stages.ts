@@ -1,6 +1,6 @@
 import { backgroundFor } from './biomes'
 import type { StageVisual } from './biomes'
-import type { EnemyConfig, StageConfig } from '../types'
+import type { BossPhase, EnemyConfig, StageConfig } from '../types'
 import type { TraitId } from './enemyTraits'
 
 interface StageDef {
@@ -104,58 +104,58 @@ const STAGE_DEFS: StageDef[] = [
   // World 13 — Oceanic Dominion
   { name: 'Pearl Coast', trait: 'straightforward', enemy: 'Pearlback', visual: { biome: 'ocean', landmark: 'decor_shell' } },
   { name: 'Kelpwood Maze', trait: 'slippery', enemy: 'Kelpstrider', visual: { biome: 'ocean', landmark: 'decor_herb', weather: 'decor_bubble' } },
-  { name: 'Siren Ruins', trait: 'mending', enemy: 'Siren', visual: { biome: 'ocean', landmark: 'decor_tower' } },
-  { name: 'Leviathan Trench', trait: 'fierce', enemy: 'Leviathan', visual: { biome: 'ocean', landmark: 'decor_wave', weather: 'decor_fog' } },
-  { name: 'Tidal Crown', trait: 'fierce', enemy: 'Tidewarden', visual: { biome: 'ocean', landmark: 'decor_coral', weather: 'decor_storm' } },
+  { name: 'Siren Ruins', trait: 'venomous', enemy: 'Siren', visual: { biome: 'ocean', landmark: 'decor_tower' } },
+  { name: 'Leviathan Trench', trait: 'vampiric', enemy: 'Leviathan', visual: { biome: 'ocean', landmark: 'decor_wave', weather: 'decor_fog' } },
+  { name: 'Tidal Crown', trait: 'shielded', enemy: 'Tidewarden', visual: { biome: 'ocean', landmark: 'decor_coral', weather: 'decor_storm' } },
 
   // World 14 — Verdant Rebirth
-  { name: 'Mossborn Village', trait: 'slippery', enemy: 'Mossling', visual: { biome: 'verdant', landmark: 'decor_mushroom' } },
-  { name: 'Blooming Labyrinth', trait: 'mending', enemy: 'Petalmaze', visual: { biome: 'verdant', landmark: 'decor_flower', weather: 'decor_leaf' } },
-  { name: 'Living Temple', trait: 'fierce', enemy: 'Templeheart', visual: { biome: 'verdant', landmark: 'decor_castle' } },
+  { name: 'Mossborn Village', trait: 'mending', enemy: 'Mossling', visual: { biome: 'verdant', landmark: 'decor_mushroom' } },
+  { name: 'Blooming Labyrinth', trait: 'venomous', enemy: 'Petalmaze', visual: { biome: 'verdant', landmark: 'decor_flower', weather: 'decor_leaf' } },
+  { name: 'Living Temple', trait: 'armored', enemy: 'Templeheart', visual: { biome: 'verdant', landmark: 'decor_castle' } },
   { name: 'Heartwood Sanctum', trait: 'mending', enemy: 'Heartwood', visual: { biome: 'verdant', landmark: 'decor_tree', weather: 'decor_sparkle' } },
-  { name: 'Worldroot Avatar', trait: 'fierce', enemy: 'Worldroot', visual: { biome: 'verdant', landmark: 'decor_herb', weather: 'decor_storm' } },
+  { name: 'Worldroot Avatar', trait: 'vampiric', enemy: 'Worldroot', visual: { biome: 'verdant', landmark: 'decor_herb', weather: 'decor_storm' } },
 
   // World 15 — Shadow Empire
   { name: 'Dusk Market', trait: 'slippery', enemy: 'Cutpurse', visual: { biome: 'shadow', landmark: 'decor_lantern' } },
-  { name: 'Moonless Canal', trait: 'straightforward', enemy: 'Canalstalker', visual: { biome: 'shadow', landmark: 'decor_wave', weather: 'decor_fog' } },
-  { name: 'Assassin Citadel', trait: 'slippery', enemy: 'Nightblade', visual: { biome: 'shadow', landmark: 'decor_castle' } },
-  { name: 'Eclipse Court', trait: 'mending', enemy: 'Eclipsed', visual: { biome: 'shadow', landmark: 'decor_moon' } },
-  { name: 'Shadow Emperor', trait: 'fierce', enemy: 'Shadow Emperor', visual: { biome: 'shadow', landmark: 'decor_skull', weather: 'decor_fog' } },
+  { name: 'Moonless Canal', trait: 'disruptive', enemy: 'Canalstalker', visual: { biome: 'shadow', landmark: 'decor_wave', weather: 'decor_fog' } },
+  { name: 'Assassin Citadel', trait: 'countering', enemy: 'Nightblade', visual: { biome: 'shadow', landmark: 'decor_castle' } },
+  { name: 'Eclipse Court', trait: 'phasebound', enemy: 'Eclipsed', visual: { biome: 'shadow', landmark: 'decor_moon' } },
+  { name: 'Shadow Emperor', trait: 'disruptive', enemy: 'Shadow Emperor', visual: { biome: 'shadow', landmark: 'decor_skull', weather: 'decor_fog' } },
 
   // World 16 — Infernal Crusade
   { name: 'Cinder Wastes', trait: 'fierce', enemy: 'Cinderling', visual: { biome: 'infernal', landmark: 'decor_rock' } },
-  { name: 'Chain Fortress', trait: 'straightforward', enemy: 'Chainwarden', visual: { biome: 'infernal', landmark: 'decor_castle' } },
-  { name: 'Furnace Cathedral', trait: 'mending', enemy: 'Forgepriest', visual: { biome: 'infernal', landmark: 'decor_volcano', weather: 'decor_fire' } },
-  { name: 'Hellstorm Gate', trait: 'slippery', enemy: 'Gatefiend', visual: { biome: 'infernal', landmark: 'decor_portal', weather: 'decor_storm' } },
+  { name: 'Chain Fortress', trait: 'armored', enemy: 'Chainwarden', visual: { biome: 'infernal', landmark: 'decor_castle' } },
+  { name: 'Furnace Cathedral', trait: 'venomous', enemy: 'Forgepriest', visual: { biome: 'infernal', landmark: 'decor_volcano', weather: 'decor_fire' } },
+  { name: 'Hellstorm Gate', trait: 'unstable', enemy: 'Gatefiend', visual: { biome: 'infernal', landmark: 'decor_portal', weather: 'decor_storm' } },
   { name: 'Infernal Regent', trait: 'fierce', enemy: 'Infernal Regent', visual: { biome: 'infernal', landmark: 'decor_skull', weather: 'decor_comet' } },
 
   // World 17 — Ancient Cosmos
   { name: 'Lunar Archive', trait: 'straightforward', enemy: 'Archivist', visual: { biome: 'cosmos', landmark: 'decor_moon' } },
-  { name: 'Comet Fields', trait: 'slippery', enemy: 'Cometrider', visual: { biome: 'cosmos', landmark: 'decor_comet', weather: 'decor_comet' } },
-  { name: 'Planetary Forge', trait: 'fierce', enemy: 'Forgestar', visual: { biome: 'cosmos', landmark: 'decor_gear', weather: 'decor_fire' } },
-  { name: 'Cosmic Library', trait: 'mending', enemy: 'Loremind', visual: { biome: 'cosmos', landmark: 'decor_tower' } },
-  { name: 'Astral Architect', trait: 'fierce', enemy: 'Architect', visual: { biome: 'cosmos', landmark: 'decor_orb', weather: 'decor_galaxy' } },
+  { name: 'Comet Fields', trait: 'unstable', enemy: 'Cometrider', visual: { biome: 'cosmos', landmark: 'decor_comet', weather: 'decor_comet' } },
+  { name: 'Planetary Forge', trait: 'armored', enemy: 'Forgestar', visual: { biome: 'cosmos', landmark: 'decor_gear', weather: 'decor_fire' } },
+  { name: 'Cosmic Library', trait: 'shielded', enemy: 'Loremind', visual: { biome: 'cosmos', landmark: 'decor_tower' } },
+  { name: 'Astral Architect', trait: 'countering', enemy: 'Architect', visual: { biome: 'cosmos', landmark: 'decor_orb', weather: 'decor_galaxy' } },
 
   // World 18 — Dreamscape
   { name: 'Slumbering Meadow', trait: 'mending', enemy: 'Dozeflower', visual: { biome: 'dream', landmark: 'decor_flower' } },
-  { name: 'Memory Theatre', trait: 'slippery', enemy: 'Understudy', visual: { biome: 'dream', landmark: 'decor_ring' } },
-  { name: 'Nightmare Corridor', trait: 'fierce', enemy: 'Nightmare', visual: { biome: 'dream', landmark: 'decor_web', weather: 'decor_fog' } },
-  { name: 'Lucid Palace', trait: 'straightforward', enemy: 'Lucid', visual: { biome: 'dream', landmark: 'decor_castle', weather: 'decor_sparkle' } },
-  { name: 'Dream Eater', trait: 'fierce', enemy: 'Dream Eater', visual: { biome: 'dream', landmark: 'decor_orb', weather: 'decor_moon' } },
+  { name: 'Memory Theatre', trait: 'disruptive', enemy: 'Understudy', visual: { biome: 'dream', landmark: 'decor_ring' } },
+  { name: 'Nightmare Corridor', trait: 'phasebound', enemy: 'Nightmare', visual: { biome: 'dream', landmark: 'decor_web', weather: 'decor_fog' } },
+  { name: 'Lucid Palace', trait: 'shielded', enemy: 'Lucid', visual: { biome: 'dream', landmark: 'decor_castle', weather: 'decor_sparkle' } },
+  { name: 'Dream Eater', trait: 'unstable', enemy: 'Dream Eater', visual: { biome: 'dream', landmark: 'decor_orb', weather: 'decor_moon' } },
 
   // World 19 — Last Reality
   { name: 'Broken Timeline', trait: 'slippery', enemy: 'Splinter', visual: { biome: 'unmade', landmark: 'decor_clock' } },
-  { name: 'Echo of Heroes', trait: 'fierce', enemy: 'Echo', visual: { biome: 'unmade', landmark: 'decor_scales' } },
-  { name: 'Fallen Worlds', trait: 'mending', enemy: 'Fallen', visual: { biome: 'unmade', landmark: 'decor_mountain', weather: 'decor_fog' } },
-  { name: 'Origin Collapse', trait: 'fierce', enemy: 'Collapse', visual: { biome: 'unmade', landmark: 'decor_portal', weather: 'decor_comet' } },
-  { name: 'Reality Devourer', trait: 'slippery', enemy: 'Devourer', visual: { biome: 'unmade', landmark: 'decor_skull', weather: 'decor_galaxy' } },
+  { name: 'Echo of Heroes', trait: 'countering', enemy: 'Echo', visual: { biome: 'unmade', landmark: 'decor_scales' } },
+  { name: 'Fallen Worlds', trait: 'vampiric', enemy: 'Fallen', visual: { biome: 'unmade', landmark: 'decor_mountain', weather: 'decor_fog' } },
+  { name: 'Origin Collapse', trait: 'unstable', enemy: 'Collapse', visual: { biome: 'unmade', landmark: 'decor_portal', weather: 'decor_comet' } },
+  { name: 'Reality Devourer', trait: 'countering', enemy: 'Devourer', visual: { biome: 'unmade', landmark: 'decor_skull', weather: 'decor_galaxy' } },
 
   // World 20 — New Eternity
-  { name: 'First Light', trait: 'straightforward', enemy: 'Firstborn', visual: { biome: 'genesis', landmark: 'decor_sun' } },
+  { name: 'First Light', trait: 'armored', enemy: 'Firstborn', visual: { biome: 'genesis', landmark: 'decor_sun' } },
   { name: 'Garden of Creation', trait: 'mending', enemy: 'Gardener', visual: { biome: 'genesis', landmark: 'decor_flower', weather: 'decor_leaf' } },
-  { name: 'Trial of Legends', trait: 'fierce', enemy: 'Champion', visual: { biome: 'genesis', landmark: 'decor_scales' } },
-  { name: 'Infinite Threshold', trait: 'slippery', enemy: 'Threshold', visual: { biome: 'genesis', landmark: 'decor_portal', weather: 'decor_sparkle' } },
-  { name: 'The Eternal One', trait: 'fierce', enemy: 'The Eternal One', visual: { biome: 'genesis', landmark: 'decor_ring', weather: 'decor_galaxy' } },
+  { name: 'Trial of Legends', trait: 'countering', enemy: 'Champion', visual: { biome: 'genesis', landmark: 'decor_scales' } },
+  { name: 'Infinite Threshold', trait: 'disruptive', enemy: 'Threshold', visual: { biome: 'genesis', landmark: 'decor_portal', weather: 'decor_sparkle' } },
+  { name: 'The Eternal One', trait: 'vampiric', enemy: 'The Eternal One', visual: { biome: 'genesis', landmark: 'decor_ring', weather: 'decor_galaxy' } },
 ]
 
 /** Twenty worlds of five; the fifth stage of each is its boss. */
@@ -221,8 +221,55 @@ function scaledEnemy(order: number, def: StageDef): EnemyConfig {
     def: defence,
     // Six turns of grace, then +15% of base attack per turn: enough room to
     // win outright with a decent weapon, fatal to a pure-HP build.
-    boss: { enrageAfterTurn: 6, enrageAtkPerTurn: 0.15 },
+    boss: { enrageAfterTurn: 6, enrageAtkPerTurn: 0.15, phases: bossPhases(order) },
   }
+}
+
+/**
+ * How many faces a boss has, and what each one changes.
+ *
+ * Deliberately staged by depth rather than given to every boss: an early boss
+ * that transformed would be teaching a mechanic before the player has the tools
+ * to answer it, and the handoff asks for exactly this ramp. Phases are one-way
+ * and keyed off health, so the preview simulates them like anything else.
+ */
+function bossPhases(order: number): BossPhase[] {
+  const world = worldOfOrder(order)
+  // Worlds 1-8: enrage alone is the whole mechanic.
+  if (world <= 8) return []
+
+  // Worlds 9-12: one turn, halfway down — it hits harder and shrugs off more.
+  if (world <= 12) {
+    return [{ atHpBelow: 0.5, labelKey: 'boss.phaseHarden', atkScale: 1.15, defScale: 1.2 }]
+  }
+
+  // Worlds 13-16: two turns, the first putting a shield in the way so raw
+  // damage alone stops being enough.
+  if (world <= 16) {
+    return [
+      { atHpBelow: 0.6, labelKey: 'boss.phaseShield', shield: 0.13, defScale: 1.1 },
+      { atHpBelow: 0.3, labelKey: 'boss.phaseFrenzy', atkScale: 1.16, trait: 'unstable' },
+    ]
+  }
+
+  // Worlds 17-20: three turns, and the last one clears whatever was stuck on
+  // it — a build that wins purely by stacking poison has to have another plan.
+  return [
+    { atHpBelow: 0.7, labelKey: 'boss.phaseShield', shield: 0.14, defScale: 1.08 },
+    {
+      atHpBelow: 0.45,
+      labelKey: 'boss.phaseCurse',
+      atkScale: 1.08,
+      inflict: { id: 'curse', turns: 6 },
+    },
+    {
+      atHpBelow: 0.2,
+      labelKey: 'boss.phaseCleanse',
+      cleanse: true,
+      atkScale: 1.1,
+      trait: 'phasebound',
+    },
+  ]
 }
 
 export const STAGES: StageConfig[] = STAGE_DEFS.map((def, idx) => {

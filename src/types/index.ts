@@ -1,4 +1,5 @@
 import type { TraitId } from '../data/enemyTraits'
+import type { StatusApplication } from '../systems/status'
 import type { PlanId } from '../data/battlePlans'
 import type { RaceId } from '../data/races'
 import type { StageVisual } from '../data/biomes'
@@ -170,6 +171,31 @@ export interface BossConfig {
   enrageAfterTurn: number
   /** Fraction of base ATK the boss gains per enraged turn. */
   enrageAtkPerTurn: number
+  /**
+   * Ordered by threshold, highest first. A phase is entered the moment the
+   * boss's health crosses `atHpBelow`, and entering is one-way — a boss healed
+   * back above the line does not un-transform, because a fight that could
+   * re-trigger a phase could re-trigger it forever.
+   */
+  phases?: BossPhase[]
+}
+
+export interface BossPhase {
+  /** Fraction of Max HP at or below which this phase begins. */
+  atHpBelow: number
+  /** Message key naming what changes, for the pre-fight intel panel. */
+  labelKey: string
+  /** Multipliers applied to the boss from this phase onward. */
+  atkScale?: number
+  defScale?: number
+  /** Shield granted on entering, as a fraction of the boss's Max HP. */
+  shield?: number
+  /** Clears every harmful status the boss is carrying. */
+  cleanse?: true
+  /** Replaces the boss's trait from this phase onward. */
+  trait?: TraitId
+  /** A status the boss puts on the player on entering. */
+  inflict?: StatusApplication
 }
 
 export interface EnemyConfig {
@@ -230,6 +256,7 @@ export type AnnounceKind =
   | 'precision'
   | 'attrition'
   | 'execute'
+  | 'phase'
 
 export interface TurnEvent {
   turn: number
@@ -256,6 +283,13 @@ export interface TurnEvent {
   /** Enemy HP after the counter landed. Present exactly when `counter` is. */
   counterHpAfter?: number
 
+  /** Statuses this blow put on the side that was struck. */
+  applied?: string[]
+  /** Damage the struck side took from statuses at the start of its turn. */
+  statusDamage?: number
+  /** The struck side could not act at all this turn. */
+  frozen?: true
+
   /** Latched: the one blow where this effect announces itself. */
   announce?: AnnounceKind
 }
@@ -276,5 +310,7 @@ export interface BattleResult {
   enemyHpLeft: number
   /** Shield still standing at the end; 0 unless a shield effect was running. */
   shieldLeft: number
+  /** How many boss phases the fight actually reached. */
+  phasesEntered: number
   rewards: StageRewards
 }
