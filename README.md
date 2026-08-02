@@ -295,6 +295,19 @@ never downloads it.
   the mastery track, where they are earned from campaign progress a clock
   cannot fake.
 
+- **The Codex.** A compendium of enemy traits, status effects, equipment sets
+  and the kin's own relics, with locked rows shown rather than hidden — a
+  reference that hides what you have not met cannot tell you how much is left,
+  and that is most of why anyone opens one. Discovery is **entirely derived**
+  from progress the save already keeps: a trait is known once a stage carrying
+  it has been cleared (including the ones a boss only wears after a phase
+  change), a status once something that inflicts it has been beaten, a set once
+  a piece is owned, a relic once mastery has opened it. No new save field and
+  no schema bump, which also means the book is filled in retroactively for
+  every existing save rather than starting everyone at zero. A stored discovery
+  list would have been a second copy of the truth: editable, driftable, and
+  wrong for anyone whose save predated it.
+
 ### Known balance state
 
 `tests/campaign.test.ts` walks all hundred stages for each of the six kin,

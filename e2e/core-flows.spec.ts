@@ -11,7 +11,9 @@ const MENU = {
   quests: { x: 84, y: 520 },
   tower: { x: 240, y: 520 },
   rift: { x: 396, y: 520 },
-  settings: { x: 148, y: 586 },
+  // The y=586 row is three across too: Codex, Settings, Exit.
+  codex: { x: 84, y: 586 },
+  settings: { x: 240, y: 586 },
 }
 // One page is one world: four ordinary rows, then the boss on a taller card.
 const STAGE_ROW_1 = { x: 374, y: 153 }
@@ -778,5 +780,84 @@ test.describe('realm rift', () => {
     await game.continueAsGuest()
     const week = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000))
     expect((await game.save())?.rift).toEqual({ clearedWeek: week })
+  })
+})
+
+test.describe('codex', () => {
+  // Four tabs at y=140 from x=66, 116 apart; rows from y=200, 74 apart.
+  const TAB = (i: number) => ({ x: 66 + i * 116, y: 140 })
+
+  /** Opens the Codex from a given save and returns what it looks like. */
+  const codexShot = async (page: import('@playwright/test').Page, save: string) => {
+    const game = new GamePage(page)
+    await game.open(save)
+    await game.continueAsGuest()
+    await game.tap(MENU.codex.x, MENU.codex.y)
+    await game.settle(700)
+    return page.locator('canvas').first().screenshot()
+  }
+
+  test('fills in from progress alone, with nothing else changed', async ({ page }) => {
+    // Two saves identical but for the stages cleared. Discovery is derived, so
+    // the book has to differ — and no field was written to make it happen.
+    const barren = makeSave({
+      ownedItemIds: [],
+      stageProgress: { highestUnlocked: 1, completedStageIds: [] },
+    })
+    const travelled = makeSave({
+      ownedItemIds: [],
+      stageProgress: {
+        highestUnlocked: 41,
+        completedStageIds: Array.from({ length: 40 }, (_, i) => `stage-${i + 1}`),
+      },
+    })
+
+    const empty = await codexShot(page, barren)
+    const filled = await codexShot(page, travelled)
+    expect(filled.equals(empty)).toBe(false)
+  })
+
+  test('writes nothing to the save', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        stageProgress: {
+          highestUnlocked: 41,
+          completedStageIds: Array.from({ length: 40 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    const before = JSON.stringify(await game.save())
+
+    await game.tap(MENU.codex.x, MENU.codex.y)
+    await game.settle(500)
+    for (let tab = 0; tab < 4; tab++) {
+      await game.tap(TAB(tab).x, TAB(tab).y)
+      await game.settle(400)
+    }
+    // Browsing a reference screen must not touch progress. The revision would
+    // move if anything had persisted.
+    expect(JSON.stringify(await game.save())).toBe(before)
+  })
+
+  test('switching tabs shows a different set of rows', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        stageProgress: {
+          highestUnlocked: 100,
+          completedStageIds: Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.codex.x, MENU.codex.y)
+    await game.settle(600)
+    const traits = await page.locator('canvas').first().screenshot()
+    await game.tap(TAB(3).x, TAB(3).y)
+    await game.settle(600)
+    const relics = await page.locator('canvas').first().screenshot()
+    expect(relics.equals(traits)).toBe(false)
   })
 })

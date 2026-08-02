@@ -132,21 +132,30 @@ export class MainMenuScene extends Phaser.Scene {
       },
     )
 
-    makeButton(this, GAME_W / 2 - 92, 586, t('menu.settings'), () => this.scene.start('Settings'), {
+    // The bottom row takes the Codex for the same reason the row above took the
+    // tower and the rift: it needs to be reachable, and it is a reference
+    // screen rather than somewhere the player is heading.
+    makeButton(this, 84, 586, t('menu.codex'), () => this.scene.start('Codex'), {
       variant: 'secondary',
-      minWidth: 168,
-      fontSize: '15px',
+      minWidth: 148,
+      fontSize: '13px',
+      icon: 'icon_bag',
+    })
+    makeButton(this, GAME_W / 2, 586, t('menu.settings'), () => this.scene.start('Settings'), {
+      variant: 'secondary',
+      minWidth: 148,
+      fontSize: '13px',
       icon: 'icon_bolt',
     })
     makeButton(
       this,
-      GAME_W / 2 + 92,
+      396,
       586,
       GameState.userId ? t('menu.signOut') : t('menu.exitGuest'),
       () => {
         void this.handleExit()
       },
-      { variant: 'secondary', minWidth: 168, fontSize: '15px' },
+      { variant: 'secondary', minWidth: 148, fontSize: '13px' },
     )
 
     makeTutorialTip(this, 0, t('tutorial.step0'), 656)
