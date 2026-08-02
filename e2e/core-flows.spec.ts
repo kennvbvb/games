@@ -16,10 +16,14 @@ const WORLD_NEXT = { x: 350, y: 556 }
 const WORLD_PREV = { x: 130, y: 556 }
 const STAGES_BACK = { x: 240, y: 616 }
 
-// Settings rows: four toggles from y=224 at 84 apart, then the language row.
+// Settings rows: four toggles from y=216 at 72 apart, then difficulty, then
+// the language row. Mirrors ROW_TOP/ROW_GAP in SettingsScene.
+const SETTINGS_TOP = 216
+const SETTINGS_GAP = 72
 const SETTINGS = {
-  analytics: { x: 372, y: 224 + 3 * 84 },
-  thai: { x: 408, y: 224 + 4 * 84 },
+  analytics: { x: 372, y: SETTINGS_TOP + 3 * SETTINGS_GAP },
+  veteran: { x: 254 + 84, y: SETTINGS_TOP + 4 * SETTINGS_GAP },
+  thai: { x: 408, y: SETTINGS_TOP + 5 * SETTINGS_GAP },
 }
 
 test.describe('core flows', () => {
@@ -499,5 +503,53 @@ test.describe('skill tree', () => {
     await expect
       .poll(async () => (await game.save())?.unlockedSkillIds, { timeout: 10_000 })
       .toEqual(['human-3-1'])
+  })
+})
+
+test.describe('difficulty modes', () => {
+  test('Veteran stays locked until four worlds are actually cleared', async ({ page }) => {
+    const game = new GamePage(page)
+    // Unlocked deep into the campaign, but only three worlds finished — the
+    // gate is on clearing, not on how far the unlock marker has run ahead.
+    await game.open(
+      makeSave({
+        level: 30,
+        stageProgress: {
+          highestUnlocked: 40,
+          completedStageIds: Array.from({ length: 15 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.settings.x, MENU.settings.y)
+
+    await game.tap(SETTINGS.veteran.x, SETTINGS.veteran.y)
+    await game.settle(500)
+    expect((await game.save())?.settings?.difficulty).toBe('normal')
+  })
+
+  test('a cleared fourth world opens Veteran and the choice sticks', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        level: 30,
+        stageProgress: {
+          highestUnlocked: 40,
+          completedStageIds: Array.from({ length: 20 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.settings.x, MENU.settings.y)
+
+    await game.tap(SETTINGS.veteran.x, SETTINGS.veteran.y)
+    await expect
+      .poll(async () => (await game.save())?.settings?.difficulty, { timeout: 10_000 })
+      .toBe('veteran')
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.settings?.difficulty).toBe('veteran')
   })
 })
