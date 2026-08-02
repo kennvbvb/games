@@ -6,7 +6,11 @@ const MENU = {
   stages: { x: 240, y: 334 },
   character: { x: 240, y: 396 },
   shop: { x: 240, y: 458 },
-  quests: { x: 240, y: 520 },
+  // The y=520 row is three across since the tower and the rift joined it:
+  // Quests on the left, Tower in the middle, Rift on the right.
+  quests: { x: 84, y: 520 },
+  tower: { x: 240, y: 520 },
+  rift: { x: 396, y: 520 },
   settings: { x: 148, y: 586 },
 }
 // One page is one world: four ordinary rows, then the boss on a taller card.
@@ -617,7 +621,7 @@ test.describe('kin mastery', () => {
 })
 
 test.describe('endless tower', () => {
-  const TOWER_BUTTON = { x: 240, y: 520 }
+  const TOWER_BUTTON = MENU.tower
   // Five floor rows from y=250, 74 apart, with the Fight button at x=396.
   const FLOOR_ACTION = (i: number) => ({ x: 396, y: 250 + i * 74 })
   const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
@@ -705,7 +709,7 @@ test.describe('endless tower', () => {
 })
 
 test.describe('realm rift', () => {
-  const RIFT_BUTTON = { x: 396, y: 520 }
+  const RIFT_BUTTON = MENU.rift
   const ENTER = { x: 240, y: 556 }
   const eightWorlds = Array.from({ length: 40 }, (_, i) => `stage-${i + 1}`)
 
