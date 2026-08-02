@@ -1,5 +1,6 @@
 import { resolveBattle } from './combat'
 import { playerBattleInputs } from './playerBattle'
+import { activeDifficulty } from './campaignModes'
 import { enemyFor, rewardsFor } from '../data/difficulties'
 import { PLAN_IDS } from '../data/battlePlans'
 import type { PlanId } from '../data/battlePlans'
@@ -51,8 +52,8 @@ export function stageOutlook(state: PlayerState, stage: StageConfig, plan?: Plan
   const stats = inputs.player
   const result = resolveBattle({
     ...inputs,
-    enemy: enemyFor(stage.enemy, state.settings.difficulty),
-    rewards: rewardsFor(stage.rewards, state.settings.difficulty),
+    enemy: enemyFor(stage.enemy, activeDifficulty(state)),
+    rewards: rewardsFor(stage.rewards, activeDifficulty(state)),
     plan: plan ?? state.settings.battlePlan,
   })
 

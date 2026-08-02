@@ -2,6 +2,8 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { WORLDS, worldCleared, worldPageFor } from '../data/worlds'
 import { isBossStage } from '../data/stages'
+import { difficultyOf } from '../data/difficulties'
+import { activeDifficulty } from '../systems/campaignModes'
 import { GameState } from '../state/GameState'
 import { DIFFICULTY_LABEL_KEYS, stageOutlook } from '../systems/difficulty'
 import { makeButton } from '../ui/components/makeButton'
@@ -103,7 +105,7 @@ export class StageSelectScene extends Phaser.Scene {
         `${t('world.label', { index: world.index, total: WORLDS.length })}  ·  ${t('world.progress', {
           cleared,
           total: world.stages.length,
-        })}`,
+        })}  ·  ${t(difficultyOf(activeDifficulty(player)).nameKey)}`,
         { fontSize: '12px', fontFamily: FONT.family, color: COLORS.textDim },
       )
       .setOrigin(0.5)

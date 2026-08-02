@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { compareRaces, comparePlans, diagnoseLoss, measure, repeat, runLab, toCsv } from '../src/admin/battleLab'
 import { enemyFor, rewardsFor, DIFFICULTIES } from '../src/data/difficulties'
-import { STAGE_BY_ID, STAGES } from '../src/data/stages'
+import { STAGE_BY_ID, STAGES, STAGES_PER_WORLD } from '../src/data/stages'
+import { WORLDS } from '../src/data/worlds'
+import { activeDifficulty, unlockedDifficulties, worldsCleared } from '../src/systems/campaignModes'
+import { stageOutlook } from '../src/systems/difficulty'
 import { RACE_IDS } from '../src/data/races'
 import { PLAN_IDS } from '../src/data/battlePlans'
 import { createDefaultPlayerState } from '../src/state/playerState'
@@ -191,5 +194,75 @@ describe('lab export', () => {
   it('writes an empty cell rather than "null" for a fight that was won', () => {
     const csv = toCsv({ won: measure({ win: true, outcome: 'win', log: [], playerHpLeft: 5, enemyHpLeft: 0, rewards: { exp: 1, gold: 1 } } as never, 10, 10, 'human') })
     expect(csv.split('\n')[1].endsWith(',')).toBe(true)
+  })
+})
+
+describe('difficulty unlocking', () => {
+  const withCleared = (worlds: number): PlayerState => ({
+    ...createDefaultPlayerState('Gate'),
+    stageProgress: {
+      highestUnlocked: STAGES.length,
+      completedStageIds: STAGES.slice(0, worlds * STAGES_PER_WORLD).map((s) => s.id),
+    },
+  })
+
+  it('counts a world only once every stage in it is actually cleared', () => {
+    // Unlocking runs a stage ahead of clearing, so a player who lost to a boss
+    // must not open a harder mode on the strength of a fight they did not win.
+    const almost: PlayerState = {
+      ...createDefaultPlayerState('Gate'),
+      stageProgress: {
+        highestUnlocked: 5,
+        completedStageIds: STAGES.slice(0, STAGES_PER_WORLD - 1).map((s) => s.id),
+      },
+    }
+    expect(worldsCleared(almost)).toBe(0)
+    expect(worldsCleared(withCleared(1))).toBe(1)
+    expect(worldsCleared(withCleared(7))).toBe(7)
+  })
+
+  it('opens Veteran after four worlds and Nightmare only at the end', () => {
+    expect(unlockedDifficulties(withCleared(0)).map((m) => m.id)).toEqual(['normal'])
+    expect(unlockedDifficulties(withCleared(3)).map((m) => m.id)).toEqual(['normal'])
+    expect(unlockedDifficulties(withCleared(4)).map((m) => m.id)).toEqual(['normal', 'veteran'])
+    expect(unlockedDifficulties(withCleared(WORLDS.length)).map((m) => m.id)).toEqual([
+      'normal',
+      'veteran',
+      'nightmare',
+    ])
+  })
+
+  it('falls back to Normal for a mode the save has not earned', () => {
+    // A save can name a mode it never unlocked — by a hand edit, or from a
+    // cloud copy written on a device that had cleared more.
+    const forged: PlayerState = {
+      ...withCleared(1),
+      settings: { ...createDefaultPlayerState().settings, difficulty: 'nightmare' },
+    }
+    expect(forged.settings.difficulty).toBe('nightmare')
+    expect(activeDifficulty(forged)).toBe('normal')
+
+    const earned: PlayerState = {
+      ...withCleared(WORLDS.length),
+      settings: { ...createDefaultPlayerState().settings, difficulty: 'nightmare' },
+    }
+    expect(activeDifficulty(earned)).toBe('nightmare')
+  })
+
+  it('re-rates a stage preview when the mode changes', () => {
+    const veteran: PlayerState = {
+      ...withCleared(WORLDS.length),
+      level: 20,
+      stats: statsForLevel(20, 'human'),
+      settings: { ...createDefaultPlayerState().settings, difficulty: 'veteran' },
+    }
+    const normal: PlayerState = {
+      ...veteran,
+      settings: { ...veteran.settings, difficulty: 'normal' },
+    }
+    const stage = STAGE_BY_ID.get('stage-20')!
+    // The preview is the promise the player acts on, so it has to follow the
+    // mode rather than only the fight that gets animated.
+    expect(stageOutlook(veteran, stage).hpRemaining).toBeLessThan(stageOutlook(normal, stage).hpRemaining)
   })
 })

@@ -167,16 +167,16 @@ never downloads it.
 - Saves made before kin existed keep their animal avatar; it appears on the
   Character page as the hero's buddy rather than being thrown away.
 - Single character, no party/roster.
-- **60 stages across 12 worlds of five.** The fifth stage of every world is its
+- **100 stages across 20 worlds of five.** The fifth stage of every world is its
   boss. Worlds are a fixed slice of the stage list rather than separate content,
   so adding a stage cannot leave one half-defined.
 - Stage select shows one world per page, opens on the world holding your
-  furthest unlocked stage, and labels the pager `World 8 / 12` rather than
-  printing twelve dots.
+  furthest unlocked stage, and labels the pager `World 8 / 20` rather than
+  printing twenty dots.
 - Backgrounds are **composed, not hand-written**: a biome supplies the palette
-  and its props, and each stage adds a landmark and optional weather. All 60
-  combinations are distinct, and a test asserts it — 60 hand-authored palettes
-  would have been 60 chances to end up looking like nothing in particular.
+  and its props, and each stage adds a landmark and optional weather. All 100
+  combinations are distinct, and a test asserts it — 100 hand-authored palettes
+  would have been 100 chances to end up looking like nothing in particular.
 - Combat is a deterministic, precomputed auto-battle (`resolveBattle`) that the `BattleScene`
   animates — no twitch input, in keeping with the incremental/idle genre.
 - Idle-friendly: pick a battle speed (×1/×2/×4), skip the animation on stages you
@@ -187,18 +187,37 @@ never downloads it.
 - Stage select previews each fight: rewards, plus an exact difficulty read
   (Easy / Fair / Hard and the HP you would have left) simulated from the real
   deterministic combat.
-- The shop carries gear the whole way to World 12, in four tiers. Within a tier
-  each slot forks — raw power, or power with some padding — so no piece is
-  simply better than a cheaper one, and a test asserts that no item dominates
-  another on all three stats while costing less.
+- The shop carries gear the whole way to the last world. Within a tier each
+  kind forks — raw power, or power with some padding — so no piece is simply
+  better than a cheaper one, and a test asserts that no item dominates another
+  on all three stats while costing less.
 - Stats grow automatically on level-up; the shop sells repeatable treats
   (Heart Cookie / Sword Candy / Shield Donut, escalating costs) plus 20 one-of-a-kind
   gear pieces — the strongest are level-gated.
-- Gear goes into three slots (Weapon / Armor / Charm), one piece each, so
-  upgrading means choosing rather than accumulating. Owning a piece does
-  nothing until it is worn; the Equipment screen swaps pieces freely.
+- Gear goes into six slots — Weapon, Head, Body, Boots and two Accessories —
+  one piece each, so upgrading means choosing rather than accumulating. Owning
+  a piece does nothing until it is worn; the Equipment screen swaps pieces
+  freely. Saves written when there were three slots migrate with every piece
+  still worn: armour becomes body, the charm becomes the first accessory.
 - A Character page shows level, EXP progress, effective stats (base + shop bonuses),
   gold, gear count, and stage completion.
+- **Skill trees.** Three branches of four per kin, each tier gated behind the
+  one below it, and a four-slot loadout that decides which of them a fight
+  actually runs under. Points come from levels and boss kills, and — like stats
+  — they are *derived* rather than stored, so an edited save can claim any list
+  of skills and still only keep what its level and boss count paid for.
+- **Gear affixes and set bonuses.** Rarity decides how many affixes a piece
+  carries; the affixes themselves are derived from the item's id, so the same
+  item is the same item on every device and in every save. There is no
+  reforging, because there is only ever one roll — what is bought is exactly
+  what was shown. Four sets pay at two and four pieces, and each spans four
+  different kinds, so wearing one costs four of the six slots.
+- **Three difficulties.** Veteran opens once four worlds are fully cleared,
+  Nightmare after all twenty. They scale enemy health, attack and reward but
+  never defence — defence is subtracted before the minimum-1 damage floor, so
+  scaling it would turn "harder" into "impossible" for a low-attack build. The
+  chosen mode is re-checked against progress on every read, so a save that
+  names a mode it never earned quietly falls back to Normal.
 - Twelve achievements track stages cleared, levels reached, gear owned, treats
   eaten, battles won and gold earned. Progress is derived from the save rather
   than counted separately wherever possible, so nothing can drift out of sync.
@@ -213,6 +232,34 @@ never downloads it.
   auto-advance and Reduce motion, which silences all decorative animation and
   defaults from the OS `prefers-reduced-motion` setting.
 - Losing a stage has no penalty — just try again after leveling up or shopping.
+
+## Admin Test Lab
+
+A developer tool, opened with `Ctrl+Shift+A` or the TEST LAB badge on the main
+menu. It edits a **clone** of the save: player and progress editors, save
+export/import, an asset inspector, and a headless battle simulator that compares
+all three plans or all six kin against any stage and can prove a thousand runs
+of one input give one result.
+
+Two grants let you in. `VITE_ENABLE_DEV_ADMIN=true` works only in a development
+build — the check is `import.meta.env.DEV && the flag`, and `DEV` is statically
+false in production, so the door cannot travel with a leaked `.env`. In
+production the grant comes from a role claim the Supabase *server* put in
+`app_metadata`; `user_metadata` is never consulted, because any signed-in client
+can write its own.
+
+Hiding a button is not security, and the code says so rather than pretending
+otherwise. The lab has no privileged server surface: it clones the player's own
+save, runs the same pure combat functions the game runs, and can only write back
+through the ordinary save path, which RLS already scopes to `auth.uid()`. What
+the role check does buy is an audit log only a verified admin can append to, and
+the right place for any future action that *is* server-authoritative.
+
+Edits never reaching disk is structural rather than a promise: `AdminTestState`
+imports nothing from `services/`, and a test asserts on its import list.
+Applying to the real save needs a named confirmation token, a second dialog, and
+a trip back through the save validator, so no sequence of lab edits can produce
+a save the game would refuse to load.
 
 ## License
 

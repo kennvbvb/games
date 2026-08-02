@@ -2,6 +2,7 @@ import { BALANCE } from '../data/balance'
 import { STAGES } from '../data/stages'
 import { resolveBattle } from './combat'
 import { playerBattleInputs } from './playerBattle'
+import { activeDifficulty } from './campaignModes'
 import { enemyFor, rewardsFor } from '../data/difficulties'
 import { expWithRacePassive } from './rewards'
 import type { PlayerState, StageRewards } from '../types'
@@ -42,8 +43,8 @@ export function computeOfflineRewards(state: PlayerState, now: number): OfflineR
   // were shown before closing the tab.
   const outcome = resolveBattle({
     ...playerBattleInputs(state),
-    enemy: enemyFor(stage.enemy, state.settings.difficulty),
-    rewards: rewardsFor(stage.rewards, state.settings.difficulty),
+    enemy: enemyFor(stage.enemy, activeDifficulty(state)),
+    rewards: rewardsFor(stage.rewards, activeDifficulty(state)),
     plan: state.settings.battlePlan,
   })
   if (!outcome.win) return null

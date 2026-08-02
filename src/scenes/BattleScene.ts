@@ -5,6 +5,7 @@ import { isBossStage } from '../data/stages'
 import { heroTexture } from '../data/races'
 import { resolveBattle } from '../systems/combat'
 import { playerBattleInputs } from '../systems/playerBattle'
+import { activeDifficulty } from '../systems/campaignModes'
 import { enemyFor, rewardsFor } from '../data/difficulties'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
@@ -44,8 +45,8 @@ export class BattleScene extends Phaser.Scene {
     const plan = GameState.selectedPlan ?? player.settings.battlePlan
     const result = resolveBattle({
       ...inputs,
-      enemy: enemyFor(stage.enemy, player.settings.difficulty),
-      rewards: rewardsFor(stage.rewards, player.settings.difficulty),
+      enemy: enemyFor(stage.enemy, activeDifficulty(player)),
+      rewards: rewardsFor(stage.rewards, activeDifficulty(player)),
       plan,
     })
     GameState.lastBattleResult = result
