@@ -7,6 +7,7 @@ import { expToNext } from '../systems/leveling'
 import { effectiveStats, equippedItems, totalBonus } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { availableSkillPoints } from '../systems/skills'
+import { masteryRank } from '../systems/mastery'
 import { EQUIP_SLOTS } from '../systems/upgrades'
 import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
@@ -144,25 +145,31 @@ export class CharacterScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
 
-    // Three across rather than two: the badge is the only thing that tells a
-    // player an unspent skill point is sitting there, so it has to be on the
-    // page they already visit to look at their build.
+    // Four across rather than a menu: the skill badge is the only thing that
+    // tells a player an unspent point is sitting there, and the mastery rank is
+    // the only place the passive ramp is visible at all, so both have to be on
+    // the page they already visit to look at their build.
     const points = availableSkillPoints(player)
-    makeButton(this, 84, 604, t('character.equipment'), () => this.scene.start('Equipment'), {
-      minWidth: 144,
-      fontSize: '13px',
+    const rank = masteryRank(player)
+    makeButton(this, 66, 604, t('character.equipment'), () => this.scene.start('Equipment'), {
+      minWidth: 108,
+      fontSize: '12px',
     })
     makeButton(
       this,
-      GAME_W / 2,
+      182,
       604,
       points > 0 ? t('character.skillsBadge', { points }) : t('character.skills'),
       () => this.scene.start('SkillTree'),
-      { variant: points > 0 ? 'primary' : 'secondary', minWidth: 144, fontSize: '13px' },
+      { variant: points > 0 ? 'primary' : 'secondary', minWidth: 108, fontSize: '12px' },
     )
-    makeButton(this, 396, 604, t('menu.shop'), () => this.scene.start('Shop'), {
-      minWidth: 144,
-      fontSize: '13px',
+    makeButton(this, 298, 604, t('character.masteryBadge', { rank }), () => this.scene.start('Mastery'), {
+      minWidth: 108,
+      fontSize: '12px',
+    })
+    makeButton(this, 414, 604, t('menu.shop'), () => this.scene.start('Shop'), {
+      minWidth: 108,
+      fontSize: '12px',
     })
     makeButton(this, GAME_W / 2, 670, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',

@@ -10,6 +10,7 @@ import { normalizeDifficulty } from '../data/difficulties'
 import { normalizeAppearance, normalizeRace } from '../data/races'
 import { statsForLevel } from '../systems/leveling'
 import { POINTS_PER_BOSS, POINTS_PER_LEVEL, sanitizeLoadout, sanitizeSkills } from '../systems/skills'
+import { masteryXpFor, rankForXp, sanitizeRelic } from '../systems/mastery'
 import { BOSS_STAGE_IDS } from '../data/worlds'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
@@ -108,6 +109,15 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
   const unlockedSkillIds = sanitizeSkills(raw.unlockedSkillIds, raceId, skillBudget)
   const loadout = sanitizeLoadout(raw.loadout, unlockedSkillIds)
 
+  // Mastery rank is derived from the same cleared-stage list, so a pre-v14 save
+  // arrives already holding whatever rank its progress had earned all along —
+  // the track is retroactive rather than starting everyone at zero.
+  const equippedRelicId = sanitizeRelic(
+    raw.equippedRelicId,
+    raceId,
+    rankForXp(masteryXpFor(completedStageIds)),
+  )
+
   // v2 saves predate settings/idle; absent blocks fall back to defaults.
   const settingsRaw = isRecord(raw.settings) ? raw.settings : {}
   const idleRaw = isRecord(raw.idle) ? raw.idle : {}
@@ -146,6 +156,7 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     equipped,
     unlockedSkillIds,
     loadout,
+    equippedRelicId,
     stageProgress: {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,

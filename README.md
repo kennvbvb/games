@@ -212,6 +212,18 @@ never downloads it.
   reforging, because there is only ever one roll — what is bought is exactly
   what was shown. Four sets pay at two and four pieces, and each spans four
   different kinds, so wearing one costs four of the six slots.
+- **Kin mastery and relics.** A ten-rank track per kin, earned only by clearing
+  stages with it. A stage is worth the number of the world it sits in and a
+  world boss three times that, so the deep worlds move the bar and farming the
+  opening ones cannot. Like skill points and stats, the rank is *derived from
+  progress rather than stored*, which also means the track is retroactive — a
+  save from before mastery existed loads already holding the rank its progress
+  had earned. Each rank adds a small, uniform ramp (about +16% damage dealt and
+  −10% taken once fully mastered, and the exact figures are printed on the
+  screen rather than hidden). The kin-specific power lives in three relics per
+  kin, opening at ranks 3, 6 and 9, of which exactly one can be carried — the
+  only part of the track the player chooses, and the only progression in the
+  game that gold and levels cannot shortcut.
 - **Three difficulties.** Veteran opens once four worlds are fully cleared,
   Nightmare after all twenty. They scale enemy health, attack and reward but
   never defence — defence is subtracted before the minimum-1 damage floor, so
@@ -245,6 +257,30 @@ never downloads it.
   auto-advance and Reduce motion, which silences all decorative animation and
   defaults from the OS `prefers-reduced-motion` setting.
 - Losing a stage has no penalty — just try again after leveling up or shopping.
+
+### Known balance state
+
+`tests/campaign.test.ts` walks all hundred stages for each of the six kin,
+buying gear and spending skill points the way a player would. Two things it
+currently measures, recorded here rather than left in a comment nobody reads:
+
+- **Nothing walls anybody.** Zero forced replays, for every kin, on every plan,
+  on every difficulty. An earlier version of this simulation reported a
+  worst-case of fourteen replays, but it assembled its own hero and left out
+  gear affixes and set bonuses entirely — it was measuring a player the game
+  does not produce. Routing it through `playerBattleInputs`, the one place the
+  battle scene, the preview, offline farming and the lab all agree on, dropped
+  the figure to zero. The campaign did not get easier; the measurement got
+  honest.
+- **Harder modes are currently easier overall.** Every mode pays out more than
+  it scales enemy health (1.35 against 1.30 on Veteran, 1.75 against 1.65 on
+  Nightmare), so the extra EXP outruns the extra difficulty. A hero who walks
+  the campaign on Nightmare arrives at the last boss at level 42; on Normal, at
+  level 34. Both finish it at full health.
+
+Raising the multipliers, or flattening the defence curve that makes an endgame
+hero take exactly 1 damage a swing, is a design decision rather than a bug fix,
+so the numbers are left as they are and the finding is written down instead.
 
 ## Admin Test Lab
 

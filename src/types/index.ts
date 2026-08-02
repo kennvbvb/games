@@ -58,7 +58,7 @@ export interface ShopItem {
   setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 13
+export const SAVE_SCHEMA_VERSION = 14
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -149,6 +149,12 @@ export interface PlayerState {
   unlockedSkillIds: string[]
   /** Up to LOADOUT_SIZE unlocked skills, the ones a fight actually runs under. */
   loadout: string[]
+  /**
+   * The one relic carried into fights, or null. Mastery rank itself is derived
+   * from progress rather than stored; this is the only part of the track the
+   * player chooses, so it is the only part written down — see systems/mastery.
+   */
+  equippedRelicId: string | null
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState

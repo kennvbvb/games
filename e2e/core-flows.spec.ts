@@ -427,7 +427,9 @@ test.describe('admin test lab', () => {
 test.describe('skill tree', () => {
   // Branch tabs sit at y=96; skill cards at 164/244/324/404 with the action
   // button on the right; loadout slots at y=516.
-  const SKILLS_BUTTON = { x: 240, y: 604 }
+  // Four buttons share y=604 since Mastery joined the row: Equipment 66,
+  // Skills 182, Mastery 298, Shop 414.
+  const SKILLS_BUTTON = { x: 182, y: 604 }
   const BRANCH = (i: number) => ({ x: 84 + i * 156, y: 96 })
   const CARD_ACTION = (i: number) => ({ x: 386, y: [164, 244, 324, 404][i] })
 
@@ -551,5 +553,65 @@ test.describe('difficulty modes', () => {
     await game.settle()
     await game.continueAsGuest()
     expect((await game.save())?.settings?.difficulty).toBe('veteran')
+  })
+})
+
+test.describe('kin mastery', () => {
+  const MASTERY_BUTTON = { x: 298, y: 604 }
+  // Relic cards at 298/410/522 with the Carry button on the right at x=386.
+  const RELIC_ACTION = (i: number) => ({ x: 386, y: [298, 410, 522][i] })
+
+  /** Every stage of worlds 1..through, which is what mastery rank is derived from. */
+  const clearedThrough = (worlds: number) =>
+    Array.from({ length: worlds * 5 }, (_, i) => `stage-${i + 1}`)
+
+  test('carrying a relic survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    // Five worlds cleared is 7*(5*6/2) = 105 mastery, which is rank 4 — past
+    // the rank-3 relic and short of the rank-6 one.
+    await game.open(
+      makeSave({ level: 30, stageProgress: { highestUnlocked: 26, completedStageIds: clearedThrough(5) } }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(MASTERY_BUTTON.x, MASTERY_BUTTON.y)
+
+    await game.tap(RELIC_ACTION(0).x, RELIC_ACTION(0).y)
+    await expect
+      .poll(async () => (await game.save())?.equippedRelicId, { timeout: 10_000 })
+      .toBe('relic-human-1')
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.equippedRelicId).toBe('relic-human-1')
+  })
+
+  test('a relic above the earned rank cannot be taken', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ level: 30, stageProgress: { highestUnlocked: 26, completedStageIds: clearedThrough(5) } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(MASTERY_BUTTON.x, MASTERY_BUTTON.y)
+
+    // The rank-9 card is locked, so its button is disabled and the tap is a no-op.
+    await game.tap(RELIC_ACTION(2).x, RELIC_ACTION(2).y)
+    await game.settle(400)
+    expect((await game.save())?.equippedRelicId).toBeNull()
+  })
+
+  test('a save claiming an unearned relic loads without it', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        equippedRelicId: 'relic-human-3',
+        stageProgress: { highestUnlocked: 6, completedStageIds: ['stage-1'] },
+      }),
+    )
+    await game.continueAsGuest()
+    expect((await game.save())?.equippedRelicId).toBeNull()
   })
 })

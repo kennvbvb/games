@@ -8,7 +8,9 @@ import { resolveBattle } from '../src/systems/combat'
 import { bestOwnedPerSlot, effectiveStats } from '../src/systems/upgrades'
 import { ITEMS } from '../src/data/items'
 import { SKILLS, SKILL_BY_ID } from '../src/data/skills'
-import { LOADOUT_SIZE, equipSkill, skillModifiers, unlockSkill } from '../src/systems/skills'
+import { LOADOUT_SIZE, equipSkill, unlockSkill } from '../src/systems/skills'
+import { equipRelic, unlockedRelics } from '../src/systems/mastery'
+import { playerBattleInputs } from '../src/systems/playerBattle'
 import { applyExp } from '../src/systems/leveling'
 import { expWithRacePassive } from '../src/systems/rewards'
 import { createDefaultPlayerState } from '../src/state/playerState'
@@ -172,18 +174,25 @@ describe('world navigation', () => {
   })
 })
 
-/** Plays a stage under the best of the three plans, as the forecast advises. */
+/**
+ * Plays a stage under the best of the three plans, as the forecast advises.
+ *
+ * Goes through `playerBattleInputs` rather than assembling the hero by hand.
+ * That function exists so the battle scene, the stage preview, offline farming
+ * and the lab cannot drift apart; a simulation that assembles its own hero is a
+ * fifth call site with the same failure mode, and it had already drifted —
+ * gear affixes and set bonuses were missing from every number this file
+ * measured.
+ */
 function bestAttempt(state: PlayerState, stageIndex: number) {
   const stage = STAGES[stageIndex]
   let best = { win: false, hpLeft: -1 }
   for (const plan of PLAN_IDS) {
     const r = resolveBattle({
-      player: effectiveStats(state),
+      ...playerBattleInputs(state),
       enemy: stage.enemy,
       rewards: stage.rewards,
       plan,
-      passive: raceOf(state.raceId).passive,
-      modifiers: skillModifiers(state),
     })
     if (r.win && (!best.win || r.playerHpLeft > best.hpLeft)) best = { win: true, hpLeft: r.playerHpLeft }
     else if (!best.win && r.playerHpLeft > best.hpLeft) best = { win: false, hpLeft: r.playerHpLeft }
@@ -194,8 +203,19 @@ function bestAttempt(state: PlayerState, stageIndex: number) {
 /**
  * Ceiling for a single stage's replays. The handoff asks for two to three per
  * *world*; this is the per-stage spike, which is the number a player actually
- * feels. Measured worst across all six kin at the time of writing: 14, at the
- * three-phase World 19 boss. Three kin walk the whole campaign with none.
+ * feels.
+ *
+ * Measured worst across all six kin, once this walk started going through
+ * `playerBattleInputs`: **zero**. Not one kin is forced to repeat a stage
+ * anywhere in the hundred, on any of the three plans, on any difficulty.
+ *
+ * The figure this comment used to carry — 14, at the World 19 boss — was
+ * measured by a walk that assembled its own hero and left out gear affixes and
+ * set bonuses entirely. It was describing a player nobody plays. The campaign
+ * did not get easier when mastery landed; it was already this easy, and the
+ * simulation had simply never seen the equipment layer. Holding the ceiling
+ * here keeps this a regression guard against a future change *adding* grind,
+ * but it no longer claims the curve is tuned — see the Nightmare test below.
  */
 const REPLAY_CEILING = 18
 
@@ -227,6 +247,12 @@ function restock(state: PlayerState): PlayerState {
     .slice(0, LOADOUT_SIZE)
   current = { ...current, loadout: [] }
   for (const skill of deepest) current = equipSkill(current, skill.id)
+
+  // Carry the deepest relic mastery has opened. Same reasoning as the skills
+  // above: a player who has earned a relic is wearing one, and simulating a
+  // player who left it in the bag measures a game nobody plays.
+  const relics = unlockedRelics(current)
+  if (relics.length > 0) current = equipRelic(current, relics[relics.length - 1].id)
   return current
 }
 

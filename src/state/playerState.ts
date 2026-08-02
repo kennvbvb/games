@@ -34,6 +34,7 @@ export function createDefaultPlayerState(
     equipped: { ...EMPTY_EQUIPMENT },
     unlockedSkillIds: [],
     loadout: [],
+    equippedRelicId: null,
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
     settings: {
       battleSpeed: 1,

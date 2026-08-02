@@ -8,6 +8,8 @@ import { stageOutlook } from '../src/systems/difficulty'
 import { RACE_IDS } from '../src/data/races'
 import { PLAN_IDS } from '../src/data/battlePlans'
 import { createDefaultPlayerState } from '../src/state/playerState'
+import { ITEMS } from '../src/data/items'
+import { bestOwnedPerSlot } from '../src/systems/upgrades'
 import { statsForLevel } from '../src/systems/leveling'
 import { resolveBattle } from '../src/systems/combat'
 import type { PlayerState } from '../src/types'
@@ -57,6 +59,51 @@ describe('difficulty modes', () => {
     expect(enemyFor(enemy, 'impossible')).toBe(enemy)
     expect(enemyFor(enemy, undefined)).toBe(enemy)
   })
+
+  /**
+   * The three modes have to be *ordered* by what they cost **the same hero**,
+   * and holding the hero fixed is the whole point of the test: the modes pay
+   * out more as well as hitting harder, so a hero who *plays* a harder mode
+   * levels faster and arrives stronger, which hides the scaling entirely.
+   *
+   * Two things measured while writing this, neither of them fixed here because
+   * both are tuning decisions rather than defects:
+   *
+   *  - Walking all hundred stages costs **zero forced replays** for all six kin
+   *    on all three plans and all three modes. Nightmare is a payout multiplier
+   *    today, not a wall.
+   *  - Every mode pays more than it scales enemy health (1.35 vs 1.30 on
+   *    Veteran, 1.75 vs 1.65 on Nightmare), so the extra EXP outruns the extra
+   *    difficulty. A hero who walks the campaign on Nightmare finishes at level
+   *    42 against a 2864 HP boss; on Normal, level 34 against 1736. Both end
+   *    the last fight at full health.
+   */
+  it('costs the same hero more of the fight as the mode gets harder', () => {
+    // Level 34 with gear to match is where the campaign walk actually lands a
+    // hero by stage 100. An earlier draft of this test used level 60, which no
+    // player reaches, and measured a hero the game never produces.
+    const last = STAGES[STAGES.length - 1]
+    const owned = ITEMS.filter((item) => (item.minLevel ?? 1) <= 34).map((item) => item.id)
+    const grown = heroAt(34, {
+      ownedItemIds: owned,
+      equipped: bestOwnedPerSlot(owned),
+      // Every stage, not all-but-the-last: Nightmare only opens once all
+      // twenty worlds are *fully* cleared, and `stageOutlook` re-derives that
+      // on every read. A hero one stage short silently fights on Normal, which
+      // is exactly what an earlier draft of this test was measuring.
+      stageProgress: {
+        highestUnlocked: STAGES.length,
+        completedStageIds: STAGES.map((s) => s.id),
+      },
+    })
+
+    const turns = DIFFICULTIES.map(
+      (mode) => stageOutlook({ ...grown, settings: { ...grown.settings, difficulty: mode.id } }, last).turns,
+    )
+    expect(turns[1], 'veteran should take longer than normal').toBeGreaterThan(turns[0])
+    expect(turns[2], 'nightmare should take longer than veteran').toBeGreaterThan(turns[1])
+  })
+
 })
 
 describe('battle lab', () => {
