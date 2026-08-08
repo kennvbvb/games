@@ -861,3 +861,90 @@ test.describe('codex', () => {
     expect(relics.equals(traits)).toBe(false)
   })
 })
+
+test.describe('ascension', () => {
+  const ASCEND = { x: 240, y: 612 }
+  const CONFIRM = { x: 240, y: 582 }
+  const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
+
+  const finished = (over = {}) =>
+    makeSave({
+      level: 34,
+      gold: 5000,
+      ownedItemIds: ['iron-sword'],
+      equipped: {
+        weapon: 'iron-sword',
+        head: null,
+        body: null,
+        boots: null,
+        accessory1: null,
+        accessory2: null,
+      },
+      idle: { farmingStageId: 'stage-88', lastSeenAt: Date.now() },
+      stageProgress: { highestUnlocked: 100, completedStageIds: allStages },
+      ...over,
+    })
+
+  test('is not offered before the campaign is finished', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ stageProgress: { highestUnlocked: 100, completedStageIds: allStages.slice(0, 99) } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.settle(500)
+    // With no ascend button the row is not there, so this tap does nothing.
+    await game.tap(ASCEND.x, ASCEND.y)
+    await game.settle(500)
+    expect((await game.save())?.ascension).toEqual({ count: 0 })
+  })
+
+  test('takes two taps, and the first one alone changes nothing', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(finished())
+    await game.continueAsGuest()
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(ASCEND.x, ASCEND.y)
+    await game.settle(600)
+
+    // Arm it, then walk away without confirming.
+    await game.tap(CONFIRM.x, CONFIRM.y)
+    await game.settle(600)
+    await game.tap(240, 656) // Back
+    await game.settle(600)
+
+    const save = await game.save()
+    expect(save?.ascension).toEqual({ count: 0 })
+    expect(save?.level).toBe(34)
+    expect(save?.stageProgress?.completedStageIds).toHaveLength(100)
+  })
+
+  test('resets the run, keeps what it promised, and survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(finished({ tower: { bestFloor: 7 } }))
+    await game.continueAsGuest()
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(ASCEND.x, ASCEND.y)
+    await game.settle(600)
+    await game.tap(CONFIRM.x, CONFIRM.y)
+    await game.settle(600)
+    await game.tap(CONFIRM.x, CONFIRM.y)
+
+    await expect
+      .poll(async () => (await game.save())?.ascension?.count ?? 0, { timeout: 10_000 })
+      .toBe(1)
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    const save = await game.save()
+    expect(save?.level).toBe(1)
+    expect(save?.gold).toBe(0)
+    expect(save?.ownedItemIds).toEqual([])
+    expect(save?.stageProgress).toEqual({ highestUnlocked: 1, completedStageIds: [] })
+    // Farming a stage the reset just locked would pay for an unreachable fight.
+    expect(save?.idle?.farmingStageId).toBeNull()
+    // Won outside the campaign, so the reset does not touch it.
+    expect(save?.tower).toEqual({ bestFloor: 7 })
+  })
+})

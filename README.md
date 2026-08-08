@@ -308,6 +308,25 @@ never downloads it.
   list would have been a second copy of the truth: editable, driftable, and
   wrong for anyone whose save predated it.
 
+- **Ascension.** Once every one of the hundred stages is cleared, the campaign
+  can be given back for something permanent. Level, gold, gear, skills and stage
+  progress reset; name, kin, look, settings, claimed quests, the tower record
+  and the rift week do not — wiping a tower record would punish the player for
+  using the very feature ascension exists to feed. Each ascension is worth +10%
+  damage dealt and +7% health, up to ten of them; the counter keeps climbing
+  past that as a record while the power stops, because an uncapped multiplier
+  turns every later run into a formality.
+
+  What one is worth was measured, not guessed. Walking the campaign and then
+  climbing the tower until it walls: **0 ascensions → floor 40-60, 2 → 40-90,
+  5 → 60-100, 10 → 80-100.** So an ascension buys roughly five floors, or one
+  boss gate per two of them.
+
+  Kin mastery survives the reset, because a finished campaign is banked into
+  the mastery budget rather than forgotten. Losing your relics at the exact
+  moment the game asks you to start over is the worst possible moment to take
+  something away.
+
 ### Known balance state
 
 `tests/campaign.test.ts` walks all hundred stages for each of the six kin,

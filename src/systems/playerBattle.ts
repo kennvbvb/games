@@ -2,6 +2,7 @@ import { raceOf } from '../data/races'
 import { effectiveStats, gearModifiers } from './upgrades'
 import { skillModifiers } from './skills'
 import { masteryModifiers } from './mastery'
+import { ascensionModifiers } from './ascension'
 import { boonForStageId } from '../data/rifts'
 import type { BattleContext } from './combat'
 import type { PlayerState, StageConfig } from '../types'
@@ -32,6 +33,7 @@ export function playerBattleInputs(
       ...skillModifiers(state),
       ...gearModifiers(state),
       ...masteryModifiers(state),
+      ...ascensionModifiers(state),
       ...(boon ? [boon.mods] : []),
     ],
   }

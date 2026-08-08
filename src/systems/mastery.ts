@@ -25,8 +25,19 @@ export const BOSS_XP_MULTIPLIER = 3
  * `completedStageIds`, which the validator has already filtered down to real
  * stage ids, so there is no number in the save a hand edit could inflate.
  */
-export function masteryXpFor(completedStageIds: string[]): number {
-  return completedStageIds.reduce((total, id) => {
+/**
+ * Experience a whole campaign is worth: every stage of every world.
+ *
+ * Ascension banks this rather than forgetting it. A track that reset with the
+ * campaign would punish the player for ascending — they would lose the relics
+ * they had earned on this kin at exactly the moment the game asked them to
+ * start again, which is the worst possible moment to take something away.
+ */
+export const XP_PER_CAMPAIGN = 7 * ((20 * 21) / 2)
+
+export function masteryXpFor(completedStageIds: string[], ascensions = 0): number {
+  const banked = Math.max(0, Math.floor(ascensions)) * XP_PER_CAMPAIGN
+  return banked + completedStageIds.reduce((total, id) => {
     const stage = STAGE_BY_ID.get(id)
     if (!stage) return total
     const worth = worldOfStage(stage).index * XP_PER_WORLD_INDEX
@@ -35,7 +46,7 @@ export function masteryXpFor(completedStageIds: string[]): number {
 }
 
 export function masteryXp(state: PlayerState): number {
-  return masteryXpFor(state.stageProgress.completedStageIds)
+  return masteryXpFor(state.stageProgress.completedStageIds, state.ascension.count)
 }
 
 /**

@@ -13,6 +13,7 @@ import { POINTS_PER_BOSS, POINTS_PER_LEVEL, sanitizeLoadout, sanitizeSkills } fr
 import { masteryXpFor, rankForXp, sanitizeRelic } from '../systems/mastery'
 import { sanitizeTower } from '../systems/tower'
 import { sanitizeRift } from '../systems/rift'
+import { sanitizeAscension } from '../systems/ascension'
 import { BOSS_STAGE_IDS } from '../data/worlds'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
@@ -114,10 +115,13 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
   // Mastery rank is derived from the same cleared-stage list, so a pre-v14 save
   // arrives already holding whatever rank its progress had earned all along —
   // the track is retroactive rather than starting everyone at zero.
+  // Ascensions are banked into the mastery budget, so a hero who ascended keeps
+  // the relics they earned rather than having them stripped by the reset.
+  const ascension = sanitizeAscension(raw.ascension)
   const equippedRelicId = sanitizeRelic(
     raw.equippedRelicId,
     raceId,
-    rankForXp(masteryXpFor(completedStageIds)),
+    rankForXp(masteryXpFor(completedStageIds, ascension.count)),
   )
 
   // v2 saves predate settings/idle; absent blocks fall back to defaults.
@@ -164,6 +168,8 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     tower: sanitizeTower(raw.tower),
     // Absent in pre-v16 saves, which read as "never cleared a rift".
     rift: sanitizeRift(raw.rift),
+    // Absent in pre-v17 saves, which have simply never ascended.
+    ascension,
     stageProgress: {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,

@@ -58,7 +58,7 @@ export interface ShopItem {
   setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 16
+export const SAVE_SCHEMA_VERSION = 17
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -105,6 +105,11 @@ export interface TowerProgress {
 export interface RiftProgress {
   /** Week index of the last rift beaten; -1 before the first one. */
   clearedWeek: number
+}
+
+export interface AscensionProgress {
+  /** Completed campaigns given back for permanent power; 0 before the first. */
+  count: number
 }
 
 /** Running totals that cannot be derived from the current state alone. */
@@ -178,6 +183,12 @@ export interface PlayerState {
    * device clock. See data/rifts.
    */
   rift: RiftProgress
+  /**
+   * How many finished campaigns have been given back. A reset campaign is
+   * indistinguishable from one never played, so this counter is the only
+   * evidence an ascension happened — see systems/ascension.
+   */
+  ascension: AscensionProgress
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState

@@ -391,6 +391,22 @@ export const en = {
   'relic.undeadGrave': 'Sunken Marker',
   'relic.undeadGraveHint': 'Take 12% less damage and deal 8% more.',
 
+  'ascend.title': 'Ascension',
+  'ascend.count': 'Ascended {count} times',
+  'ascend.losesTitle': 'This gives back',
+  'ascend.loses':
+    'Your level, gold and every treat bought with it.\nEvery piece of gear you own and everything worn.\nYour whole skill tree and loadout.\nAll one hundred stages, back to the first.',
+  'ascend.keepsTitle': 'This keeps',
+  'ascend.keeps':
+    'Your name, kin and look.\nKin mastery and the relics it opened.\nYour deepest tower floor and this week\u2019s rift.\nEvery quest already claimed, and your settings.',
+  'ascend.gain': 'And from now on: +{damage}% damage dealt, +{health}% health.',
+  'ascend.gainCapped': 'The bonus stops at {cap} ascensions. This one is for the record.',
+  'ascend.notYet': 'Clear all one hundred stages first.',
+  'ascend.sure': 'This cannot be undone. Tap again to go through with it.',
+  'ascend.begin': 'Ascend',
+  'ascend.confirm': 'Yes, give it back',
+  'stages.ascend': 'Ascend',
+
   'codex.title': 'Codex',
   'codex.progress': '{found} / {total} recorded',
   'codex.traits': 'Traits',
