@@ -960,6 +960,67 @@ test.describe('boss remix', () => {
   })
 })
 
+test.describe('weekly contracts', () => {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+  const CONTRACTS_MENU = { x: 240, y: 652 }
+  const CLAIM = { x: 240, y: 556 }
+
+  test('pays a banked week once, and then has nothing left to pay', async ({ page }) => {
+    const game = new GamePage(page)
+    const week = Math.floor(Date.now() / WEEK_MS)
+    await game.open(
+      makeSave({
+        gold: 0,
+        // Last week finished but never collected — the grace period is the
+        // whole point of the feature, so this is the case worth driving.
+        contracts: { week, counts: [], unclaimed: [week - 1] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(CONTRACTS_MENU.x, CONTRACTS_MENU.y)
+    await game.tap(CLAIM.x, CLAIM.y)
+
+    await expect.poll(async () => (await game.save())?.gold ?? 0, { timeout: 10_000 }).toBeGreaterThan(0)
+    const paid = (await game.save())?.gold ?? 0
+
+    // Tapping again must not pay twice.
+    await game.tap(CLAIM.x, CLAIM.y)
+    await page.waitForTimeout(600)
+    expect((await game.save())?.gold).toBe(paid)
+    expect((await game.save())?.contracts?.unclaimed).toEqual([])
+  })
+
+  test('a win moves this week’s counters and survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    const week = Math.floor(Date.now() / WEEK_MS)
+    await game.open(
+      makeSave({
+        contracts: { week, counts: [], unclaimed: [] },
+        stageProgress: { highestUnlocked: 1, completedStageIds: [] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y)
+    await game.pickPlan()
+
+    await expect
+      .poll(
+        async () => ((await game.save())?.contracts?.counts ?? []).reduce((a: number, b: number) => a + b, 0),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(0)
+
+    const before = (await game.save())?.contracts?.counts
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.contracts?.counts).toEqual(before)
+  })
+})
+
 test.describe('codex', () => {
   // Four tabs at y=140 from x=66, 116 apart; rows from y=200, 74 apart.
   const TAB = (i: number) => ({ x: 66 + i * 116, y: 140 })

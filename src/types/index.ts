@@ -84,7 +84,7 @@ export interface ShopItem {
   setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 18
+export const SAVE_SCHEMA_VERSION = 19
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -136,6 +136,15 @@ export interface RiftProgress {
 export interface AscensionProgress {
   /** Completed campaigns given back for permanent power; 0 before the first. */
   count: number
+}
+
+export interface ContractProgress {
+  /** Week index the counters belong to; older ones reset on read. */
+  week: number
+  /** Progress on each of this week's three contracts. */
+  counts: number[]
+  /** Weeks finished but not yet paid, kept for a short grace period. */
+  unclaimed: number[]
 }
 
 /** Running totals that cannot be derived from the current state alone. */
@@ -218,6 +227,13 @@ export interface PlayerState {
    * that stand in for derivation.
    */
   equipmentMastery: Record<string, number>
+  /**
+   * Weekly Contract progress. The fifth and last stored-not-derived block:
+   * nothing in the save records that ten fights were won under one plan.
+   * Deliberately worth only gold and EXP, for the same reason the rift is —
+   * the week comes from the device clock. See systems/contracts.
+   */
+  contracts: ContractProgress
   /**
    * How many finished campaigns have been given back. A reset campaign is
    * indistinguishable from one never played, so this counter is the only

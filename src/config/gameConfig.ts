@@ -13,6 +13,7 @@ import { MasteryScene } from '../scenes/MasteryScene'
 import { TowerScene } from '../scenes/TowerScene'
 import { RiftScene } from '../scenes/RiftScene'
 import { RemixScene } from '../scenes/RemixScene'
+import { ContractsScene } from '../scenes/ContractsScene'
 import { CodexScene } from '../scenes/CodexScene'
 import { AscendScene } from '../scenes/AscendScene'
 import { SettingsScene } from '../scenes/SettingsScene'
@@ -52,6 +53,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     TowerScene,
     RiftScene,
     RemixScene,
+    ContractsScene,
     CodexScene,
     AscendScene,
     SettingsScene,

@@ -421,6 +421,25 @@ never downloads it.
   list would have been a second copy of the truth: editable, driftable, and
   wrong for anyone whose save predated it.
 
+- **Weekly Contracts.** Three jobs a week, of which **two** pay. Three offered
+  and two required so a player who cannot stand one of them is not locked out
+  of the week, and nobody has to force a build they dislike to keep a streak.
+  A finished week queues for payment the moment the second job lands — not when
+  the screen is next opened — and stays claimable for three weeks, so going
+  away for a few days costs nothing.
+
+  Like the Realm Rift, it pays **gold and EXP only**, and for the same reason:
+  the week comes from the device clock with no server to check it against, so a
+  player who moves their clock can mint as many weeks as they have patience
+  for. Paying anything scarce would make that worth doing; gold and EXP are
+  already given away without limit by idle farming. That is also why the
+  stored block needs no stronger defence than clamping — counters cap at their
+  own targets, the week clamps to the current one, and the unpaid queue is
+  capped by both age and length.
+
+  This is the fifth and last thing in the save stored rather than derived —
+  nothing records that ten fights were won under one plan.
+
 - **Ascension.** Once every one of the hundred stages is cleared, the campaign
   can be given back for something permanent. Level, gold, gear, skills and stage
   progress reset; name, kin, look, settings, claimed quests, the tower record

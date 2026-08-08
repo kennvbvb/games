@@ -1,3 +1,4 @@
+import { contractWeek } from '../data/contracts'
 import { SAVE_SCHEMA_VERSION } from '../types'
 import type { PlayerState } from '../types'
 import type { RaceId } from '../data/races'
@@ -39,6 +40,7 @@ export function createDefaultPlayerState(
     rift: { clearedWeek: -1 },
     ascension: { count: 0 },
     equipmentMastery: {},
+    contracts: { week: contractWeek(), counts: [], unclaimed: [] },
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
     settings: {
       battleSpeed: 1,

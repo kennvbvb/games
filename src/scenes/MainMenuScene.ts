@@ -10,6 +10,7 @@ import { claimableCount } from '../systems/achievements'
 import { bestFloor, towerUnlocked } from '../systems/tower'
 import { riftAvailable } from '../systems/rift'
 import { remixRelicsWon, remixUnlocked } from '../systems/bossRemix'
+import { claimableWeeks } from '../systems/contracts'
 import { applyExp } from '../systems/leveling'
 import { computeOfflineRewards, formatDuration } from '../systems/idle'
 import { persist } from '../services/saveService'
@@ -152,15 +153,35 @@ export class MainMenuScene extends Phaser.Scene {
     // endgame mode whose entry condition is a single cleared world boss, so it
     // appears the moment it means something and is simply absent before that.
     // A permanently disabled button is a promise the menu keeps re-making.
+    const owed = claimableWeeks(player).length
     if (remixUnlocked(player)) {
       const won = remixRelicsWon(player)
       makeButton(
         this,
-        GAME_W / 2,
+        140,
         652,
         won < 6 ? t('menu.remixBadge', { won, total: 6 }) : t('menu.remix'),
         () => this.scene.start('Remix'),
-        { variant: 'secondary', minWidth: 200, fontSize: '13px', icon: 'decor_skull' },
+        { variant: 'secondary', minWidth: 200, fontSize: '12px', icon: 'decor_skull' },
+      )
+      makeButton(
+        this,
+        344,
+        652,
+        owed > 0 ? t('menu.contractsBadge', { count: owed }) : t('menu.contracts'),
+        () => this.scene.start('Contracts'),
+        { variant: owed > 0 ? 'primary' : 'secondary', minWidth: 200, fontSize: '12px', icon: 'icon_star' },
+      )
+    } else {
+      // Before the first world boss the fourth row would be a single button on
+      // one side, so Contracts takes the middle rather than sitting off-centre.
+      makeButton(
+        this,
+        GAME_W / 2,
+        652,
+        owed > 0 ? t('menu.contractsBadge', { count: owed }) : t('menu.contracts'),
+        () => this.scene.start('Contracts'),
+        { variant: owed > 0 ? 'primary' : 'secondary', minWidth: 200, fontSize: '13px', icon: 'icon_star' },
       )
     }
 

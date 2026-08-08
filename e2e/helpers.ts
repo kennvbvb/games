@@ -16,7 +16,7 @@ export interface SaveOverrides {
 /** A mid-game save in the current schema, overridable per test. */
 export function makeSave(over: SaveOverrides = {}): string {
   return JSON.stringify({
-    schemaVersion: 18,
+    schemaVersion: 19,
     revision: 1,
     syncedRevision: 1,
     updatedAt: new Date().toISOString(),
@@ -38,6 +38,7 @@ export function makeSave(over: SaveOverrides = {}): string {
     rift: { clearedWeek: -1 },
     ascension: { count: 0 },
     equipmentMastery: {},
+    contracts: { week: Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000)), counts: [], unclaimed: [] },
     stageProgress: { highestUnlocked: 6, completedStageIds: ['stage-1'] },
     settings: {
       battleSpeed: 4,

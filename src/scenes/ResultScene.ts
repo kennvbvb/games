@@ -6,6 +6,7 @@ import { isRiftStageId } from '../data/rifts'
 import { recordRiftCleared, riftAvailable } from '../systems/rift'
 import { TOWER_RERUN_PAYOUT, grantFloorRelic, recordFloorCleared } from '../systems/tower'
 import { grantRemixRelic } from '../systems/bossRemix'
+import { recordContractWin } from '../systems/contracts'
 import { isRemixStageId } from '../data/bossRemix'
 import { recordFightWon } from '../systems/equipmentMastery'
 import { recordEvent } from '../services/analytics'
@@ -78,6 +79,16 @@ export class ResultScene extends Phaser.Scene {
     // clearing a *new* stage is measured against the frontier the player was
     // standing on when they fought it, not the one they just moved to.
     if (result.win) player = recordFightWon(player, stage)
+    // Contracts see every mode, from the one place a fight finishes — four
+    // separate call sites would be four chances for one of them to drift.
+    if (result.win) {
+      player = recordContractWin(
+        player,
+        stage,
+        result,
+        GameState.selectedPlan ?? player.settings.battlePlan,
+      )
+    }
 
     // A remix is not campaign progress either: `remix-<world>-<tier>` is
     // outside the `stage-` namespace, so recording it would be dropped by the

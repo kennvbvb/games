@@ -15,6 +15,7 @@ import { sanitizeTower } from '../systems/tower'
 import { sanitizeRift } from '../systems/rift'
 import { sanitizeAscension } from '../systems/ascension'
 import { sanitizeEquipmentMastery } from '../systems/equipmentMastery'
+import { sanitizeContracts } from '../systems/contracts'
 import { BOSS_STAGE_IDS } from '../data/worlds'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
@@ -174,6 +175,9 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     // Absent in pre-v18 saves. Every piece simply starts at rank 1, which is
     // what the whole track pays out anyway until ten wins are on it — there is
     // nothing to back-fill and nothing lost by not back-filling it.
+    // Absent in pre-v19 saves, which simply start this week's contracts at
+    // zero — there is no history to infer three jobs from.
+    contracts: sanitizeContracts(raw.contracts),
     equipmentMastery: sanitizeEquipmentMastery(
       raw.equipmentMastery,
       clampInt(lifetimeRaw.battlesWon, 0, Number.MAX_SAFE_INTEGER, 0),
