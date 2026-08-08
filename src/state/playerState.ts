@@ -38,6 +38,7 @@ export function createDefaultPlayerState(
     tower: { bestFloor: 0 },
     rift: { clearedWeek: -1 },
     ascension: { count: 0 },
+    equipmentMastery: {},
     stageProgress: { highestUnlocked: 1, completedStageIds: [] },
     settings: {
       battleSpeed: 1,

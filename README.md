@@ -314,6 +314,33 @@ never downloads it.
   the mastery track, where they are earned from campaign progress a clock
   cannot fake.
 
+- **Equipment mastery.** Every worn piece earns wins of its own, across five
+  ranks at 0/10/30/75/150. Only two of the five pay anything mechanical — +3% at
+  rank 2, +6% at rank 4, applied to *that piece's own stat line*. On a legendary
+  +110 HP chestpiece, full mastery is worth about seven health. That is the
+  point rather than a shortfall: mastery is a goal attached to a piece, not a
+  reason to keep wearing it, so trying something new costs close to nothing.
+  Ranks 3 and 5 are the rank itself, shown on the tile and in the picker.
+
+  Two rules keep it honest. A campaign stage only pays if it is within two
+  worlds of where you have actually reached, so grinding Stage 1 at the end of
+  the game earns nothing; tower floors and rifts always pay, because both scale
+  to the player and neither can be farmed downwards. And a piece lagging behind
+  your best-mastered one earns at double rate until it catches up.
+
+  Offline farming deliberately pays **no** mastery. An eight-hour collection
+  settles hundreds of fights at once and would take every worn piece to full
+  mastery while the game was closed — the track would finish itself. Mastery is
+  credited for fights the player turned up for.
+
+  This is the fourth and last thing in the save that is **stored rather than
+  derived**, alongside the tower record, the rift week and the ascension count.
+  Nothing records which pieces were worn for a fight already fought, so there is
+  nothing to derive it from. In place of derivation it is bounded: every count
+  is capped at the top of the track, unknown item ids are dropped, and — the
+  bound that actually matters — no piece may claim more wins than the hero has
+  ever won, which is what stops a fresh edited save arriving fully mastered.
+
 - **The Codex.** A compendium of enemy traits, status effects, equipment sets
   and the kin's own relics, with locked rows shown rather than hidden — a
   reference that hides what you have not met cannot tell you how much is left,

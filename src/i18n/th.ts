@@ -405,6 +405,8 @@ export const th: Record<keyof typeof en, string> = {
   'build.flexible': 'ยืดหยุ่น',
   'build.flexibleHint': 'เข้ากับทุกแนว และไม่เอนไปทางไหน',
   'build.flexibleResonance': 'ไม่มีเรโซแนนซ์ — ชิ้นยืดหยุ่นไม่เสียและไม่ได้อะไร',
+  'equip.masteryNext': '★{rank} · {wins}/{next}',
+  'equip.masteryMax': '★{rank} เชี่ยวชาญเต็ม',
   'equip.resonanceTitle': 'เรโซแนนซ์ของแนว',
   'equip.noResonance': 'ยังไม่เรโซแนนซ์ — ใส่แนวเดียวกัน {count} ชิ้น',
 

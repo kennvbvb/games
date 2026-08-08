@@ -3,6 +3,7 @@ import { ITEM_BY_ID, kindForSlot, slotsForKind } from '../data/items'
 import { affixModifiers, affixesFor } from '../data/affixes'
 import { setModifiers } from '../data/sets'
 import { resonanceModifiers } from '../data/builds'
+import { masteryStatScale } from './equipmentMastery'
 import type { RolledAffix } from '../data/affixes'
 import type { ModifierSource } from './combatModifiers'
 import type { Equipment, EquipSlot, PlayerState, PlayerStats, ShopItem, StatBonus, UpgradeType } from '../types'
@@ -60,12 +61,17 @@ export function totalBonus(state: PlayerState): Required<StatBonus> {
     atk: upgradeBonus('atk', state.upgrades.atk),
     def: upgradeBonus('def', state.upgrades.def),
   }
+  // Each piece is scaled by its own mastery before being added, and the sum is
+  // rounded once at the end. Rounding per item instead would quietly throw away
+  // every bonus below half a point — +3% of a +8 defence charm is 0.24, which
+  // rounds to nothing on its own but is real once six pieces are counted.
   for (const item of equippedItems(state)) {
-    total.hp += item.bonus.hp ?? 0
-    total.atk += item.bonus.atk ?? 0
-    total.def += item.bonus.def ?? 0
+    const scale = masteryStatScale(state, item.id)
+    total.hp += (item.bonus.hp ?? 0) * scale
+    total.atk += (item.bonus.atk ?? 0) * scale
+    total.def += (item.bonus.def ?? 0) * scale
   }
-  return total
+  return { hp: Math.round(total.hp), atk: Math.round(total.atk), def: Math.round(total.def) }
 }
 
 /**

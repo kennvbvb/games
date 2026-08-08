@@ -14,6 +14,7 @@ import { masteryXpFor, rankForXp, sanitizeRelic } from '../systems/mastery'
 import { sanitizeTower } from '../systems/tower'
 import { sanitizeRift } from '../systems/rift'
 import { sanitizeAscension } from '../systems/ascension'
+import { sanitizeEquipmentMastery } from '../systems/equipmentMastery'
 import { BOSS_STAGE_IDS } from '../data/worlds'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
@@ -170,6 +171,13 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     rift: sanitizeRift(raw.rift),
     // Absent in pre-v17 saves, which have simply never ascended.
     ascension,
+    // Absent in pre-v18 saves. Every piece simply starts at rank 1, which is
+    // what the whole track pays out anyway until ten wins are on it — there is
+    // nothing to back-fill and nothing lost by not back-filling it.
+    equipmentMastery: sanitizeEquipmentMastery(
+      raw.equipmentMastery,
+      clampInt(lifetimeRaw.battlesWon, 0, Number.MAX_SAFE_INTEGER, 0),
+    ),
     stageProgress: {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,

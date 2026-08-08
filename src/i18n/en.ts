@@ -403,6 +403,8 @@ export const en = {
   'build.flexible': 'Flexible',
   'build.flexibleHint': 'Fits any build, and leans towards none',
   'build.flexibleResonance': 'No resonance — flexible pieces pay nothing either way',
+  'equip.masteryNext': '★{rank} · {wins}/{next}',
+  'equip.masteryMax': '★{rank} mastered',
   'equip.resonanceTitle': 'Build resonance',
   'equip.noResonance': 'No resonance — wear {count} pieces of one build',
 

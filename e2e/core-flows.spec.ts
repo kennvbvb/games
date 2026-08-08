@@ -562,6 +562,63 @@ test.describe('difficulty modes', () => {
   })
 })
 
+test.describe('equipment mastery', () => {
+  test('a win at the frontier credits every worn piece, and a stale one does not', async ({ page }) => {
+    const game = new GamePage(page)
+    // Standing at the start of world 2 with two pieces on. Stage 6 is the
+    // frontier; stage 1 is behind it but still inside the band, so both count —
+    // what this test is really checking is that the fight reaches the save at
+    // all, which no unit test can see.
+    await game.open(
+      makeSave({
+        ownedItemIds: ['iron-sword', 'iron-helm'],
+        equipped: {
+          weapon: 'iron-sword',
+          head: 'iron-helm',
+          body: null,
+          boots: null,
+          accessory1: null,
+          accessory2: null,
+        },
+        stageProgress: { highestUnlocked: 6, completedStageIds: ['stage-1', 'stage-2', 'stage-3', 'stage-4', 'stage-5'] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.equipmentMastery?.['iron-sword'] ?? 0, { timeout: 20_000 })
+      .toBeGreaterThan(0)
+
+    const save = await game.save()
+    // Both worn pieces, not just the weapon.
+    expect(save?.equipmentMastery?.['iron-helm']).toBeGreaterThan(0)
+    // And nothing for a piece sitting in the bag.
+    expect(save?.equipmentMastery?.['knight-blade']).toBeUndefined()
+  })
+
+  test('mastery survives a reload and cannot be inflated past the wins to back it', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        lifetime: { battlesWon: 4, goldEarned: 0 },
+        ownedItemIds: ['iron-sword'],
+        // Claims full mastery on four lifetime wins; the validator keeps only
+        // what those wins could have paid for.
+        equipmentMastery: { 'iron-sword': 150, 'not-an-item': 150 },
+      }),
+    )
+    await game.continueAsGuest()
+
+    const save = await game.save()
+    expect(save?.equipmentMastery?.['iron-sword']).toBe(4)
+    expect(save?.equipmentMastery?.['not-an-item']).toBeUndefined()
+  })
+})
+
 test.describe('kin mastery', () => {
   const MASTERY_BUTTON = { x: 298, y: 604 }
   // Relic cards at 298/410/522 with the Carry button on the right at x=386.

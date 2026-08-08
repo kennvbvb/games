@@ -5,6 +5,7 @@ import { isTowerStageId, towerFloor } from '../data/tower'
 import { isRiftStageId } from '../data/rifts'
 import { recordRiftCleared, riftAvailable } from '../systems/rift'
 import { recordFloorCleared } from '../systems/tower'
+import { recordFightWon } from '../systems/equipmentMastery'
 import { recordEvent } from '../services/analytics'
 import { GameState } from '../state/GameState'
 import { applyRewards } from '../systems/rewards'
@@ -57,6 +58,13 @@ export class ResultScene extends Phaser.Scene {
     // namespace, so recording it as a cleared stage would be dropped by the
     // validator on the next load, and setting it as the farming target would
     // silently switch offline rewards off. The climb has its own record.
+    // Worn gear earns its mastery from the fight that just happened, whichever
+    // mode it was — the tower and the rift both scale to the player, so neither
+    // can be farmed for it. Credited before the win is recorded so that
+    // clearing a *new* stage is measured against the frontier the player was
+    // standing on when they fought it, not the one they just moved to.
+    if (result.win) player = recordFightWon(player, stage)
+
     if (result.win && inTower) {
       player = recordFloorCleared(player, stage.order)
     } else if (result.win && inRift) {

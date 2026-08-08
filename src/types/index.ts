@@ -75,7 +75,7 @@ export interface ShopItem {
   setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 17
+export const SAVE_SCHEMA_VERSION = 18
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -188,9 +188,9 @@ export interface PlayerState {
    */
   equippedRelicId: string | null
   /**
-   * Endless Tower record. The only progress in the save that is stored rather
-   * than derived, because there is nothing to derive it from — see
-   * systems/tower for why that is safe here and nowhere else.
+   * Endless Tower record. Stored rather than derived, because there is no list
+   * of cleared floors to count and keeping one would grow the save without
+   * bound — see systems/tower for the bounds that stand in for derivation.
    */
   tower: TowerProgress
   /**
@@ -200,6 +200,15 @@ export interface PlayerState {
    * device clock. See data/rifts.
    */
   rift: RiftProgress
+  /**
+   * Wins earned by each owned piece while it was worn, keyed by item id.
+   *
+   * The fourth and last stored-not-derived exception in this save: nothing
+   * records which pieces were worn for a fight already fought, so there is
+   * nothing to derive it from — see systems/equipmentMastery for the bounds
+   * that stand in for derivation.
+   */
+  equipmentMastery: Record<string, number>
   /**
    * How many finished campaigns have been given back. A reset campaign is
    * indistinguishable from one never played, so this counter is the only

@@ -4,6 +4,7 @@ import { ITEM_BY_ID, itemsForSlot } from '../data/items'
 import { RARITY_COLOR, RARITY_LABEL_KEYS } from '../data/affixes'
 import { activeSets } from '../data/sets'
 import { RESONANCE_AT, activeResonances, buildOf } from '../data/builds'
+import { MAX_EQUIP_RANK, equipRank, winsFor, winsToNextRank } from '../systems/equipmentMastery'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
 import {
@@ -163,6 +164,17 @@ export class EquipmentScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
 
     if (item) {
+      const rank = equipRank(player, item.id)
+      if (rank > 1) {
+        this.add
+          .text(left + 30, cy + 22, `★${rank}`, {
+            fontSize: '10px',
+            fontFamily: FONT.family,
+            fontStyle: 'bold',
+            color: COLORS.success,
+          })
+          .setOrigin(0.5)
+      }
       this.add
         .text(cx + TILE_W / 2 - 12, cy - 22, t(buildOf(item.buildTag).nameKey), {
           fontSize: '9px',
@@ -411,6 +423,26 @@ export class EquipmentScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
 
     makeStatRow(this, 70, top + 44, bonusEntries(item.bonus), { fontSize: '11px', iconSize: 12, gap: 12 })
+
+    // Right of the stat line, where it reads as a property of the piece rather
+    // than of the hero: the rank it has earned, and what the next one costs.
+    const wins = winsFor(player, item.id)
+    const rank = equipRank(player, item.id)
+    const toNext = winsToNextRank(wins)
+    this.add
+      .text(
+        330,
+        top + 44,
+        toNext === null
+          ? t('equip.masteryMax', { rank: MAX_EQUIP_RANK })
+          : t('equip.masteryNext', { rank, wins, next: wins + toNext }),
+        {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: rank > 1 ? COLORS.success : COLORS.textDim,
+        },
+      )
+      .setOrigin(1, 0.5)
 
     // Laid out downwards from whatever the block above actually measured, so a
     // long affix roll pushes the effect line instead of printing on top of it.
