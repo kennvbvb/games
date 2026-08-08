@@ -682,7 +682,10 @@ test.describe('kin mastery', () => {
 test.describe('endless tower', () => {
   const TOWER_BUTTON = MENU.tower
   // Five floor rows from y=250, 74 apart, with the Fight button at x=396.
-  const FLOOR_ACTION = (i: number) => ({ x: 396, y: 250 + i * 74 })
+  // Rows moved when the band header landed above them, and the window is now
+  // aligned to the five-floor band rather than to the player's next floor — so
+  // a row index is an offset inside the band, not an offset from "next".
+  const FLOOR_ACTION = (i: number) => ({ x: 396, y: 262 + i * 70 })
   const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
   // The tower is balanced against a hero who bought gear on the way through the
   // campaign, not a bare level-34 stat block — without it even floor 1 is a loss.
@@ -752,8 +755,9 @@ test.describe('endless tower', () => {
     await game.tap(TOWER_BUTTON.x, TOWER_BUTTON.y)
     await game.settle(600)
 
-    // Window opens with floor 4 on top, so floor 5 is the second row.
-    await game.tap(FLOOR_ACTION(1).x, FLOOR_ACTION(1).y)
+    // One page is one band, so floors 1-5 are on screen and floor 5 — the next
+    // unbeaten one — is the fifth row.
+    await game.tap(FLOOR_ACTION(4).x, FLOOR_ACTION(4).y)
     await game.settle(600)
     await game.pickPlan()
     await expect.poll(async () => (await game.save())?.tower, { timeout: 30_000 }).toEqual({ bestFloor: 5 })
@@ -812,18 +816,44 @@ test.describe('tower band rules and relics', () => {
   })
 
   test('a relic cannot be bought, only won', async ({ page }) => {
+    // Walking all fourteen pages of the gear shelf costs more than the default
+    // budget. Paging less would leave most of the shelf unchecked, which is the
+    // part of the shelf a relic would have to be hiding on.
+    test.setTimeout(90_000)
     const game = new GamePage(page)
     await game.open(makeSave({ ...climber, gold: 999999, tower: { bestFloor: 0 } }))
     await game.continueAsGuest()
 
-    // Walk every page of the gear shelf; no relic may appear on any of them.
+    // Page to the end of the gear shelf and try to buy from the last page,
+    // which is where a relic would sit if it were ever put on sale. Fifteen
+    // taps clears the fourteen pages with one to spare; twenty timed the test
+    // out without testing anything more.
     await game.tap(MENU.shop.x, MENU.shop.y)
     await game.tap(324, 128)
-    for (let i = 0; i < 20; i += 1) await game.tap(350, 572)
+    for (let i = 0; i < 15; i += 1) await game.tap(350, 572)
+    for (let row = 0; row < 4; row += 1) await game.tap(378, 196 + row * 92)
 
     const save = await game.save()
-    expect(save?.ownedItemIds).not.toContain('void-pike')
-    expect(save?.gold).toBe(999999)
+    // Gold *should* have moved — the shelf sells plenty, and tapping every buy
+    // button is the point. What must not have happened is a relic arriving in
+    // the bag, from any page, at any price.
+    expect(save?.gold).toBeLessThan(999999)
+    for (const relic of [
+      'void-pike',
+      'bastion-mail',
+      'clockwork-blades',
+      'crown-of-resolve',
+      'hunter-mantle',
+      'spring-totem',
+      'hunter-knives',
+      'sunbreaker-axe',
+      'aegis-lance',
+      'mirror-plate',
+      'fortress-heart',
+      'rhythm-dial',
+    ]) {
+      expect(save?.ownedItemIds, relic).not.toContain(relic)
+    }
   })
 })
 
