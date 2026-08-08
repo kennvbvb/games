@@ -235,5 +235,15 @@
   "enemy_98": "🏆",
   "enemy_99": "🚪",
   "enemy_100": "♾️",
-  "item_seers-circlet": "🔯"
+  "item_seers-circlet": "🔯",
+  "item_void-pike": "🔱",
+  "item_hunter-mantle": "🥷",
+  "item_bastion-mail": "🛡️",
+  "item_crown-of-resolve": "👑",
+  "item_clockwork-blades": "⚙️",
+  "item_spring-totem": "💧",
+  "item_anchor-mace": "⚓",
+  "item_guardian-spear": "🔰",
+  "item_windrunner-coat": "🧥",
+  "item_fangstep-greaves": "🦶"
 }

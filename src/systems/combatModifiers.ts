@@ -20,6 +20,8 @@ import type { PlanId } from '../data/battlePlans'
  *   blow is invisible, so adding them would pay nothing for a real cost.
  * - **Percentages of Max HP add.** Healing 6% and 3% on the same blow is one
  *   9% heal, matching how a player reads two heal sources stacking.
+ * - **Flat reductions add.** Two sources of Pierce 6 give 12 — armour is
+ *   subtracted, so the thing that counters it has to be subtracted too.
  * - **Thresholds take the most generous.** A skill that executes below 15% and
  *   one that executes below 20% give 20%: the player bought the wider window.
  */
@@ -52,6 +54,16 @@ export interface CombatModifiers {
   shield: number
   /** Healing past Max HP becomes shield instead of being discarded. */
   barrier: boolean
+  /**
+   * Flat defence stripped from the enemy before damage is worked out.
+   *
+   * A multiplier could not express this. Armour is subtracted, not divided, so
+   * the answer to a high-defence enemy is to take defence away rather than to
+   * scale damage that has already been reduced to the minimum-1 floor — which
+   * is exactly the wall the balance walk kept finding. Pierce is the Breaker
+   * build's whole reason to exist.
+   */
+  pierce: number
   /** Multipliers on the player's own stat block, applied before the fight. */
   hpScale: number
   atkScale: number
@@ -75,6 +87,7 @@ export const NEUTRAL: CombatModifiers = {
   bossDamage: 1,
   shield: 0,
   barrier: false,
+  pierce: 0,
   hpScale: 1,
   atkScale: 1,
   defScale: 1,
@@ -110,6 +123,7 @@ export function combine(base: CombatModifiers, source: ModifierSource): CombatMo
     bossDamage: base.bossDamage * (source.bossDamage ?? 1),
     shield: base.shield + (source.shield ?? 0),
     barrier: base.barrier || (source.barrier ?? false),
+    pierce: base.pierce + (source.pierce ?? 0),
     hpScale: base.hpScale * (source.hpScale ?? 1),
     atkScale: base.atkScale * (source.atkScale ?? 1),
     defScale: base.defScale * (source.defScale ?? 1),

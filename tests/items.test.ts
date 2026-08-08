@@ -40,10 +40,19 @@ describe('shop items', () => {
     // deliberately not counted here: they are the *reason* two similarly
     // statted pieces differ, so folding them in would let a dominant stat
     // block hide behind a weaker affix.
+    //
+    // A piece carrying a **named effect** is exempt from being dominated, and
+    // only from that direction. Void Pike has less raw attack than Worldbreaker
+    // and costs more, so on stats alone it looks pointless — but it strips six
+    // defence, which is the answer to an armoured enemy that no amount of
+    // attack solves once damage is on the minimum-1 floor. An effect is a real
+    // reason to exist. A piece with an effect can still *dominate* a plain one,
+    // and that half of the check stays live.
     const stats = (i: (typeof ITEMS)[number]) => [i.bonus.hp ?? 0, i.bonus.atk ?? 0, i.bonus.def ?? 0]
     for (const a of ITEMS) {
       for (const b of ITEMS) {
         if (a.id === b.id || a.kind !== b.kind) continue
+        if (b.effect) continue
         const [ah, aa, ad] = stats(a)
         const [bh, ba, bd] = stats(b)
         const betterEverywhere = ah >= bh && aa >= ba && ad >= bd && (ah > bh || aa > ba || ad > bd)

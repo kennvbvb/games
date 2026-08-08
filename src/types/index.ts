@@ -5,6 +5,8 @@ import type { RaceId } from '../data/races'
 import type { StageVisual } from '../data/biomes'
 import type { DifficultyId } from '../data/difficulties'
 import type { Rarity } from '../data/affixes'
+import type { BuildTag } from '../data/builds'
+import type { ModifierSource } from '../systems/combatModifiers'
 
 export interface PlayerStats {
   maxHp: number
@@ -52,6 +54,21 @@ export interface ShopItem {
   bonus: StatBonus
   cost: number
   minLevel?: number
+  /** Which of the three answers this piece leans towards; see data/builds. */
+  buildTag: BuildTag
+  /**
+   * A named effect the piece carries, on top of its derived affixes.
+   *
+   * Relic-tier gear has one; ordinary gear does not. The distinction matters:
+   * affixes are rolled from the item's id and are the same kind of small
+   * numeric nudge on every piece, while this is the *reason* a piece exists —
+   * the thing a player picks it up for and builds around.
+   *
+   * Shaped like a set bonus, and for the same reason: the sentence the player
+   * reads and the modifier the fight runs under sit in one literal, so an
+   * effect cannot be retuned without its description moving with it.
+   */
+  effect?: { description: string; mods: ModifierSource }
   /** Drives affix count and how the card reads; see data/affixes. */
   rarity: Rarity
   /** Members of the same set count towards its 2- and 4-piece bonuses. */

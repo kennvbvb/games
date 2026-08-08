@@ -2,6 +2,7 @@ import { BALANCE } from '../data/balance'
 import { ITEM_BY_ID, kindForSlot, slotsForKind } from '../data/items'
 import { affixModifiers, affixesFor } from '../data/affixes'
 import { setModifiers } from '../data/sets'
+import { resonanceModifiers } from '../data/builds'
 import type { RolledAffix } from '../data/affixes'
 import type { ModifierSource } from './combatModifiers'
 import type { Equipment, EquipSlot, PlayerState, PlayerStats, ShopItem, StatBonus, UpgradeType } from '../types'
@@ -76,7 +77,11 @@ export function gearModifiers(state: PlayerState): ModifierSource[] {
   const worn = equippedItems(state)
   return [
     ...worn.flatMap((item) => affixModifiers(affixesOf(item))),
+    // A relic's named effect, which is the reason the piece exists at all.
+    ...worn.flatMap((item) => (item.effect ? [item.effect.mods] : [])),
     ...setModifiers(worn.map((item) => item.id)),
+    // Two worn pieces of a build lean far enough to earn its resonance.
+    ...resonanceModifiers(worn.map((item) => item.buildTag)),
   ]
 }
 

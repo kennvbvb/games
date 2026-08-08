@@ -192,7 +192,7 @@ never downloads it.
   better than a cheaper one, and a test asserts that no item dominates another
   on all three stats while costing less.
 - Stats grow automatically on level-up; the shop sells repeatable treats
-  (Heart Cookie / Sword Candy / Shield Donut, escalating costs) plus 20 one-of-a-kind
+  (Heart Cookie / Sword Candy / Shield Donut, escalating costs) plus 55 one-of-a-kind
   gear pieces — the strongest are level-gated.
 - Gear goes into six slots — Weapon, Head, Body, Boots and two Accessories —
   one piece each, so upgrading means choosing rather than accumulating. Owning
@@ -212,6 +212,25 @@ never downloads it.
   reforging, because there is only ever one roll — what is bought is exactly
   what was shown. Four sets pay at two and four pieces, and each spans four
   different kinds, so wearing one costs four of the six slots.
+- **Three builds, and gear that leans towards one.** Every piece carries a
+  build tag — **Breaker** (strips armour, the answer to a heavily plated enemy
+  that raw attack cannot touch once damage sits on the minimum-1 floor),
+  **Bulwark** (blunts burst, the answer to Fierce and to boss enrage) or
+  **Tempo** (combos, dodges, recovery) — or is **Flexible**, which fits any of
+  them and pays nothing either way. Two worn pieces of one tag resonate: two
+  pieces rather than a set's four, deliberately, because a second system asking
+  for four of six slots would leave one real choice instead of two. A hero can
+  resonate with more than one build at once; a mixed loadout is a plan, not a
+  penalty. The tag is printed on every shop card and every equipment tile, and
+  the Equipment screen names the resonances currently in force.
+- **Relic gear.** Six pieces, two per build, that exist for an effect rather
+  than a stat line — Void Pike strips six defence outright, Bastion Mail opens
+  behind a shield, Clockwork Blades land every third blow at +35%. The effect
+  and the sentence describing it live in one literal, so an effect cannot be
+  retuned without its description moving with it. They are shop-gated at level
+  22 for now: the long-term plan hands them out as Tower and Boss Remix
+  first-clear rewards, and putting them behind content that does not exist yet
+  would ship six items nobody can reach.
 - **Kin mastery and relics.** A ten-rank track per kin, earned only by clearing
   stages with it. A stage is worth the number of the world it sits in and a
   world boss three times that, so the deep worlds move the bar and farming the

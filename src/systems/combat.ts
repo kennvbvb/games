@@ -282,7 +282,12 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       // Weaken cuts the player's attack; Armor Break and the enemy's own
       // traits and phases move its defence.
       const atk = player.atk * attackScale(playerStatuses)
-      const def = enemy.def * (activeTrait.defScale ?? 1) * phaseDef * defenceScale(enemyStatuses)
+      // Pierce comes off after the enemy's own multipliers, so armouring up
+      // still helps the enemy — it just stops being an answer on its own. The
+      // floor at zero keeps a heavily pierced enemy from handing the player
+      // *bonus* damage for defence it does not have.
+      const scaledDef = enemy.def * (activeTrait.defScale ?? 1) * phaseDef * defenceScale(enemyStatuses)
+      const def = Math.max(0, scaledDef - mods.pierce)
       const damage = Math.max(1, Math.round((atk - def) * multiplier))
       const absorbed = strikeEnemy(damage)
       enemyHitsTaken += 1

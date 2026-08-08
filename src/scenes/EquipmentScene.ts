@@ -3,6 +3,7 @@ import { GAME_W, setupScene } from '../config/layout'
 import { ITEM_BY_ID, itemsForSlot } from '../data/items'
 import { RARITY_COLOR, RARITY_LABEL_KEYS } from '../data/affixes'
 import { activeSets } from '../data/sets'
+import { RESONANCE_AT, activeResonances, buildOf } from '../data/builds'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
 import {
@@ -34,8 +35,21 @@ const GRID_Y = [158, 246, 334]
 const TILE_W = 206
 const TILE_H = 80
 
-const PICKER_ROWS = [162, 240, 318, 396, 474]
-const PICKER_FOOTER_Y = 546
+/**
+ * Four per page rather than five, and taller.
+ *
+ * A row has to carry four affixes, the build lean, and — on relic gear — the
+ * effect that is the reason the piece exists. The old row put the Equip button
+ * in the middle of the right edge, which left the text a 250px column; four
+ * legendary affixes wrapped to four lines there and ran straight through the
+ * stat row and out of the panel. The button moves to the top-right so the text
+ * gets the full width, and the affix and effect lines are laid out top-down
+ * from the measured height of the one above rather than at fixed offsets.
+ */
+const PICKER_ROWS = [161, 271, 381, 491]
+const PICKER_ROW_H = 106
+const PICKER_FOOTER_Y = 574
+const PICKER_ACTIONS_Y = 640
 
 const SLOT_ICON: Record<EquipSlot, string> = {
   weapon: 'icon_atk',
@@ -98,11 +112,12 @@ export class EquipmentScene extends Phaser.Scene {
     })
 
     this.renderSets()
+    this.renderResonance()
 
     makeStatRow(
       this,
       GAME_W / 2 - 92,
-      556,
+      598,
       [
         { icon: 'icon_hp', value: stats.maxHp },
         { icon: 'icon_atk', value: stats.atk },
@@ -111,7 +126,7 @@ export class EquipmentScene extends Phaser.Scene {
       { fontSize: '16px', iconSize: 18, gap: 26 },
     )
 
-    makeButton(this, GAME_W / 2, 640, t('common.back'), () => this.scene.start('Character'), {
+    makeButton(this, GAME_W / 2, 660, t('common.back'), () => this.scene.start('Character'), {
       variant: 'secondary',
       minWidth: 180,
       fontSize: '15px',
@@ -148,6 +163,13 @@ export class EquipmentScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
 
     if (item) {
+      this.add
+        .text(cx + TILE_W / 2 - 12, cy - 22, t(buildOf(item.buildTag).nameKey), {
+          fontSize: '9px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(1, 0.5)
       makeStatRow(this, left + 52, cy + 22, bonusEntries(item.bonus), {
         fontSize: '11px',
         iconSize: 12,
@@ -182,7 +204,7 @@ export class EquipmentScene extends Phaser.Scene {
   private renderSets(): void {
     const sets = activeSets(equippedItems(GameState.player!).map((item) => item.id))
     this.add
-      .text(GAME_W / 2, 406, t('equipment.sets'), {
+      .text(GAME_W / 2, 392, t('equipment.sets'), {
         fontSize: '12px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -192,7 +214,7 @@ export class EquipmentScene extends Phaser.Scene {
 
     if (sets.length === 0) {
       this.add
-        .text(GAME_W / 2, 430, t('equipment.noSets'), {
+        .text(GAME_W / 2, 414, t('equipment.noSets'), {
           fontSize: '11px',
           fontFamily: FONT.family,
           color: COLORS.textDisabled,
@@ -202,7 +224,7 @@ export class EquipmentScene extends Phaser.Scene {
     }
 
     sets.slice(0, 3).forEach((active, i) => {
-      const y = 432 + i * 32
+      const y = 414 + i * 26
       this.add
         .text(38, y, t('equipment.setProgress', { name: active.set.name, worn: active.worn }), {
           fontSize: '12px',
@@ -227,7 +249,59 @@ export class EquipmentScene extends Phaser.Scene {
     })
   }
 
-  /** Every owned piece for this slot, five per page with the affixes spelled out. */
+  /**
+   * Which builds the worn pieces add up to. Resonance costs two slots rather
+   * than a set's four, so it is the lean a player falls into by accident more
+   * often than by plan — which makes saying so out loud the whole job here.
+   */
+  private renderResonance(): void {
+    const worn = equippedItems(GameState.player!)
+    const active = activeResonances(worn.map((item) => item.buildTag))
+
+    this.add
+      .text(GAME_W / 2, 496, t('equip.resonanceTitle'), {
+        fontSize: '12px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.text,
+      })
+      .setOrigin(0.5)
+
+    if (active.length === 0) {
+      this.add
+        .text(GAME_W / 2, 518, t('equip.noResonance', { count: RESONANCE_AT }), {
+          fontSize: '11px',
+          fontFamily: FONT.family,
+          color: COLORS.textDisabled,
+        })
+        .setOrigin(0.5)
+      return
+    }
+
+    // Named *and* spelled out, the same way a set bonus is: knowing a lean is
+    // in force is useless without knowing what it does.
+    active.forEach((build, i) => {
+      const y = 518 + i * 26
+      this.add
+        .text(38, y, t(build.nameKey), {
+          fontSize: '12px',
+          fontFamily: FONT.family,
+          fontStyle: 'bold',
+          color: COLORS.success,
+        })
+        .setOrigin(0, 0.5)
+      this.add
+        .text(160, y, t(build.resonanceKey), {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+          wordWrap: { width: 282 },
+        })
+        .setOrigin(0, 0.5)
+    })
+  }
+
+  /** Every owned piece for this slot, four per page with the affixes spelled out. */
   private renderPicker(slot: EquipSlot): void {
     const player = GameState.player!
     const owned = itemsForSlot(slot).filter((item) => player.ownedItemIds.includes(item.id))
@@ -285,12 +359,12 @@ export class EquipmentScene extends Phaser.Scene {
     makeButton(
       this,
       GAME_W / 2 - 96,
-      626,
+      PICKER_ACTIONS_Y,
       t('equipment.empty'),
       () => this.commit(unequipSlot(player, slot), slot),
       { variant: 'secondary', disabled: worn === null, minWidth: 156, fontSize: '14px' },
     )
-    makeButton(this, GAME_W / 2 + 96, 626, t('common.back'), () => this.scene.restart({ picking: null }), {
+    makeButton(this, GAME_W / 2 + 96, PICKER_ACTIONS_Y, t('common.back'), () => this.scene.restart({ picking: null }), {
       variant: 'secondary',
       minWidth: 156,
       fontSize: '14px',
@@ -304,21 +378,22 @@ export class EquipmentScene extends Phaser.Scene {
     // Saying so beats a button that silently moves the piece across.
     const wornElsewhere = !wornHere && equippedItems(player).some((i) => i.id === item.id)
     const affixes = affixesOf(item)
+    const build = buildOf(item.buildTag)
 
-    makePanel(this, GAME_W / 2, y, 440, 70)
-    const top = y - 35
+    makePanel(this, GAME_W / 2, y, 440, PICKER_ROW_H)
+    const top = y - PICKER_ROW_H / 2
 
-    makeEmoji(this, 48, y - 6, `item_${item.id}`, 30)
+    makeEmoji(this, 46, top + 24, `item_${item.id}`, 28)
     const name = this.add
-      .text(78, top + 18, item.name, {
+      .text(70, top + 20, item.name, {
         fontSize: '14px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
         color: COLORS.text,
       })
       .setOrigin(0, 0.5)
-    this.add
-      .text(name.x + name.width + 10, top + 18, t(RARITY_LABEL_KEYS[item.rarity]), {
+    const rarity = this.add
+      .text(name.x + name.width + 10, top + 21, t(RARITY_LABEL_KEYS[item.rarity]), {
         fontSize: '9px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
@@ -326,30 +401,55 @@ export class EquipmentScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5)
 
-    makeStatRow(this, 78, top + 37, bonusEntries(item.bonus), { fontSize: '11px', iconSize: 12, gap: 12 })
+    makeEmoji(this, rarity.x + rarity.width + 14, top + 21, build.icon, 12)
+    this.add
+      .text(rarity.x + rarity.width + 24, top + 21, t(build.nameKey), {
+        fontSize: '9px',
+        fontFamily: FONT.family,
+        color: COLORS.textDim,
+      })
+      .setOrigin(0, 0.5)
 
+    makeStatRow(this, 70, top + 44, bonusEntries(item.bonus), { fontSize: '11px', iconSize: 12, gap: 12 })
+
+    // Laid out downwards from whatever the block above actually measured, so a
+    // long affix roll pushes the effect line instead of printing on top of it.
+    let flow = top + 58
     if (affixes.length > 0) {
-      this.add
-        .text(78, top + 56, affixes.map((a) => `${a.config.name} ${a.text}`).join('  ·  '), {
+      const text = this.add
+        .text(30, flow, affixes.map((a) => `${a.config.name} ${a.text}`).join('  ·  '), {
           fontSize: '9px',
           fontFamily: FONT.family,
           color: RARITY_COLOR[item.rarity],
-          wordWrap: { width: 250 },
+          wordWrap: { width: 420 },
         })
-        .setOrigin(0, 0.5)
+        .setOrigin(0, 0)
+      flow += text.height + 2
+    }
+
+    if (item.effect) {
+      this.add
+        .text(30, flow, `★ ${item.effect.description}`, {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          fontStyle: 'bold',
+          color: COLORS.success,
+          wordWrap: { width: 420 },
+        })
+        .setOrigin(0, 0)
     }
 
     makeButton(
       this,
       386,
-      y,
+      top + 24,
       wornHere ? t('equipment.equipped') : wornElsewhere ? t('equipment.elsewhere') : t('equipment.equip'),
       () => this.commit(equipItem(player, item.id, slot), slot),
       {
         variant: wornHere ? 'secondary' : 'primary',
         disabled: wornHere || wornElsewhere,
         minWidth: 92,
-        minHeight: 46,
+        minHeight: 40,
         fontSize: '12px',
       },
     )
