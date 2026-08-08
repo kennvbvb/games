@@ -160,12 +160,23 @@ describe('pierce is the answer armour has', () => {
 describe('relic gear', () => {
   const relics = ITEMS.filter((i) => i.effect)
 
-  it('ships six pieces, two per build', () => {
-    expect(relics).toHaveLength(6)
-    const counts = tagCounts(relics.map((i) => i.buildTag))
-    expect(counts.breaker).toBe(2)
-    expect(counts.bulwark).toBe(2)
-    expect(counts.tempo).toBe(2)
+  it('ships two sets of six, and leans on every build in both', () => {
+    // Six won from the tower, six from Boss Remix. Each source has to stand on
+    // its own: a player who only climbs must still find gear for their build.
+    const fromTower = relics.filter((i) => i.source === 'tower')
+    const fromRemix = relics.filter((i) => i.source === 'remix')
+    expect(fromTower).toHaveLength(6)
+    expect(fromRemix).toHaveLength(6)
+    for (const source of [fromTower, fromRemix]) {
+      const counts = tagCounts(source.map((i) => i.buildTag))
+      for (const tag of ['breaker', 'bulwark', 'tempo'] as BuildTag[]) {
+        expect(counts[tag]).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('never puts a price on a piece that has to be won', () => {
+    for (const relic of relics) expect(relic.cost, relic.id).toBe(0)
   })
 
   it('gives every one of them an effect that changes a fight', () => {

@@ -374,6 +374,40 @@ never downloads it.
   player can farm without being a better gold rate than the floor they cannot
   beat yet.
 
+- **Boss Remix.** The twenty world bosses brought back at three tiers, and the
+  drop source for six more relics. "Paired traits" is built from machinery the
+  bosses already had: a phase can *swap* a trait, so a remix boss opens on its
+  campaign trait and turns into a second one partway down. A pair met in
+  sequence is legible in a way two simultaneous traits are not, it is already
+  deterministic, and it already shows in the pre-fight intel panel.
+
+  The whole mode adds **nothing to the save**. Which bosses are open comes from
+  cleared stages, which tiers are open comes from worlds cleared, and *owning
+  the relic is the first-clear record*. So there is no schema bump, no new bound
+  to defend, and — like the Codex — it is retroactive: a finished save arrives
+  with every boss and tier already open.
+
+  Veteran and Mythic carry their own stat floors rather than a multiplier on the
+  campaign boss, and that was forced by measurement. A campaign finisher carries
+  **134-178 defence**; the World 20 boss attacks for 90, and ×1.45 of that is
+  131. Defence is subtracted before the minimum-1 damage floor, so every blow
+  would land for exactly 1 and more boss health would only make the formality
+  longer — all six kin finished every relic boss at every tier on **100%
+  health**. Health needed a floor too: a World 5 boss at ×2.4 is still under a
+  thousand, which an endgame hero deletes in three turns however hard it hits.
+
+  What the floors produce, measured across all six kin (health left, X = loss):
+
+  | | W11 | W14 | W17 | W20 |
+  | --- | --- | --- | --- | --- |
+  | shop gear only | 95-100% | 24-100% | X-100% | X-100% |
+  | with tower relics | 100% | 100% | 100% | 100% |
+
+  That is the loop working: Mythic walls a hero in shop gear, and the tower's
+  relics are what opens it. Normal keeps a plain multiplier on purpose — it
+  unlocks after a single world boss, so it is fought from anywhere in the
+  campaign and has to scale with the player rather than with where they end up.
+
 - **The Codex.** A compendium of enemy traits, status effects, equipment sets
   and the kin's own relics, with locked rows shown rather than hidden — a
   reference that hides what you have not met cannot tell you how much is left,

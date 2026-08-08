@@ -900,6 +900,66 @@ test.describe('realm rift', () => {
   })
 })
 
+test.describe('boss remix', () => {
+  const REMIX_MENU = { x: 240, y: 652 }
+  const TIER = (i: number) => ({ x: 88 + i * 152, y: 128 })
+  const BOSS_ROW = (i: number) => ({ x: 386, y: 268 + i * 76 })
+
+  const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
+
+  test('is absent until a world boss has been beaten, then appears', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ stageProgress: { highestUnlocked: 3, completedStageIds: ['stage-1', 'stage-2'] } }))
+    await game.continueAsGuest()
+    // Nothing on the fourth row, so the tap falls through and the menu stays.
+    await game.tap(REMIX_MENU.x, REMIX_MENU.y)
+    await game.tap(240, 396) // Character still reachable => we never left the menu
+    await expect.poll(async () => (await game.save())?.name).toBe('Tester')
+  })
+
+  test('a mythic first clear hands over its relic and records no campaign progress', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        level: 120,
+        ownedItemIds: ['worldbreaker', 'crown-of-dawn', 'aegis-of-dawn', 'treads-of-the-titan'],
+        equipped: {
+          weapon: 'worldbreaker',
+          head: 'crown-of-dawn',
+          body: 'aegis-of-dawn',
+          boots: 'treads-of-the-titan',
+          accessory1: null,
+          accessory2: null,
+        },
+        stageProgress: { highestUnlocked: 100, completedStageIds: allStages },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(REMIX_MENU.x, REMIX_MENU.y)
+    await game.tap(TIER(2).x, TIER(2).y) // Mythic
+    // World 5 is the first boss that pays a relic, and sits fifth in the list —
+    // page 2, first row.
+    await game.tap(350, 592)
+    await game.tap(BOSS_ROW(0).x, BOSS_ROW(0).y)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.ownedItemIds?.includes('hunter-knives') ?? false, {
+        timeout: 30_000,
+      })
+      .toBe(true)
+
+    const save = await game.save()
+    // A remix is not a stage: nothing may have been added to campaign progress,
+    // and the idle target must not have been pointed at an id that does not
+    // exist in the campaign.
+    expect(save?.stageProgress?.completedStageIds).toHaveLength(allStages.length)
+    expect(save?.stageProgress?.completedStageIds?.some((id: string) => id.startsWith('remix-'))).toBe(false)
+    expect(save?.idle?.farmingStageId ?? '').not.toContain('remix-')
+  })
+})
+
 test.describe('codex', () => {
   // Four tabs at y=140 from x=66, 116 apart; rows from y=200, 74 apart.
   const TAB = (i: number) => ({ x: 66 + i * 116, y: 140 })

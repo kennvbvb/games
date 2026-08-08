@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ITEMS, ITEM_BY_ID, ITEM_KINDS } from '../src/data/items'
+import { ITEMS, ITEM_BY_ID, ITEM_KINDS, SHOP_ITEMS } from '../src/data/items'
 import { buyItem, effectiveStats } from '../src/systems/upgrades'
 import { createDefaultPlayerState } from '../src/state/playerState'
 import { parsePlayerState } from '../src/state/validate'
@@ -65,7 +65,10 @@ describe('shop items', () => {
   it('keeps cost climbing with power', () => {
     const power = (i: (typeof ITEMS)[number]) =>
       (i.bonus.hp ?? 0) / 4 + (i.bonus.atk ?? 0) * 1.5 + (i.bonus.def ?? 0)
-    const sorted = [...ITEMS].sort((a, b) => a.cost - b.cost)
+    // Shop stock only: won gear is priced at zero, so including it would
+    // compare a free legendary against a 60-gold starter sword and call the
+    // catalogue broken.
+    const sorted = [...SHOP_ITEMS].sort((a, b) => a.cost - b.cost)
     // Not strictly monotonic — same-tier alternates trade off — but the
     // cheapest third must not out-power the dearest third.
     const third = Math.floor(sorted.length / 3)

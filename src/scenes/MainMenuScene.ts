@@ -9,6 +9,7 @@ import { effectiveStats } from '../systems/upgrades'
 import { claimableCount } from '../systems/achievements'
 import { bestFloor, towerUnlocked } from '../systems/tower'
 import { riftAvailable } from '../systems/rift'
+import { remixRelicsWon, remixUnlocked } from '../systems/bossRemix'
 import { applyExp } from '../systems/leveling'
 import { computeOfflineRewards, formatDuration } from '../systems/idle'
 import { persist } from '../services/saveService'
@@ -147,6 +148,22 @@ export class MainMenuScene extends Phaser.Scene {
       fontSize: '13px',
       icon: 'icon_bolt',
     })
+    // A fourth row, and the only one that can be empty: Boss Remix is the one
+    // endgame mode whose entry condition is a single cleared world boss, so it
+    // appears the moment it means something and is simply absent before that.
+    // A permanently disabled button is a promise the menu keeps re-making.
+    if (remixUnlocked(player)) {
+      const won = remixRelicsWon(player)
+      makeButton(
+        this,
+        GAME_W / 2,
+        652,
+        won < 6 ? t('menu.remixBadge', { won, total: 6 }) : t('menu.remix'),
+        () => this.scene.start('Remix'),
+        { variant: 'secondary', minWidth: 200, fontSize: '13px', icon: 'decor_skull' },
+      )
+    }
+
     makeButton(
       this,
       396,

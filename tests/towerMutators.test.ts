@@ -186,10 +186,10 @@ describe('relics are won, not bought', () => {
       expect(isTowerBossFloor(floor), `floor ${floor}`).toBe(true)
       expect(ITEM_BY_ID.get(itemId)?.effect, itemId).toBeDefined()
     }
-    // Every relic in the catalogue has a floor that pays it — otherwise a piece
-    // would exist with no way at all to reach it.
+    // Everything the tower pays is a tower-sourced piece, and nothing else.
     const paid = new Set(TOWER_RELIC_FLOORS.map((r) => r.itemId))
-    for (const relic of ITEMS.filter((i) => i.effect)) expect(paid, relic.id).toContain(relic.id)
+    for (const relic of ITEMS.filter((i) => i.source === 'tower')) expect(paid, relic.id).toContain(relic.id)
+    expect(paid.size).toBe(ITEMS.filter((i) => i.source === 'tower').length)
   })
 
   it('hands the Warded band’s answer to whoever beats the Warded band', () => {

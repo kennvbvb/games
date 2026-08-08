@@ -77,7 +77,7 @@ export interface ShopItem {
    * guaranteed path that is *played for* rather than paid for: gear that can be
    * bought with farmed gold makes every activity that drops it pointless.
    */
-  source?: 'shop' | 'tower'
+  source?: 'shop' | 'tower' | 'remix'
   /** Drives affix count and how the card reads; see data/affixes. */
   rarity: Rarity
   /** Members of the same set count towards its 2- and 4-piece bonuses. */

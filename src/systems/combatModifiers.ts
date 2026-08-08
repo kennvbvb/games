@@ -50,6 +50,20 @@ export interface CombatModifiers {
   executeBelow: number
   /** Multiplier on damage dealt to a boss specifically. */
   bossDamage: number
+  /**
+   * Multiplier on how fast a boss's enrage ramps.
+   *
+   * Aimed at the one thing a health pool cannot answer: enrage compounds every
+   * turn, so a fight that goes long is lost to arithmetic rather than to the
+   * boss. Blunting the ramp is worth nothing at all outside a boss fight, which
+   * is exactly what makes the piece that carries it a choice rather than an
+   * upgrade.
+   */
+  enrageScale: number
+  /** Multiplier on health the *enemy* restores — the answer to Mending. */
+  enemyHealScale: number
+  /** Multiplier on damage taken while below `lowHpBelow` of Max HP. */
+  lowHpIncoming: number
   /** Shield, as a fraction of Max HP, granted before the first turn. */
   shield: number
   /**
@@ -95,6 +109,9 @@ export const NEUTRAL: CombatModifiers = {
   execute: 1,
   executeBelow: 0,
   bossDamage: 1,
+  enrageScale: 1,
+  enemyHealScale: 1,
+  lowHpIncoming: 1,
   shield: 0,
   sustainScale: 1,
   barrier: false,
@@ -132,6 +149,9 @@ export function combine(base: CombatModifiers, source: ModifierSource): CombatMo
     execute: base.execute * (source.execute ?? 1),
     executeBelow: Math.max(base.executeBelow, source.executeBelow ?? 0),
     bossDamage: base.bossDamage * (source.bossDamage ?? 1),
+    enrageScale: base.enrageScale * (source.enrageScale ?? 1),
+    enemyHealScale: base.enemyHealScale * (source.enemyHealScale ?? 1),
+    lowHpIncoming: base.lowHpIncoming * (source.lowHpIncoming ?? 1),
     shield: base.shield + (source.shield ?? 0),
     sustainScale: base.sustainScale * (source.sustainScale ?? 1),
     barrier: base.barrier || (source.barrier ?? false),

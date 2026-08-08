@@ -96,13 +96,29 @@ export const ITEMS: ShopItem[] = [
   // relic on a shop shelf is a relic with a gold price rather than a reason to
   // climb, and the tower's whole job is to be the reason.
   // ---------------------------------------------------------------------------
-  { id: 'void-pike', kind: 'weapon', name: 'Void Pike', emoji: '🔱', bonus: { atk: 32 }, cost: 5200, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', source: 'tower', effect: { description: 'Strips 6 defence from every enemy', mods: { pierce: 6 } } },
-  { id: 'hunter-mantle', kind: 'body', name: "Hunter's Mantle", emoji: '🥷', bonus: { hp: 75, atk: 12, def: 18 }, cost: 5000, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', source: 'tower', effect: { description: 'Below 35% health, deal 30% more', mods: { execute: 1.3, executeBelow: 0.35 } } },
-  { id: 'bastion-mail', kind: 'body', name: 'Bastion Mail', emoji: '🛡️', bonus: { hp: 110, def: 28 }, cost: 5200, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', source: 'tower', effect: { description: 'Start behind a 22% shield, take 7% less', mods: { shield: 0.22, incoming: 0.93 } } },
-  { id: 'crown-of-resolve', kind: 'head', name: 'Crown of Resolve', emoji: '👑', bonus: { hp: 85, def: 14 }, cost: 5000, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', source: 'tower', effect: { description: 'Take 10% less from every hit', mods: { incoming: 0.9 } } },
-  { id: 'clockwork-blades', kind: 'weapon', name: 'Clockwork Blades', emoji: '⚙️', bonus: { atk: 29 }, cost: 5200, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', source: 'tower', effect: { description: 'Every 3rd blow hits 35% harder', mods: { comboEvery: 3, combo: 1.35 } } },
-  { id: 'spring-totem', kind: 'accessory', name: 'Spring Totem', emoji: '💧', bonus: { hp: 75, atk: 12 }, cost: 5000, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', source: 'tower', effect: { description: 'Mend 3% of health every 3rd attack', mods: { heal: 0.03, healEvery: 3 } } },
+  { id: 'void-pike', kind: 'weapon', name: 'Void Pike', emoji: '🔱', bonus: { atk: 32 }, cost: 0, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', source: 'tower', effect: { description: 'Strips 6 defence from every enemy', mods: { pierce: 6 } } },
+  { id: 'hunter-mantle', kind: 'body', name: "Hunter's Mantle", emoji: '🥷', bonus: { hp: 75, atk: 12, def: 18 }, cost: 0, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', source: 'tower', effect: { description: 'Below 35% health, deal 30% more', mods: { execute: 1.3, executeBelow: 0.35 } } },
+  { id: 'bastion-mail', kind: 'body', name: 'Bastion Mail', emoji: '🛡️', bonus: { hp: 110, def: 28 }, cost: 0, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', source: 'tower', effect: { description: 'Start behind a 22% shield, take 7% less', mods: { shield: 0.22, incoming: 0.93 } } },
+  { id: 'crown-of-resolve', kind: 'head', name: 'Crown of Resolve', emoji: '👑', bonus: { hp: 85, def: 14 }, cost: 0, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', source: 'tower', effect: { description: 'Take 10% less from every hit', mods: { incoming: 0.9 } } },
+  { id: 'clockwork-blades', kind: 'weapon', name: 'Clockwork Blades', emoji: '⚙️', bonus: { atk: 29 }, cost: 0, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', source: 'tower', effect: { description: 'Every 3rd blow hits 35% harder', mods: { comboEvery: 3, combo: 1.35 } } },
+  { id: 'spring-totem', kind: 'accessory', name: 'Spring Totem', emoji: '💧', bonus: { hp: 75, atk: 12 }, cost: 0, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', source: 'tower', effect: { description: 'Mend 3% of health every 3rd attack', mods: { heal: 0.03, healEvery: 3 } } },
 
+  // ---------------------------------------------------------------------------
+  // Boss Remix relics. Where the tower's six answer its band *rules*, these six
+  // answer the things a boss does that a bigger health bar cannot: an enrage
+  // that compounds every turn, a Mending trait that undoes a whole exchange, a
+  // burst that only matters once you are already low.
+  //
+  // Every one of them is worth nothing at all in the wrong fight, which is the
+  // design: the plan asks that no single build be best against every boss, and
+  // gear that is situational by construction is the only way to mean it.
+  // ---------------------------------------------------------------------------
+  { id: 'hunter-knives', kind: 'weapon', name: 'Hunter Knives', emoji: '🔪', bonus: { atk: 27 }, cost: 0, minLevel: 24, buildTag: 'breaker', rarity: 'legendary', source: 'remix', effect: { description: 'Below 30% enemy health, deal 20% more', mods: { execute: 1.2, executeBelow: 0.3 } } },
+  { id: 'sunbreaker-axe', kind: 'weapon', name: 'Sunbreaker Axe', emoji: '🪓', bonus: { hp: 30, atk: 35 }, cost: 0, minLevel: 24, buildTag: 'breaker', rarity: 'legendary', source: 'remix', effect: { description: 'Enemies mend 35% less', mods: { enemyHealScale: 0.65 } } },
+  { id: 'aegis-lance', kind: 'weapon', name: 'Aegis Lance', emoji: '🔱', bonus: { hp: 70, atk: 22 }, cost: 0, minLevel: 24, buildTag: 'bulwark', rarity: 'legendary', source: 'remix', effect: { description: 'Open behind a 15% shield and answer dodges for half', mods: { shield: 0.15, counter: 0.5 } } },
+  { id: 'mirror-plate', kind: 'body', name: 'Mirror Plate', emoji: '🪞', bonus: { hp: 90, def: 24 }, cost: 0, minLevel: 24, buildTag: 'bulwark', rarity: 'legendary', source: 'remix', effect: { description: 'Boss enrage builds 15% slower', mods: { enrageScale: 0.85 } } },
+  { id: 'fortress-heart', kind: 'accessory', name: 'Fortress Heart', emoji: '🫀', bonus: { hp: 130, def: 10 }, cost: 0, minLevel: 24, buildTag: 'bulwark', rarity: 'legendary', source: 'remix', effect: { description: 'Below 35% health, take 12% less', mods: { lowHpIncoming: 0.88, lowHpBelow: 0.35 } } },
+  { id: 'rhythm-dial', kind: 'accessory', name: 'Rhythm Dial', emoji: '🎛️', bonus: { atk: 20 }, cost: 0, minLevel: 24, buildTag: 'tempo', rarity: 'legendary', source: 'remix', effect: { description: 'Combos land a blow sooner, for a little less', mods: { comboEvery: 4, combo: 1.1 } } },
 ]
 
 export const ITEM_BY_ID = new Map(ITEMS.map((item) => [item.id, item]))
@@ -113,6 +129,13 @@ export const ITEM_BY_ID = new Map(ITEMS.map((item) => [item.id, item]))
  * like a bought piece once it has been earned.
  */
 export const SHOP_ITEMS = ITEMS.filter((item) => (item.source ?? 'shop') === 'shop')
+
+/**
+ * Gear that is won rather than bought. Priced at zero on purpose: a won piece
+ * has no gold value, and leaving a plausible-looking price on one invites both
+ * a "sell for this much" feature and a reader who assumes it is purchasable.
+ */
+export const WON_ITEMS = ITEMS.filter((item) => (item.source ?? 'shop') !== 'shop')
 
 export const ITEM_KINDS: ItemKind[] = ['weapon', 'head', 'body', 'boots', 'accessory']
 

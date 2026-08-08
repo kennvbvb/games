@@ -5,6 +5,8 @@ import { isTowerStageId, towerFloor } from '../data/tower'
 import { isRiftStageId } from '../data/rifts'
 import { recordRiftCleared, riftAvailable } from '../systems/rift'
 import { TOWER_RERUN_PAYOUT, grantFloorRelic, recordFloorCleared } from '../systems/tower'
+import { grantRemixRelic } from '../systems/bossRemix'
+import { isRemixStageId } from '../data/bossRemix'
 import { recordFightWon } from '../systems/equipmentMastery'
 import { recordEvent } from '../services/analytics'
 import { GameState } from '../state/GameState'
@@ -42,6 +44,7 @@ export class ResultScene extends Phaser.Scene {
 
     const inTower = isTowerStageId(stage.id)
     const inRift = isRiftStageId(stage.id)
+    const inRemix = isRemixStageId(stage.id)
     // Read before the win is recorded: once the week is marked cleared the
     // answer flips, and a rift beaten twice in a week would pay twice.
     const riftPays = inRift && riftAvailable(GameState.player!)
@@ -76,6 +79,12 @@ export class ResultScene extends Phaser.Scene {
     // standing on when they fought it, not the one they just moved to.
     if (result.win) player = recordFightWon(player, stage)
 
+    // A remix is not campaign progress either: `remix-<world>-<tier>` is
+    // outside the `stage-` namespace, so recording it would be dropped by the
+    // validator, and setting it as the farming target would switch offline
+    // rewards off. Owning the relic *is* the first-clear record.
+    if (result.win && inRemix) player = grantRemixRelic(player, stage.id)
+
     if (result.win && inTower) {
       // The relic before the record: `grantFloorRelic` is idempotent, but
       // reading "first clear" off a record that has already moved would be a
@@ -84,7 +93,7 @@ export class ResultScene extends Phaser.Scene {
       player = recordFloorCleared(player, stage.order)
     } else if (result.win && inRift) {
       player = recordRiftCleared(player)
-    } else if (result.win) {
+    } else if (result.win && !inRemix) {
       const nextUnlock = Math.max(player.stageProgress.highestUnlocked, stage.order + 1)
       const completedStageIds = player.stageProgress.completedStageIds.includes(stage.id)
         ? player.stageProgress.completedStageIds
@@ -114,14 +123,14 @@ export class ResultScene extends Phaser.Scene {
     if (!result.win) GameState.stopAutoBattle()
     if (result.win) advanceTutorial(2)
 
-    const nextStage = inRift
+    const nextStage = inRift || inRemix
       ? null
       : inTower
         ? towerFloor(stage.order + 1)
         : (STAGES.find((s) => s.order === stage.order + 1) ?? null)
     // In the tower the next floor is only ever offered after a win, which is
     // exactly the rule `canAttempt` enforces — one past the deepest beaten.
-    const nextUnlocked = inRift
+    const nextUnlocked = inRift || inRemix
       ? false
       : inTower
         ? result.win
@@ -134,7 +143,7 @@ export class ResultScene extends Phaser.Scene {
       this.runAutoBattle(player, stage, nextStage, nextUnlocked)
       return
     }
-    this.renderActions(result.win, stage, nextStage, nextUnlocked, inTower, inRift)
+    this.renderActions(result.win, stage, nextStage, nextUnlocked, inTower, inRift, inRemix)
   }
 
   private renderOutcome(win: boolean, player: PlayerState, prevLevel: number, stage: StageConfig): void {
@@ -273,6 +282,7 @@ export class ResultScene extends Phaser.Scene {
     nextUnlocked: boolean,
     inTower: boolean,
     inRift: boolean,
+    inRemix: boolean,
   ): void {
     const startRun = (target: StageConfig, runs: number) => {
       GameState.selectedStage = target
@@ -288,6 +298,18 @@ export class ResultScene extends Phaser.Scene {
         fontSize: '16px',
       })
       makeButton(this, GAME_W / 2, 452, t('result.farmTen'), () => startRun(stage, 10), {
+        variant: 'secondary',
+        minWidth: 280,
+        fontSize: '15px',
+      })
+    } else if (win && inRemix) {
+      // A remix pays gold and exp on every clear, so farming it is legitimate —
+      // unlike the rift, which pays once a week.
+      makeButton(this, GAME_W / 2, 384, t('result.farmTen'), () => startRun(stage, 10), {
+        minWidth: 280,
+        fontSize: '16px',
+      })
+      makeButton(this, GAME_W / 2, 452, t('remix.leave'), () => this.scene.start('Remix'), {
         variant: 'secondary',
         minWidth: 280,
         fontSize: '15px',
@@ -336,8 +358,15 @@ export class ResultScene extends Phaser.Scene {
       this,
       GAME_W / 2 + 92,
       522,
-      inRift ? t('rift.leave') : inTower ? t('tower.leave') : t('result.stageSelect'),
-      () => this.scene.start(inRift ? 'Rift' : inTower ? 'Tower' : 'StageSelect'),
+      inRift
+        ? t('rift.leave')
+        : inTower
+          ? t('tower.leave')
+          : inRemix
+            ? t('remix.leave')
+            : t('result.stageSelect'),
+      () =>
+        this.scene.start(inRift ? 'Rift' : inTower ? 'Tower' : inRemix ? 'Remix' : 'StageSelect'),
       { variant: 'secondary', minWidth: 168, fontSize: '14px', minHeight: 50 },
     )
 
