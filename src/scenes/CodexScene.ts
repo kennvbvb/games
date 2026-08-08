@@ -3,6 +3,9 @@ import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import {
   codexProgress,
+  itemEntries,
+  itemSummary,
+  nextMilestone,
   relicEntries,
   setEntries,
   statusEntries,
@@ -65,6 +68,7 @@ export class CodexScene extends Phaser.Scene {
       { label: t('codex.statuses'), rows: this.statusRows(player) },
       { label: t('codex.sets'), rows: this.setRows(player) },
       { label: t('codex.relics'), rows: this.relicRows(player) },
+      { label: t('codex.gear'), rows: this.gearRows(player) },
     ]
     const active = Math.min(Math.max(this.tab, 0), tabs.length - 1)
     this.tab = active
@@ -86,17 +90,34 @@ export class CodexScene extends Phaser.Scene {
       .setOrigin(0.5)
     makeBar(this, GAME_W / 2, 94, 380, 10, COLORS.expBar).set(progress.found / progress.total)
 
+    // What the next round number costs, rather than only how far along it is —
+    // a completion track with no next target is just a percentage.
+    const milestone = nextMilestone(progress)
+    this.add
+      .text(
+        GAME_W / 2,
+        112,
+        milestone
+          ? t('codex.milestone', {
+              percent: Math.round(milestone.at * 100),
+              remaining: milestone.remaining,
+            })
+          : t('codex.complete'),
+        { fontSize: '10px', fontFamily: FONT.family, color: COLORS.textDim },
+      )
+      .setOrigin(0.5)
+
     // Four tabs across, each showing its own found count so the player can see
     // which category still has something in it without opening every one.
     tabs.forEach((tab, i) => {
       const found = tab.rows.filter((r) => r.found).length
-      makeButton(this, 66 + i * 116, 140, `${tab.label} ${found}/${tab.rows.length}`, () =>
+      makeButton(this, 54 + i * 93, 140, `${tab.label} ${found}/${tab.rows.length}`, () =>
         this.scene.restart({ tab: i, page: 0 }),
       {
         variant: i === active ? 'primary' : 'secondary',
-        minWidth: 108,
+        minWidth: 87,
         minHeight: 44,
-        fontSize: '11px',
+        fontSize: '10px',
       })
     })
 
@@ -157,6 +178,24 @@ export class CodexScene extends Phaser.Scene {
         wordWrap: { width: 358 },
       })
       .setOrigin(0, 0.5)
+  }
+
+  /**
+   * The Collection Book. Sorted so a run of owned rows is not broken up by the
+   * ones still missing — a shelf reads as a shelf when what is on it is
+   * together.
+   */
+  private gearRows(player: PlayerState): Row[] {
+    return itemEntries(player)
+      .slice()
+      .sort((a, b) => Number(b.found) - Number(a.found))
+      .map((entry) => ({
+        icon: `item_${entry.value.id}`,
+        title: entry.value.name,
+        body: itemSummary(player, entry.value),
+        found: entry.found,
+        hintKey: entry.hintKey,
+      }))
   }
 
   private traitRows(player: PlayerState): Row[] {

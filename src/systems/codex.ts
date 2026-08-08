@@ -5,6 +5,8 @@ import { RELICS, relicsForRace } from '../data/relics'
 import { STAGE_BY_ID, STAGES } from '../data/stages'
 import { ITEMS, ITEM_BY_ID } from '../data/items'
 import { masteryRank } from './mastery'
+import { equipRank } from './equipmentMastery'
+import { buildOf } from '../data/builds'
 import type { EnemyTrait } from '../data/enemyTraits'
 import type { StatusConfig, StatusId } from '../data/statuses'
 import type { SetConfig } from '../data/sets'
@@ -130,14 +132,79 @@ export function relicEntries(state: PlayerState): CodexEntry<RelicConfig>[] {
   }))
 }
 
+/**
+ * Every piece of gear in the game, owned or not — the Collection Book half of
+ * the Codex.
+ *
+ * Owning it is the discovery rule, and it is the only rule that could be: a
+ * piece has no other trace in the save. Which means the shelf doubles as the
+ * completion track the expansion plan asks for, without a second list to keep
+ * in step with the first.
+ *
+ * Locked rows still say where the piece comes from rather than hiding it. A
+ * collection that conceals what is missing cannot tell you how much is left,
+ * which is most of the reason anyone opens one.
+ */
+export function itemEntries(state: PlayerState): CodexEntry<(typeof ITEMS)[number]>[] {
+  const owned = new Set(state.ownedItemIds)
+  return ITEMS.map((item) => ({
+    value: item,
+    found: owned.has(item.id),
+    hintKey: owned.has(item.id)
+      ? ''
+      : item.source === 'tower'
+        ? 'codex.hintTower'
+        : item.source === 'remix'
+          ? 'codex.hintRemix'
+          : 'codex.hintShop',
+  }))
+}
+
+/** The one line a collected piece shows: what it is for, and how far it has come. */
+export function itemSummary(state: PlayerState, item: (typeof ITEMS)[number]): string {
+  const parts: string[] = [buildOf(item.buildTag).id]
+  const rank = equipRank(state, item.id)
+  if (rank > 1) parts.push(`★${rank}`)
+  if (item.effect) parts.push(item.effect.description)
+  return parts.join(' · ')
+}
+
 export interface CodexProgress {
   found: number
   total: number
 }
 
+/**
+ * Completion milestones, as fractions of the whole book.
+ *
+ * The expansion plan attaches an appearance, a title, a frame and a backdrop to
+ * these. None of those systems exists yet, and inventing four of them to hang
+ * off a percentage would be building the reward before the thing it rewards. So
+ * the milestones ship as what they already are — a stated target and the count
+ * still needed — and the cosmetics wait until there is somewhere to put them.
+ */
+export const CODEX_MILESTONES = [0.25, 0.5, 0.75, 1] as const
+
+export interface CodexMilestone {
+  /** The fraction itself, e.g. 0.5. */
+  at: number
+  /** Entries still needed to reach it; 0 once it is passed. */
+  remaining: number
+}
+
+/** The next milestone not yet reached, or null once the book is complete. */
+export function nextMilestone(progress: CodexProgress): CodexMilestone | null {
+  for (const at of CODEX_MILESTONES) {
+    const needed = Math.ceil(progress.total * at)
+    if (progress.found < needed) return { at, remaining: needed - progress.found }
+  }
+  return null
+}
+
 /** How much of the Codex is filled in, across every category. */
 export function codexProgress(state: PlayerState): CodexProgress {
   const entries = [
+    ...itemEntries(state),
     ...traitEntries(state),
     ...statusEntries(state),
     ...setEntries(state),

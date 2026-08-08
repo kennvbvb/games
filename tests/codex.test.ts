@@ -5,10 +5,13 @@ import { SETS } from '../src/data/sets'
 import { RELIC_RANKS, relicsForRace } from '../src/data/relics'
 import { STAGES } from '../src/data/stages'
 import { WORLDS } from '../src/data/worlds'
-import { ITEMS } from '../src/data/items'
+import { ITEMS, ITEM_BY_ID } from '../src/data/items'
 import {
   codexProgress,
   foundSets,
+  itemEntries,
+  itemSummary,
+  nextMilestone,
   foundStatuses,
   foundTraits,
   relicEntries,
@@ -168,5 +171,74 @@ describe('progress counting', () => {
       ),
     )
     expect(totals.size).toBe(1)
+  })
+})
+
+describe('the collection book', () => {
+  it('lists every piece of gear in the game, owned or not', () => {
+    const fresh = createDefaultPlayerState('New')
+    expect(itemEntries(fresh)).toHaveLength(ITEMS.length)
+    expect(itemEntries(fresh).every((e) => !e.found)).toBe(true)
+  })
+
+  it('discovers a piece by owning it, which is its only trace in the save', () => {
+    const base = createDefaultPlayerState('New')
+    const withOne = { ...base, ownedItemIds: ['iron-sword'] }
+    const found = itemEntries(withOne).filter((e) => e.found).map((e) => e.value.id)
+    expect(found).toEqual(['iron-sword'])
+  })
+
+  it('tells a locked row where its piece actually comes from', () => {
+    const fresh = createDefaultPlayerState('New')
+    const bySource = new Map(itemEntries(fresh).map((e) => [e.value.id, e.hintKey]))
+    expect(bySource.get('iron-sword')).toBe('codex.hintShop')
+    expect(bySource.get('void-pike')).toBe('codex.hintTower')
+    expect(bySource.get('hunter-knives')).toBe('codex.hintRemix')
+  })
+
+  it('summarises a piece by what it is for, not by its numbers', () => {
+    const base = createDefaultPlayerState('New')
+    const owned = { ...base, ownedItemIds: ['void-pike'], equipmentMastery: { 'void-pike': 40 } }
+    const line = itemSummary(owned, ITEM_BY_ID.get('void-pike')!)
+    expect(line).toContain('breaker')
+    // Mastery shows once it has been earned, and not before.
+    expect(line).toContain('★3')
+    expect(itemSummary(base, ITEM_BY_ID.get('void-pike')!)).not.toContain('★')
+    expect(line).toContain(ITEM_BY_ID.get('void-pike')!.effect!.description)
+  })
+
+  it('counts gear towards the same completion figure as everything else', () => {
+    const base = createDefaultPlayerState('New')
+    const before = codexProgress(base)
+    // A setless piece, deliberately: owning one that belongs to a set reveals
+    // the set row too, so it moves the figure by two — correct, but it would
+    // hide whether the gear row moved at all.
+    const setless = ITEMS.find((i) => !i.setId && (i.source ?? 'shop') === 'shop')!
+    const after = codexProgress({ ...base, ownedItemIds: [setless.id] })
+    expect(before.total).toBeGreaterThanOrEqual(ITEMS.length)
+    expect(after.found).toBe(before.found + 1)
+    expect(after.total).toBe(before.total)
+
+    // And the set row really does move on top, for a piece that has one.
+    const inSet = ITEMS.find((i) => i.setId)!
+    expect(codexProgress({ ...base, ownedItemIds: [inSet.id] }).found).toBe(before.found + 2)
+  })
+})
+
+describe('completion milestones', () => {
+  it('names the next round number and what it still costs', () => {
+    expect(nextMilestone({ found: 0, total: 100 })).toEqual({ at: 0.25, remaining: 25 })
+    expect(nextMilestone({ found: 25, total: 100 })).toEqual({ at: 0.5, remaining: 25 })
+    expect(nextMilestone({ found: 99, total: 100 })).toEqual({ at: 1, remaining: 1 })
+  })
+
+  it('has nothing left to name once the book is full', () => {
+    expect(nextMilestone({ found: 100, total: 100 })).toBeNull()
+  })
+
+  it('rounds a milestone up, so reaching it always means reaching it', () => {
+    // 25% of 61 is 15.25; being on 15 is not a quarter of the way through.
+    expect(nextMilestone({ found: 15, total: 61 })).toEqual({ at: 0.25, remaining: 1 })
+    expect(nextMilestone({ found: 16, total: 61 })!.at).toBe(0.5)
   })
 })
