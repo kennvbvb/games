@@ -3,6 +3,8 @@ import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
 import { makeButton } from '../ui/components/makeButton'
+import { DIFFICULTIES, difficultyOf } from '../data/difficulties'
+import { activeDifficulty, isDifficultyUnlocked } from '../systems/campaignModes'
 import { makePanel } from '../ui/components/makePanel'
 import { makeTitle } from '../ui/components/makeTitle'
 import { setReducedMotionPreference } from '../ui/motion'
@@ -28,9 +30,10 @@ const TOGGLES: ToggleRow[] = [
   { key: 'analytics', labelKey: 'settings.analytics', hintKey: 'settings.analyticsHint' },
 ]
 
-const ROW_TOP = 224
-const ROW_GAP = 84
-const ROW_H = 74
+// Tightened from 84/74 to fit a sixth row: four toggles, language, difficulty.
+const ROW_TOP = 216
+const ROW_GAP = 72
+const ROW_H = 64
 
 export class SettingsScene extends Phaser.Scene {
   constructor() {
@@ -88,7 +91,9 @@ export class SettingsScene extends Phaser.Scene {
       })
     })
 
-    const langY = ROW_TOP + TOGGLES.length * ROW_GAP
+    this.renderDifficulty(ROW_TOP + TOGGLES.length * ROW_GAP)
+
+    const langY = ROW_TOP + (TOGGLES.length + 1) * ROW_GAP
     makePanel(this, GAME_W / 2, langY, 430, ROW_H)
     this.add
       .text(66, langY - 15, t('settings.language'), {
@@ -117,14 +122,14 @@ export class SettingsScene extends Phaser.Scene {
     })
 
     this.add
-      .text(GAME_W / 2, langY + 58, t('settings.keyboardHint'), {
+      .text(GAME_W / 2, langY + 50, t('settings.keyboardHint'), {
         fontSize: '12px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
 
-    makeButton(this, GAME_W / 2, langY + 102, t('common.back'), () => this.scene.start('MainMenu'), {
+    makeButton(this, GAME_W / 2, langY + 92, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       minWidth: 180,
       fontSize: '15px',
@@ -135,6 +140,46 @@ export class SettingsScene extends Phaser.Scene {
   private applyLocale(locale: Locale): void {
     setLocale(locale)
     this.applySetting({ locale })
+  }
+
+  /**
+   * Campaign difficulty. Locked modes stay visible with their requirement
+   * spelled out — a mode the player cannot see is a mode they will not work
+   * towards.
+   */
+  private renderDifficulty(y: number): void {
+    const player = GameState.player!
+    const active = activeDifficulty(player)
+    makePanel(this, GAME_W / 2, y, 430, ROW_H)
+
+    this.add
+      .text(46, y - 12, t('difficulty.label'), {
+        fontSize: '15px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.text,
+      })
+      .setOrigin(0, 0.5)
+    const locked = DIFFICULTIES.find((mode) => !isDifficultyUnlocked(player, mode))
+    this.add
+      .text(
+        46,
+        y + 10,
+        locked ? t('difficulty.locked', { worlds: locked.unlockAfterWorlds }) : t(difficultyOf(active).descriptionKey),
+        { fontSize: '10px', fontFamily: FONT.family, color: COLORS.textDim, wordWrap: { width: 180 } },
+      )
+      .setOrigin(0, 0.5)
+
+    DIFFICULTIES.forEach((mode, i) => {
+      const unlocked = isDifficultyUnlocked(player, mode)
+      makeButton(this, 254 + i * 84, y, t(mode.nameKey), () => this.applySetting({ difficulty: mode.id }), {
+        variant: mode.id === active ? 'primary' : 'secondary',
+        disabled: !unlocked,
+        minWidth: 78,
+        minHeight: 48,
+        fontSize: '11px',
+      })
+    })
   }
 
   private applySetting(patch: Partial<GameSettings>): void {

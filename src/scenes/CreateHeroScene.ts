@@ -6,6 +6,7 @@ import { persist } from '../services/saveService'
 import { RACES, raceOf, raceTextureKey } from '../data/races'
 import { statsForLevel } from '../systems/leveling'
 import { makeButton } from '../ui/components/makeButton'
+import { makeDom } from '../ui/components/makeDom'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { ambientTween } from '../ui/motion'
@@ -69,12 +70,13 @@ export class CreateHeroScene extends Phaser.Scene {
   /** Step 1: name and kin, showing what each kin starts from. */
   private buildIdentityStep(): void {
     const inputStyle =
-      'width:250px;padding:11px 14px;font-size:16px;border-radius:14px;border:2px solid #f3d9e5;background:#fff;color:#5d4a66;outline:none;font-family:inherit;text-align:center'
-    const dom = this.add
-      .dom(GAME_W / 2, 112)
-      .createFromHTML(
-        `<input id="hero-name" type="text" maxlength="14" value="${this.heroName}" placeholder="${t('hero.namePlaceholder')}" style="${inputStyle}" />`,
-      )
+      'width:100%;box-sizing:border-box;padding:11px 14px;font-size:16px;border-radius:14px;border:2px solid #f3d9e5;background:#fff;color:#5d4a66;outline:none;font-family:inherit;text-align:center'
+    const dom = makeDom(
+      this,
+      GAME_W / 2,
+      112,
+      `<div style="width:250px"><input id="hero-name" type="text" maxlength="14" value="${this.heroName}" placeholder="${t('hero.namePlaceholder')}" style="${inputStyle}" /></div>`,
+    )
     this.nameInput = dom.getChildByID('hero-name') as HTMLInputElement
 
     this.add

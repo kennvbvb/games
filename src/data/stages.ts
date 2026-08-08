@@ -1,6 +1,6 @@
 import { backgroundFor } from './biomes'
 import type { StageVisual } from './biomes'
-import type { EnemyConfig, StageConfig } from '../types'
+import type { BossPhase, EnemyConfig, StageConfig } from '../types'
 import type { TraitId } from './enemyTraits'
 
 interface StageDef {
@@ -11,11 +11,11 @@ interface StageDef {
 }
 
 /**
- * Sixty stages in twelve worlds of five.
+ * A hundred stages in twenty worlds of five.
  *
- * Ids are positional (`stage-<order>`) and the first twelve keep both their id
- * and their name from before the campaign was extended, so an existing save's
- * cleared list still points at the same places.
+ * Ids are positional (`stage-<order>`) and every stage that already existed
+ * keeps both its id and its name, so an existing save's cleared list still
+ * points at the same places and its unlock progress means the same thing.
  */
 const STAGE_DEFS: StageDef[] = [
   // World 1 — Whispering Wilds
@@ -101,9 +101,64 @@ const STAGE_DEFS: StageDef[] = [
   { name: 'Hall of Trials', trait: 'fierce', enemy: 'Arbiter', visual: { biome: 'divine', landmark: 'decor_scales' } },
   { name: 'Crown of Stars', trait: 'slippery', enemy: 'Starcrown', visual: { biome: 'divine', landmark: 'decor_galaxy', weather: 'decor_sparkle' } },
   { name: "Eternity's End", trait: 'fierce', enemy: 'Eternity', visual: { biome: 'divine', landmark: 'decor_castle', weather: 'decor_comet' } },
+  // World 13 — Oceanic Dominion
+  { name: 'Pearl Coast', trait: 'straightforward', enemy: 'Pearlback', visual: { biome: 'ocean', landmark: 'decor_shell' } },
+  { name: 'Kelpwood Maze', trait: 'slippery', enemy: 'Kelpstrider', visual: { biome: 'ocean', landmark: 'decor_herb', weather: 'decor_bubble' } },
+  { name: 'Siren Ruins', trait: 'venomous', enemy: 'Siren', visual: { biome: 'ocean', landmark: 'decor_tower' } },
+  { name: 'Leviathan Trench', trait: 'vampiric', enemy: 'Leviathan', visual: { biome: 'ocean', landmark: 'decor_wave', weather: 'decor_fog' } },
+  { name: 'Tidal Crown', trait: 'shielded', enemy: 'Tidewarden', visual: { biome: 'ocean', landmark: 'decor_coral', weather: 'decor_storm' } },
+
+  // World 14 — Verdant Rebirth
+  { name: 'Mossborn Village', trait: 'mending', enemy: 'Mossling', visual: { biome: 'verdant', landmark: 'decor_mushroom' } },
+  { name: 'Blooming Labyrinth', trait: 'venomous', enemy: 'Petalmaze', visual: { biome: 'verdant', landmark: 'decor_flower', weather: 'decor_leaf' } },
+  { name: 'Living Temple', trait: 'armored', enemy: 'Templeheart', visual: { biome: 'verdant', landmark: 'decor_castle' } },
+  { name: 'Heartwood Sanctum', trait: 'mending', enemy: 'Heartwood', visual: { biome: 'verdant', landmark: 'decor_tree', weather: 'decor_sparkle' } },
+  { name: 'Worldroot Avatar', trait: 'vampiric', enemy: 'Worldroot', visual: { biome: 'verdant', landmark: 'decor_herb', weather: 'decor_storm' } },
+
+  // World 15 — Shadow Empire
+  { name: 'Dusk Market', trait: 'slippery', enemy: 'Cutpurse', visual: { biome: 'shadow', landmark: 'decor_lantern' } },
+  { name: 'Moonless Canal', trait: 'disruptive', enemy: 'Canalstalker', visual: { biome: 'shadow', landmark: 'decor_wave', weather: 'decor_fog' } },
+  { name: 'Assassin Citadel', trait: 'countering', enemy: 'Nightblade', visual: { biome: 'shadow', landmark: 'decor_castle' } },
+  { name: 'Eclipse Court', trait: 'phasebound', enemy: 'Eclipsed', visual: { biome: 'shadow', landmark: 'decor_moon' } },
+  { name: 'Shadow Emperor', trait: 'disruptive', enemy: 'Shadow Emperor', visual: { biome: 'shadow', landmark: 'decor_skull', weather: 'decor_fog' } },
+
+  // World 16 — Infernal Crusade
+  { name: 'Cinder Wastes', trait: 'fierce', enemy: 'Cinderling', visual: { biome: 'infernal', landmark: 'decor_rock' } },
+  { name: 'Chain Fortress', trait: 'armored', enemy: 'Chainwarden', visual: { biome: 'infernal', landmark: 'decor_castle' } },
+  { name: 'Furnace Cathedral', trait: 'venomous', enemy: 'Forgepriest', visual: { biome: 'infernal', landmark: 'decor_volcano', weather: 'decor_fire' } },
+  { name: 'Hellstorm Gate', trait: 'unstable', enemy: 'Gatefiend', visual: { biome: 'infernal', landmark: 'decor_portal', weather: 'decor_storm' } },
+  { name: 'Infernal Regent', trait: 'fierce', enemy: 'Infernal Regent', visual: { biome: 'infernal', landmark: 'decor_skull', weather: 'decor_comet' } },
+
+  // World 17 — Ancient Cosmos
+  { name: 'Lunar Archive', trait: 'straightforward', enemy: 'Archivist', visual: { biome: 'cosmos', landmark: 'decor_moon' } },
+  { name: 'Comet Fields', trait: 'unstable', enemy: 'Cometrider', visual: { biome: 'cosmos', landmark: 'decor_comet', weather: 'decor_comet' } },
+  { name: 'Planetary Forge', trait: 'armored', enemy: 'Forgestar', visual: { biome: 'cosmos', landmark: 'decor_gear', weather: 'decor_fire' } },
+  { name: 'Cosmic Library', trait: 'shielded', enemy: 'Loremind', visual: { biome: 'cosmos', landmark: 'decor_tower' } },
+  { name: 'Astral Architect', trait: 'countering', enemy: 'Architect', visual: { biome: 'cosmos', landmark: 'decor_orb', weather: 'decor_galaxy' } },
+
+  // World 18 — Dreamscape
+  { name: 'Slumbering Meadow', trait: 'mending', enemy: 'Dozeflower', visual: { biome: 'dream', landmark: 'decor_flower' } },
+  { name: 'Memory Theatre', trait: 'disruptive', enemy: 'Understudy', visual: { biome: 'dream', landmark: 'decor_ring' } },
+  { name: 'Nightmare Corridor', trait: 'phasebound', enemy: 'Nightmare', visual: { biome: 'dream', landmark: 'decor_web', weather: 'decor_fog' } },
+  { name: 'Lucid Palace', trait: 'shielded', enemy: 'Lucid', visual: { biome: 'dream', landmark: 'decor_castle', weather: 'decor_sparkle' } },
+  { name: 'Dream Eater', trait: 'unstable', enemy: 'Dream Eater', visual: { biome: 'dream', landmark: 'decor_orb', weather: 'decor_moon' } },
+
+  // World 19 — Last Reality
+  { name: 'Broken Timeline', trait: 'slippery', enemy: 'Splinter', visual: { biome: 'unmade', landmark: 'decor_clock' } },
+  { name: 'Echo of Heroes', trait: 'countering', enemy: 'Echo', visual: { biome: 'unmade', landmark: 'decor_scales' } },
+  { name: 'Fallen Worlds', trait: 'vampiric', enemy: 'Fallen', visual: { biome: 'unmade', landmark: 'decor_mountain', weather: 'decor_fog' } },
+  { name: 'Origin Collapse', trait: 'unstable', enemy: 'Collapse', visual: { biome: 'unmade', landmark: 'decor_portal', weather: 'decor_comet' } },
+  { name: 'Reality Devourer', trait: 'countering', enemy: 'Devourer', visual: { biome: 'unmade', landmark: 'decor_skull', weather: 'decor_galaxy' } },
+
+  // World 20 — New Eternity
+  { name: 'First Light', trait: 'armored', enemy: 'Firstborn', visual: { biome: 'genesis', landmark: 'decor_sun' } },
+  { name: 'Garden of Creation', trait: 'mending', enemy: 'Gardener', visual: { biome: 'genesis', landmark: 'decor_flower', weather: 'decor_leaf' } },
+  { name: 'Trial of Legends', trait: 'countering', enemy: 'Champion', visual: { biome: 'genesis', landmark: 'decor_scales' } },
+  { name: 'Infinite Threshold', trait: 'disruptive', enemy: 'Threshold', visual: { biome: 'genesis', landmark: 'decor_portal', weather: 'decor_sparkle' } },
+  { name: 'The Eternal One', trait: 'vampiric', enemy: 'The Eternal One', visual: { biome: 'genesis', landmark: 'decor_ring', weather: 'decor_galaxy' } },
 ]
 
-/** Twelve worlds of five; the fifth stage of each is its boss. */
+/** Twenty worlds of five; the fifth stage of each is its boss. */
 export const STAGES_PER_WORLD = 5
 
 export function worldOfOrder(order: number): number {
@@ -125,19 +180,26 @@ export function isBossOrder(order: number): boolean {
  * nothing, because enemy attack grew slower than player defence.
  *
  * These exponents came out of a parameter search scored against the handoff's
- * own target of two to three replays per world, run for every kin. See the PR
- * for the resulting per-kin figures, including where it still falls short.
+ * own target of two to three replays per world, run for every kin.
+ *
+ * They were re-fitted when the campaign went from 60 stages to 100. The 60-stage
+ * numbers (HP^1.15, ATK^1.1, EXP x5.5) did still *finish* at 100 — every kin
+ * completed it — but the worst single stage cost Dwarf 94 replays, because
+ * enemy health was compounding faster than reward, and reward is the only thing
+ * player power compounds from. Flattening health to ^1.08, holding enemy attack
+ * linear and paying EXP x9 brings the worst spike across all six kin down to 11
+ * replays, and the average to well under one per world.
  */
 const HP_BASE = 26
 const HP_SCALE = 10
-const HP_EXP = 1.15
+const HP_EXP = 1.08
 const ATK_BASE = 5
 const ATK_SCALE = 0.8
-const ATK_EXP = 1.1
+const ATK_EXP = 1
 const DEF_BASE = 1
 const DEF_SCALE = 0.5
 const DEF_EXP = 1.05
-const EXP_SCALE = 5.5
+const EXP_SCALE = 9
 const GOLD_SCALE = 4.5
 
 const BOSS_HP = 1.18
@@ -159,8 +221,55 @@ function scaledEnemy(order: number, def: StageDef): EnemyConfig {
     def: defence,
     // Six turns of grace, then +15% of base attack per turn: enough room to
     // win outright with a decent weapon, fatal to a pure-HP build.
-    boss: { enrageAfterTurn: 6, enrageAtkPerTurn: 0.15 },
+    boss: { enrageAfterTurn: 6, enrageAtkPerTurn: 0.15, phases: bossPhases(order) },
   }
+}
+
+/**
+ * How many faces a boss has, and what each one changes.
+ *
+ * Deliberately staged by depth rather than given to every boss: an early boss
+ * that transformed would be teaching a mechanic before the player has the tools
+ * to answer it, and the handoff asks for exactly this ramp. Phases are one-way
+ * and keyed off health, so the preview simulates them like anything else.
+ */
+function bossPhases(order: number): BossPhase[] {
+  const world = worldOfOrder(order)
+  // Worlds 1-8: enrage alone is the whole mechanic.
+  if (world <= 8) return []
+
+  // Worlds 9-12: one turn, halfway down — it hits harder and shrugs off more.
+  if (world <= 12) {
+    return [{ atHpBelow: 0.5, labelKey: 'boss.phaseHarden', atkScale: 1.15, defScale: 1.2 }]
+  }
+
+  // Worlds 13-16: two turns, the first putting a shield in the way so raw
+  // damage alone stops being enough.
+  if (world <= 16) {
+    return [
+      { atHpBelow: 0.6, labelKey: 'boss.phaseShield', shield: 0.13, defScale: 1.1 },
+      { atHpBelow: 0.3, labelKey: 'boss.phaseFrenzy', atkScale: 1.16, trait: 'unstable' },
+    ]
+  }
+
+  // Worlds 17-20: three turns, and the last one clears whatever was stuck on
+  // it — a build that wins purely by stacking poison has to have another plan.
+  return [
+    { atHpBelow: 0.7, labelKey: 'boss.phaseShield', shield: 0.14, defScale: 1.08 },
+    {
+      atHpBelow: 0.45,
+      labelKey: 'boss.phaseCurse',
+      atkScale: 1.08,
+      inflict: { id: 'curse', turns: 6 },
+    },
+    {
+      atHpBelow: 0.2,
+      labelKey: 'boss.phaseCleanse',
+      cleanse: true,
+      atkScale: 1.1,
+      trait: 'phasebound',
+    },
+  ]
 }
 
 export const STAGES: StageConfig[] = STAGE_DEFS.map((def, idx) => {

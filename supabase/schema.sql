@@ -101,3 +101,100 @@ drop trigger if exists analytics_events_set_received_at on public.analytics_even
 create trigger analytics_events_set_received_at
   before insert on public.analytics_events
   for each row execute function public.analytics_events_set_received_at();
+
+-- ---------------------------------------------------------------------------
+-- Admin roles.
+--
+-- The client can be patched to show any button it likes, so "is this user an
+-- admin" has to be answerable without asking the client. This table is that
+-- answer, and `public.is_admin()` is how every policy below asks it.
+--
+-- Rows are writable only from a trusted backend or the Supabase dashboard:
+-- there is deliberately no insert, update or delete policy, so the anon and
+-- authenticated roles cannot grant anybody anything — including themselves.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.user_roles (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  role text not null check (role in ('admin')),
+  granted_at timestamptz not null default now()
+);
+
+alter table public.user_roles enable row level security;
+
+-- Users may see their own role and nothing else, so the client can decide
+-- whether to render the Test Lab entry point without being able to enumerate
+-- who else holds one.
+create policy "Users can read their own role"
+  on public.user_roles for select
+  using (auth.uid() = user_id);
+
+-- `security definer` so the check runs with the table owner's rights: a caller
+-- who cannot read another user's row can still be *checked* against it.
+-- search_path is pinned because a definer function that resolves names through
+-- the caller's search_path can be pointed at a table the caller controls.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.user_roles
+    where user_id = auth.uid() and role = 'admin'
+  );
+$$;
+
+revoke execute on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Admin audit log.
+--
+-- Append-only, and only for a verified admin. This is the concrete thing the
+-- role check buys: a forged client can open the Test Lab UI for itself, but it
+-- cannot write a row here, so it cannot forge a history of having done so.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.admin_audit_log (
+  id bigint generated always as identity primary key,
+  actor_id uuid not null references auth.users (id) on delete cascade,
+  action text not null check (action in ('apply-to-save', 'import-save', 'reset-campaign')),
+  details jsonb not null default '{}'::jsonb,
+  occurred_at timestamptz not null default now(),
+  constraint admin_audit_log_details_is_object check (jsonb_typeof(details) = 'object')
+);
+
+create index if not exists admin_audit_log_actor_idx
+  on public.admin_audit_log (actor_id, occurred_at desc);
+
+alter table public.admin_audit_log enable row level security;
+
+-- Two conditions, both required: the row must be about yourself (so one admin
+-- cannot write entries in another's name) and you must actually be an admin.
+create policy "Admins can append their own audit rows"
+  on public.admin_audit_log for insert
+  with check (auth.uid() = actor_id and public.is_admin());
+
+create policy "Admins can read the audit log"
+  on public.admin_audit_log for select
+  using (public.is_admin());
+
+-- No update or delete policy: an audit log that can be rewritten is not one.
+
+-- Server-authoritative timestamp; a client-supplied one is not evidence.
+create or replace function public.admin_audit_set_occurred_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.occurred_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists admin_audit_set_occurred_at on public.admin_audit_log;
+create trigger admin_audit_set_occurred_at
+  before insert on public.admin_audit_log
+  for each row execute function public.admin_audit_set_occurred_at();

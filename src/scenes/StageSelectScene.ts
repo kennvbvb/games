@@ -2,7 +2,10 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { WORLDS, worldCleared, worldPageFor } from '../data/worlds'
 import { isBossStage } from '../data/stages'
+import { difficultyOf } from '../data/difficulties'
+import { activeDifficulty } from '../systems/campaignModes'
 import { GameState } from '../state/GameState'
+import { canAscend } from '../systems/ascension'
 import { DIFFICULTY_LABEL_KEYS, stageOutlook } from '../systems/difficulty'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
@@ -72,7 +75,23 @@ export class StageSelectScene extends Phaser.Scene {
       minWidth: 64,
     })
 
-    makeButton(this, GAME_W / 2, 616, t('common.back'), () => this.scene.start('MainMenu'), {
+    // Ascension only appears once the campaign is genuinely finished, or once
+    // it has been done before. Before that it is neither actionable nor
+    // interesting, and a permanently greyed button on the main path is just
+    // noise. Stage select is where the player lands after the last stage, which
+    // makes it the one screen the offer belongs on.
+    const player = GameState.player!
+    const showAscend = canAscend(player) || player.ascension.count > 0
+    if (showAscend) {
+      makeButton(this, GAME_W / 2, 612, t('stages.ascend'), () => this.scene.start('Ascend'), {
+        variant: canAscend(player) ? 'primary' : 'secondary',
+        minWidth: 200,
+        minHeight: 46,
+        fontSize: '14px',
+        icon: 'icon_levelup',
+      })
+    }
+    makeButton(this, GAME_W / 2, showAscend ? 668 : 616, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
       fontSize: '15px',
       minWidth: 160,
@@ -103,7 +122,7 @@ export class StageSelectScene extends Phaser.Scene {
         `${t('world.label', { index: world.index, total: WORLDS.length })}  ·  ${t('world.progress', {
           cleared,
           total: world.stages.length,
-        })}`,
+        })}  ·  ${t(difficultyOf(activeDifficulty(player)).nameKey)}`,
         { fontSize: '12px', fontFamily: FONT.family, color: COLORS.textDim },
       )
       .setOrigin(0.5)

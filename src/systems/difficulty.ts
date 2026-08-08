@@ -1,7 +1,8 @@
 import { resolveBattle } from './combat'
-import { effectiveStats } from './upgrades'
+import { playerBattleInputs } from './playerBattle'
+import { activeDifficulty } from './campaignModes'
+import { enemyFor, rewardsFor } from '../data/difficulties'
 import { PLAN_IDS } from '../data/battlePlans'
-import { raceOf } from '../data/races'
 import type { PlanId } from '../data/battlePlans'
 import type { BattleOutcome, PlayerState, StageConfig } from '../types'
 
@@ -47,16 +48,18 @@ export const FORECAST_LABEL_KEYS = {
  * which is the one thing this function must never do.
  */
 export function stageOutlook(state: PlayerState, stage: StageConfig, plan?: PlanId): StageOutlook {
-  const stats = effectiveStats(state)
+  const inputs = playerBattleInputs(state, stage)
   const result = resolveBattle({
-    player: stats,
-    enemy: stage.enemy,
-    rewards: stage.rewards,
+    ...inputs,
+    enemy: enemyFor(stage.enemy, activeDifficulty(state)),
+    rewards: rewardsFor(stage.rewards, activeDifficulty(state)),
     plan: plan ?? state.settings.battlePlan,
-    passive: raceOf(state.raceId).passive,
   })
 
-  const hpRemaining = stats.maxHp > 0 ? Math.max(0, result.playerHpLeft) / stats.maxHp : 0
+  // Against the pool the fight was fought with, not the pre-skill one: a hero
+  // whose build scales Max HP would otherwise be told it has 110% left.
+  const hpRemaining =
+    result.playerMaxHp > 0 ? Math.max(0, result.playerHpLeft) / result.playerMaxHp : 0
   const turns = result.log.length > 0 ? result.log[result.log.length - 1].turn : 0
 
   if (!result.win) return { tier: 'hard', hpRemaining, willWin: false, outcome: result.outcome, turns }

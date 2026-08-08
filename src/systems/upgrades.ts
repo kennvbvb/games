@@ -1,5 +1,11 @@
 import { BALANCE } from '../data/balance'
-import { ITEM_BY_ID } from '../data/items'
+import { ITEM_BY_ID, kindForSlot, slotsForKind } from '../data/items'
+import { affixModifiers, affixesFor } from '../data/affixes'
+import { setModifiers } from '../data/sets'
+import { resonanceModifiers } from '../data/builds'
+import { masteryStatScale } from './equipmentMastery'
+import type { RolledAffix } from '../data/affixes'
+import type { ModifierSource } from './combatModifiers'
 import type { Equipment, EquipSlot, PlayerState, PlayerStats, ShopItem, StatBonus, UpgradeType } from '../types'
 
 export function upgradeCost(type: UpgradeType, owned: number): number {
@@ -10,13 +16,25 @@ export function upgradeBonus(type: UpgradeType, owned: number): number {
   return BALANCE.upgrades[type].bonus * owned
 }
 
-export const EQUIP_SLOTS: EquipSlot[] = ['weapon', 'armor', 'charm']
+export const EQUIP_SLOTS: EquipSlot[] = ['weapon', 'head', 'body', 'boots', 'accessory1', 'accessory2']
+
+export const EMPTY_EQUIPMENT: Equipment = {
+  weapon: null,
+  head: null,
+  body: null,
+  boots: null,
+  accessory1: null,
+  accessory2: null,
+}
 
 /** Message keys for slot names; the strings themselves live in src/i18n. */
 export const SLOT_LABEL_KEYS = {
   weapon: 'equipment.weapon',
-  armor: 'equipment.armor',
-  charm: 'equipment.charm',
+  head: 'equipment.head',
+  body: 'equipment.body',
+  boots: 'equipment.boots',
+  accessory1: 'equipment.accessory1',
+  accessory2: 'equipment.accessory2',
 } as const satisfies Record<EquipSlot, string>
 
 /** Items currently worn, in slot order, skipping empty slots. */
@@ -25,6 +43,11 @@ export function equippedItems(state: PlayerState): ShopItem[] {
     const id = state.equipped[slot]
     return id ? ITEM_BY_ID.get(id) : undefined
   }).filter((item): item is ShopItem => item !== undefined)
+}
+
+/** The affixes an item carries, derived from its id — see data/affixes. */
+export function affixesOf(item: ShopItem): RolledAffix[] {
+  return affixesFor(item.id, item.kind, item.rarity)
 }
 
 /**
@@ -38,19 +61,57 @@ export function totalBonus(state: PlayerState): Required<StatBonus> {
     atk: upgradeBonus('atk', state.upgrades.atk),
     def: upgradeBonus('def', state.upgrades.def),
   }
+  // Each piece is scaled by its own mastery before being added, and the sum is
+  // rounded once at the end. Rounding per item instead would quietly throw away
+  // every bonus below half a point — +3% of a +8 defence charm is 0.24, which
+  // rounds to nothing on its own but is real once six pieces are counted.
   for (const item of equippedItems(state)) {
-    total.hp += item.bonus.hp ?? 0
-    total.atk += item.bonus.atk ?? 0
-    total.def += item.bonus.def ?? 0
+    const scale = masteryStatScale(state, item.id)
+    total.hp += (item.bonus.hp ?? 0) * scale
+    total.atk += (item.bonus.atk ?? 0) * scale
+    total.def += (item.bonus.def ?? 0) * scale
   }
-  return total
+  return { hp: Math.round(total.hp), atk: Math.round(total.atk), def: Math.round(total.def) }
 }
 
-/** Equips an owned item into its own slot, replacing whatever was there. */
-export function equipItem(state: PlayerState, itemId: string): PlayerState {
+/**
+ * Everything worn gear contributes beyond flat stats: each piece's own affixes,
+ * plus whatever sets the worn pieces add up to. Folded into the same product as
+ * plans, race passives and skills — see systems/combatModifiers.
+ */
+export function gearModifiers(state: PlayerState): ModifierSource[] {
+  const worn = equippedItems(state)
+  return [
+    ...worn.flatMap((item) => affixModifiers(affixesOf(item))),
+    // A relic's named effect, which is the reason the piece exists at all.
+    ...worn.flatMap((item) => (item.effect ? [item.effect.mods] : [])),
+    ...setModifiers(worn.map((item) => item.id)),
+    // Two worn pieces of a build lean far enough to earn its resonance.
+    ...resonanceModifiers(worn.map((item) => item.buildTag)),
+  ]
+}
+
+/**
+ * Equips an owned item. Accessories fit two slots: an explicit `slot` says
+ * which, and without one the piece goes to the first free accessory slot,
+ * falling back to the first so a tap always does something visible.
+ */
+export function equipItem(state: PlayerState, itemId: string, slot?: EquipSlot): PlayerState {
   const item = ITEM_BY_ID.get(itemId)
   if (!item || !state.ownedItemIds.includes(itemId)) return state
-  return { ...state, equipped: { ...state.equipped, [item.slot]: itemId } }
+  const candidates = slotsForKind(item.kind)
+  const target =
+    slot && candidates.includes(slot)
+      ? slot
+      : (candidates.find((s) => state.equipped[s] === null) ?? candidates[0])
+
+  const equipped = { ...state.equipped, [target]: itemId }
+  // One copy of a piece, worn once: filling both accessory slots with the same
+  // trinket would pay its stats and its affixes twice for a single purchase.
+  for (const other of candidates) {
+    if (other !== target && equipped[other] === itemId) equipped[other] = null
+  }
+  return { ...state, equipped }
 }
 
 export function unequipSlot(state: PlayerState, slot: EquipSlot): PlayerState {
@@ -58,18 +119,23 @@ export function unequipSlot(state: PlayerState, slot: EquipSlot): PlayerState {
 }
 
 /**
- * Picks the strongest owned item per slot, using cost as the power proxy since
- * the shop ladder is already priced by strength. Used to fill slots for saves
- * written before equipment existed, so nobody loses stats to the migration.
+ * Picks the strongest owned items, using cost as the power proxy since the shop
+ * ladder is already priced by strength. Used to fill slots for saves written
+ * before equipment existed, so nobody loses stats to the migration.
+ *
+ * Dearest first, so the two accessory slots take the two best trinkets rather
+ * than whichever two happened to come first in the owned list.
  */
 export function bestOwnedPerSlot(ownedItemIds: string[]): Equipment {
-  const best: Equipment = { weapon: null, armor: null, charm: null }
-  for (const id of ownedItemIds) {
-    const item = ITEM_BY_ID.get(id)
-    if (!item) continue
-    const current = best[item.slot]
-    const currentCost = current ? (ITEM_BY_ID.get(current)?.cost ?? 0) : -1
-    if (item.cost > currentCost) best[item.slot] = id
+  const best: Equipment = { ...EMPTY_EQUIPMENT }
+  const owned = ownedItemIds
+    .map((id) => ITEM_BY_ID.get(id))
+    .filter((item): item is ShopItem => item !== undefined)
+    .sort((a, b) => b.cost - a.cost || a.id.localeCompare(b.id))
+
+  for (const item of owned) {
+    const free = slotsForKind(item.kind).find((slot) => best[slot] === null)
+    if (free) best[free] = item.id
   }
   return best
 }
@@ -99,15 +165,20 @@ export function buyUpgrade(state: PlayerState, type: UpgradeType): PlayerState |
 export function buyItem(state: PlayerState, itemId: string): PlayerState | null {
   const item = ITEM_BY_ID.get(itemId)
   if (!item) return null
+  // Won gear has no price, whatever number its card carries. Checked here and
+  // not only in the shop's list, so the rule survives any other call site.
+  if ((item.source ?? 'shop') !== 'shop') return null
   if (state.ownedItemIds.includes(itemId)) return null
   if (item.minLevel && state.level < item.minLevel) return null
   if (state.gold < item.cost) return null
-  return {
+  const bought = {
     ...state,
     gold: state.gold - item.cost,
     ownedItemIds: [...state.ownedItemIds, itemId],
-    // Wear the new piece straight away — buying something and seeing no
-    // change would read as a bug. Swapping back is one tap in Equipment.
-    equipped: { ...state.equipped, [item.slot]: itemId },
   }
+  // Wear the new piece straight away — buying something and seeing no change
+  // would read as a bug. Swapping back is one tap in Equipment.
+  return equipItem(bought, itemId)
 }
+
+export { kindForSlot, slotsForKind }

@@ -22,6 +22,14 @@ export type BiomeId =
   | 'spirit'
   | 'rift'
   | 'divine'
+  | 'ocean'
+  | 'verdant'
+  | 'shadow'
+  | 'infernal'
+  | 'cosmos'
+  | 'dream'
+  | 'unmade'
+  | 'genesis'
 
 export interface Biome {
   skyTop: number
@@ -110,6 +118,48 @@ export const BIOMES: Record<BiomeId, Biome> = {
     skyTop: 0xfff5dd, skyBottom: 0xffe9bb, hillFar: 0xf7dba5, hillNear: 0xecc98a, ground: 0xf5e2ae,
     decor: ['decor_feather', 'decor_scales', 'decor_ring', 'decor_lantern'],
     sky: ['decor_sparkle', 'decor_sun'],
+  },
+
+  // --- Worlds 13-20 -------------------------------------------------------
+  ocean: {
+    skyTop: 0xc9ecf5, skyBottom: 0x8fd3e8, hillFar: 0x5fb6d4, hillNear: 0x3d95b8, ground: 0x6fc4dd,
+    decor: ['decor_coral', 'decor_shell', 'decor_wave', 'decor_bubble'],
+    sky: ['decor_bubble', 'decor_droplet'],
+  },
+  verdant: {
+    skyTop: 0xe6f7d4, skyBottom: 0xc6ecab, hillFar: 0xa2d982, hillNear: 0x7fc35e, ground: 0x99d275,
+    decor: ['decor_flower', 'decor_herb', 'decor_tree', 'decor_leaf'],
+    sky: ['decor_leaf', 'decor_sparkle'],
+  },
+  shadow: {
+    skyTop: 0x2e2a3d, skyBottom: 0x413a56, hillFar: 0x554a6e, hillNear: 0x6a5c86, ground: 0x5c5077,
+    decor: ['decor_lantern', 'decor_web', 'decor_headstone', 'decor_moon'],
+    sky: ['decor_moon', 'decor_fog'],
+  },
+  infernal: {
+    skyTop: 0x4a1f1f, skyBottom: 0x7a2f28, hillFar: 0xa84434, hillNear: 0xcf5c3c, ground: 0xb04a35,
+    decor: ['decor_fire', 'decor_volcano', 'decor_skull', 'decor_rock'],
+    sky: ['decor_fire', 'decor_comet'],
+  },
+  cosmos: {
+    skyTop: 0x1e1b3a, skyBottom: 0x2e2a5c, hillFar: 0x453f80, hillNear: 0x5c54a3, ground: 0x4e4791,
+    decor: ['decor_galaxy', 'decor_comet', 'decor_orb', 'decor_crystal'],
+    sky: ['decor_galaxy', 'decor_sparkle'],
+  },
+  dream: {
+    skyTop: 0xf2dcf5, skyBottom: 0xdcbcea, hillFar: 0xc79bdc, hillNear: 0xb07ccb, ground: 0xbe8bd4,
+    decor: ['decor_moon', 'decor_flower', 'decor_orb', 'decor_feather'],
+    sky: ['decor_sparkle', 'decor_moon'],
+  },
+  unmade: {
+    skyTop: 0x3a3a3a, skyBottom: 0x555065, hillFar: 0x6f6883, hillNear: 0x8a80a1, ground: 0x7a7292,
+    decor: ['decor_clock', 'decor_rock', 'decor_portal', 'decor_bone'],
+    sky: ['decor_fog', 'decor_comet'],
+  },
+  genesis: {
+    skyTop: 0xfff0f6, skyBottom: 0xffdcea, hillFar: 0xffc2d8, hillNear: 0xf7a3c2, ground: 0xffcfe0,
+    decor: ['decor_sparkle', 'decor_flower', 'decor_ring', 'decor_crystal'],
+    sky: ['decor_sun', 'decor_sparkle'],
   },
 }
 

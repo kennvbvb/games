@@ -1,8 +1,9 @@
 import { BALANCE } from '../data/balance'
 import { STAGES } from '../data/stages'
 import { resolveBattle } from './combat'
-import { effectiveStats } from './upgrades'
-import { raceOf } from '../data/races'
+import { playerBattleInputs } from './playerBattle'
+import { activeDifficulty } from './campaignModes'
+import { enemyFor, rewardsFor } from '../data/difficulties'
 import { expWithRacePassive } from './rewards'
 import type { PlayerState, StageRewards } from '../types'
 
@@ -41,11 +42,10 @@ export function computeOfflineRewards(state: PlayerState, now: number): OfflineR
   // plan happens to win — otherwise the payout contradicts every forecast they
   // were shown before closing the tab.
   const outcome = resolveBattle({
-    player: effectiveStats(state),
-    enemy: stage.enemy,
-    rewards: stage.rewards,
+    ...playerBattleInputs(state, stage),
+    enemy: enemyFor(stage.enemy, activeDifficulty(state)),
+    rewards: rewardsFor(stage.rewards, activeDifficulty(state)),
     plan: state.settings.battlePlan,
-    passive: raceOf(state.raceId).passive,
   })
   if (!outcome.win) return null
 

@@ -2,10 +2,15 @@ import Phaser from 'phaser'
 import { GAME_W, GAME_H, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { heroTexture } from '../data/races'
+import { isAdminGranted } from '../admin/AdminAccess'
 import { signOut } from '../services/authService'
 import { getSyncStatus, onSyncStatus, type SyncStatus } from '../services/syncStatus'
 import { effectiveStats } from '../systems/upgrades'
 import { claimableCount } from '../systems/achievements'
+import { bestFloor, towerUnlocked } from '../systems/tower'
+import { riftAvailable } from '../systems/rift'
+import { remixRelicsWon, remixUnlocked } from '../systems/bossRemix'
+import { claimableWeeks } from '../systems/contracts'
 import { applyExp } from '../systems/leveling'
 import { computeOfflineRewards, formatDuration } from '../systems/idle'
 import { persist } from '../services/saveService'
@@ -89,36 +94,141 @@ export class MainMenuScene extends Phaser.Scene {
       icon: 'icon_cart',
     })
 
-    // The badge is the only nudge the player gets that a reward is waiting.
+    // Three side by side rather than three more full-width rows. Both the tower
+    // and the rift are gated content most saves cannot open yet, so neither
+    // earns a row of its own — but both have to be reachable from the menu, or
+    // finishing a campaign world would lead to a screen with nothing after it.
+    //
+    // Each carries a badge only when it wants attention: an unclaimed quest, a
+    // floor already climbed, a rift not yet taken this week.
     const claimable = claimableCount(player)
+    makeButton(
+      this,
+      84,
+      520,
+      claimable > 0 ? t('menu.questsBadge', { count: claimable }) : t('menu.quests'),
+      () => this.scene.start('Achievements'),
+      { variant: claimable > 0 ? 'primary' : 'secondary', minWidth: 148, fontSize: '13px', icon: 'icon_star' },
+    )
+    const climbed = towerUnlocked(player) ? bestFloor(player) : 0
     makeButton(
       this,
       GAME_W / 2,
       520,
-      claimable > 0 ? t('menu.questsBadge', { count: claimable }) : t('menu.quests'),
-      () => this.scene.start('Achievements'),
-      { variant: claimable > 0 ? 'primary' : 'secondary', minWidth: 240, fontSize: '16px', icon: 'icon_star' },
+      climbed > 0 ? t('menu.towerBadge', { floor: climbed }) : t('menu.tower'),
+      () => this.scene.start('Tower'),
+      { variant: 'secondary', minWidth: 148, fontSize: '13px', icon: 'decor_tower' },
     )
-
-    makeButton(this, GAME_W / 2 - 92, 586, t('menu.settings'), () => this.scene.start('Settings'), {
-      variant: 'secondary',
-      minWidth: 168,
-      fontSize: '15px',
-      icon: 'icon_bolt',
-    })
+    const riftWaiting = riftAvailable(player)
     makeButton(
       this,
-      GAME_W / 2 + 92,
+      396,
+      520,
+      riftWaiting ? t('menu.riftBadge') : t('menu.rift'),
+      () => this.scene.start('Rift'),
+      {
+        variant: riftWaiting ? 'primary' : 'secondary',
+        minWidth: 148,
+        fontSize: '13px',
+        icon: 'decor_portal',
+      },
+    )
+
+    // The bottom row takes the Codex for the same reason the row above took the
+    // tower and the rift: it needs to be reachable, and it is a reference
+    // screen rather than somewhere the player is heading.
+    makeButton(this, 84, 586, t('menu.codex'), () => this.scene.start('Codex'), {
+      variant: 'secondary',
+      minWidth: 148,
+      fontSize: '13px',
+      icon: 'icon_bag',
+    })
+    makeButton(this, GAME_W / 2, 586, t('menu.settings'), () => this.scene.start('Settings'), {
+      variant: 'secondary',
+      minWidth: 148,
+      fontSize: '13px',
+      icon: 'icon_bolt',
+    })
+    // A fourth row, and the only one that can be empty: Boss Remix is the one
+    // endgame mode whose entry condition is a single cleared world boss, so it
+    // appears the moment it means something and is simply absent before that.
+    // A permanently disabled button is a promise the menu keeps re-making.
+    const owed = claimableWeeks(player).length
+    if (remixUnlocked(player)) {
+      const won = remixRelicsWon(player)
+      makeButton(
+        this,
+        140,
+        652,
+        won < 6 ? t('menu.remixBadge', { won, total: 6 }) : t('menu.remix'),
+        () => this.scene.start('Remix'),
+        { variant: 'secondary', minWidth: 200, fontSize: '12px', icon: 'decor_skull' },
+      )
+      makeButton(
+        this,
+        344,
+        652,
+        owed > 0 ? t('menu.contractsBadge', { count: owed }) : t('menu.contracts'),
+        () => this.scene.start('Contracts'),
+        { variant: owed > 0 ? 'primary' : 'secondary', minWidth: 200, fontSize: '12px', icon: 'icon_star' },
+      )
+    } else {
+      // Before the first world boss the fourth row would be a single button on
+      // one side, so Contracts takes the middle rather than sitting off-centre.
+      makeButton(
+        this,
+        GAME_W / 2,
+        652,
+        owed > 0 ? t('menu.contractsBadge', { count: owed }) : t('menu.contracts'),
+        () => this.scene.start('Contracts'),
+        { variant: owed > 0 ? 'primary' : 'secondary', minWidth: 200, fontSize: '13px', icon: 'icon_star' },
+      )
+    }
+
+    makeButton(
+      this,
+      396,
       586,
       GameState.userId ? t('menu.signOut') : t('menu.exitGuest'),
       () => {
         void this.handleExit()
       },
-      { variant: 'secondary', minWidth: 168, fontSize: '15px' },
+      { variant: 'secondary', minWidth: 148, fontSize: '13px' },
     )
 
     makeTutorialTip(this, 0, t('tutorial.step0'), 656)
+    this.installTestLabEntry()
     this.showOfflineRewards()
+  }
+
+  /**
+   * The way into the Test Lab, for whoever holds a grant. Both routes are here
+   * on purpose: the hotkey is what a developer reaches for, and the button is
+   * what makes the lab discoverable to a production admin who was told it
+   * exists but not told a key combination.
+   *
+   * Rendering this is not what keeps anyone out — see admin/AdminAccess.
+   */
+  private installTestLabEntry(): void {
+    if (!isAdminGranted(GameState.adminGrant)) return
+
+    this.input.keyboard?.on('keydown-A', (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey) this.scene.start('Admin')
+    })
+
+    const badge = this.add.graphics()
+    badge.fillStyle(0x3c3348, 1).fillRoundedRect(GAME_W - 92, 22, 74, 26, 7)
+    badge.lineStyle(1, 0xffd166, 1).strokeRoundedRect(GAME_W - 92, 22, 74, 26, 7)
+    const label = this.add
+      .text(GAME_W - 55, 35, 'TEST LAB', {
+        fontSize: '11px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: '#ffd166',
+      })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+    label.on('pointerdown', () => this.scene.start('Admin'))
   }
 
   /**

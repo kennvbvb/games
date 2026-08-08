@@ -6,8 +6,14 @@ const MENU = {
   stages: { x: 240, y: 334 },
   character: { x: 240, y: 396 },
   shop: { x: 240, y: 458 },
-  quests: { x: 240, y: 520 },
-  settings: { x: 148, y: 586 },
+  // The y=520 row is three across since the tower and the rift joined it:
+  // Quests on the left, Tower in the middle, Rift on the right.
+  quests: { x: 84, y: 520 },
+  tower: { x: 240, y: 520 },
+  rift: { x: 396, y: 520 },
+  // The y=586 row is three across too: Codex, Settings, Exit.
+  codex: { x: 84, y: 586 },
+  settings: { x: 240, y: 586 },
 }
 // One page is one world: four ordinary rows, then the boss on a taller card.
 const STAGE_ROW_1 = { x: 374, y: 153 }
@@ -16,10 +22,14 @@ const WORLD_NEXT = { x: 350, y: 556 }
 const WORLD_PREV = { x: 130, y: 556 }
 const STAGES_BACK = { x: 240, y: 616 }
 
-// Settings rows: four toggles from y=224 at 84 apart, then the language row.
+// Settings rows: four toggles from y=216 at 72 apart, then difficulty, then
+// the language row. Mirrors ROW_TOP/ROW_GAP in SettingsScene.
+const SETTINGS_TOP = 216
+const SETTINGS_GAP = 72
 const SETTINGS = {
-  analytics: { x: 372, y: 224 + 3 * 84 },
-  thai: { x: 408, y: 224 + 4 * 84 },
+  analytics: { x: 372, y: SETTINGS_TOP + 3 * SETTINGS_GAP },
+  veteran: { x: 254 + 84, y: SETTINGS_TOP + 4 * SETTINGS_GAP },
+  thai: { x: 408, y: SETTINGS_TOP + 5 * SETTINGS_GAP },
 }
 
 test.describe('core flows', () => {
@@ -392,5 +402,817 @@ test.describe('localization', () => {
     await game.settle()
     await game.continueAsGuest()
     expect((await game.save())?.settings?.locale).toBe('th')
+  })
+})
+
+test.describe('admin test lab', () => {
+  test('is not reachable from a production build', async ({ page }) => {
+    // This suite runs against the real production bundle, which is the only
+    // place this can be proven: `devAdminEnabled` reads `import.meta.env.DEV`,
+    // and a unit test cannot observe what the production define does to it.
+    const game = new GamePage(page)
+    await game.open(makeSave())
+    await game.continueAsGuest()
+
+    const before = await page.locator('canvas').first().screenshot()
+
+    // Both documented routes in: the hotkey, and the corner the TEST LAB badge
+    // occupies when a grant exists.
+    await page.keyboard.press('Control+Shift+A')
+    await game.settle(400)
+    await game.tap(425, 35)
+    await game.settle(400)
+
+    // The lab paints a near-black backdrop over the whole screen, so if it had
+    // opened these two would not be within a pixel of each other.
+    const after = await page.locator('canvas').first().screenshot()
+    expect(after.equals(before)).toBe(true)
+  })
+})
+
+test.describe('skill tree', () => {
+  // Branch tabs sit at y=96; skill cards at 164/244/324/404 with the action
+  // button on the right; loadout slots at y=516.
+  // Four buttons share y=604 since Mastery joined the row: Equipment 66,
+  // Skills 182, Mastery 298, Shop 414.
+  const SKILLS_BUTTON = { x: 182, y: 604 }
+  const BRANCH = (i: number) => ({ x: 84 + i * 156, y: 96 })
+  const CARD_ACTION = (i: number) => ({ x: 386, y: [164, 244, 324, 404][i] })
+
+  test('unlocking and equipping a skill survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    // Level 12 with three bosses down: 11 + 3 = 14 points, plenty for a branch.
+    await game.open(
+      makeSave({
+        stageProgress: {
+          highestUnlocked: 20,
+          completedStageIds: ['stage-5', 'stage-10', 'stage-15'],
+        },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(SKILLS_BUTTON.x, SKILLS_BUTTON.y)
+
+    // Tier 1 of the first branch is the only thing buyable to start with.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await expect
+      .poll(async () => (await game.save())?.unlockedSkillIds, { timeout: 10_000 })
+      .toEqual(['human-1-1'])
+
+    // The same button is now Equip rather than Unlock.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await expect.poll(async () => (await game.save())?.loadout, { timeout: 10_000 }).toEqual(['human-1-1'])
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    const save = await game.save()
+    expect(save?.unlockedSkillIds).toEqual(['human-1-1'])
+    expect(save?.loadout).toEqual(['human-1-1'])
+  })
+
+  test('a tier stays locked until the one below it is bought', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ level: 30 }))
+    await game.continueAsGuest()
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(SKILLS_BUTTON.x, SKILLS_BUTTON.y)
+
+    // Tier 2 first: its button is disabled, so this tap must do nothing.
+    await game.tap(CARD_ACTION(1).x, CARD_ACTION(1).y)
+    await game.settle(400)
+    expect((await game.save())?.unlockedSkillIds).toEqual([])
+
+    // Buy tier 1, and tier 2 opens.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await game.settle(400)
+    await game.tap(CARD_ACTION(1).x, CARD_ACTION(1).y)
+    await expect
+      .poll(async () => (await game.save())?.unlockedSkillIds, { timeout: 10_000 })
+      .toEqual(['human-1-1', 'human-1-2'])
+  })
+
+  test('switching branches shows a different set of four', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ level: 30 }))
+    await game.continueAsGuest()
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(SKILLS_BUTTON.x, SKILLS_BUTTON.y)
+
+    const first = await page.locator('canvas').first().screenshot()
+    await game.tap(BRANCH(2).x, BRANCH(2).y)
+    const third = await page.locator('canvas').first().screenshot()
+    expect(third.equals(first)).toBe(false)
+
+    // And buying here lands in the third branch, not the first.
+    await game.tap(CARD_ACTION(0).x, CARD_ACTION(0).y)
+    await expect
+      .poll(async () => (await game.save())?.unlockedSkillIds, { timeout: 10_000 })
+      .toEqual(['human-3-1'])
+  })
+})
+
+test.describe('difficulty modes', () => {
+  test('Veteran stays locked until four worlds are actually cleared', async ({ page }) => {
+    const game = new GamePage(page)
+    // Unlocked deep into the campaign, but only three worlds finished — the
+    // gate is on clearing, not on how far the unlock marker has run ahead.
+    await game.open(
+      makeSave({
+        level: 30,
+        stageProgress: {
+          highestUnlocked: 40,
+          completedStageIds: Array.from({ length: 15 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.settings.x, MENU.settings.y)
+
+    await game.tap(SETTINGS.veteran.x, SETTINGS.veteran.y)
+    await game.settle(500)
+    expect((await game.save())?.settings?.difficulty).toBe('normal')
+  })
+
+  test('a cleared fourth world opens Veteran and the choice sticks', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        level: 30,
+        stageProgress: {
+          highestUnlocked: 40,
+          completedStageIds: Array.from({ length: 20 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.settings.x, MENU.settings.y)
+
+    await game.tap(SETTINGS.veteran.x, SETTINGS.veteran.y)
+    await expect
+      .poll(async () => (await game.save())?.settings?.difficulty, { timeout: 10_000 })
+      .toBe('veteran')
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.settings?.difficulty).toBe('veteran')
+  })
+})
+
+test.describe('equipment mastery', () => {
+  test('a win at the frontier credits every worn piece, and a stale one does not', async ({ page }) => {
+    const game = new GamePage(page)
+    // Standing at the start of world 2 with two pieces on. Stage 6 is the
+    // frontier; stage 1 is behind it but still inside the band, so both count —
+    // what this test is really checking is that the fight reaches the save at
+    // all, which no unit test can see.
+    await game.open(
+      makeSave({
+        ownedItemIds: ['iron-sword', 'iron-helm'],
+        equipped: {
+          weapon: 'iron-sword',
+          head: 'iron-helm',
+          body: null,
+          boots: null,
+          accessory1: null,
+          accessory2: null,
+        },
+        stageProgress: { highestUnlocked: 6, completedStageIds: ['stage-1', 'stage-2', 'stage-3', 'stage-4', 'stage-5'] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.equipmentMastery?.['iron-sword'] ?? 0, { timeout: 20_000 })
+      .toBeGreaterThan(0)
+
+    const save = await game.save()
+    // Both worn pieces, not just the weapon.
+    expect(save?.equipmentMastery?.['iron-helm']).toBeGreaterThan(0)
+    // And nothing for a piece sitting in the bag.
+    expect(save?.equipmentMastery?.['knight-blade']).toBeUndefined()
+  })
+
+  test('mastery survives a reload and cannot be inflated past the wins to back it', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        lifetime: { battlesWon: 4, goldEarned: 0 },
+        ownedItemIds: ['iron-sword'],
+        // Claims full mastery on four lifetime wins; the validator keeps only
+        // what those wins could have paid for.
+        equipmentMastery: { 'iron-sword': 150, 'not-an-item': 150 },
+      }),
+    )
+    await game.continueAsGuest()
+
+    const save = await game.save()
+    expect(save?.equipmentMastery?.['iron-sword']).toBe(4)
+    expect(save?.equipmentMastery?.['not-an-item']).toBeUndefined()
+  })
+})
+
+test.describe('kin mastery', () => {
+  const MASTERY_BUTTON = { x: 298, y: 604 }
+  // Relic cards at 298/410/522 with the Carry button on the right at x=386.
+  const RELIC_ACTION = (i: number) => ({ x: 386, y: [298, 410, 522][i] })
+
+  /** Every stage of worlds 1..through, which is what mastery rank is derived from. */
+  const clearedThrough = (worlds: number) =>
+    Array.from({ length: worlds * 5 }, (_, i) => `stage-${i + 1}`)
+
+  test('carrying a relic survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    // Five worlds cleared is 7*(5*6/2) = 105 mastery, which is rank 4 — past
+    // the rank-3 relic and short of the rank-6 one.
+    await game.open(
+      makeSave({ level: 30, stageProgress: { highestUnlocked: 26, completedStageIds: clearedThrough(5) } }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(MASTERY_BUTTON.x, MASTERY_BUTTON.y)
+
+    await game.tap(RELIC_ACTION(0).x, RELIC_ACTION(0).y)
+    await expect
+      .poll(async () => (await game.save())?.equippedRelicId, { timeout: 10_000 })
+      .toBe('relic-human-1')
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.equippedRelicId).toBe('relic-human-1')
+  })
+
+  test('a relic above the earned rank cannot be taken', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ level: 30, stageProgress: { highestUnlocked: 26, completedStageIds: clearedThrough(5) } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.character.x, MENU.character.y)
+    await game.tap(MASTERY_BUTTON.x, MASTERY_BUTTON.y)
+
+    // The rank-9 card is locked, so its button is disabled and the tap is a no-op.
+    await game.tap(RELIC_ACTION(2).x, RELIC_ACTION(2).y)
+    await game.settle(400)
+    expect((await game.save())?.equippedRelicId).toBeNull()
+  })
+
+  test('a save claiming an unearned relic loads without it', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        equippedRelicId: 'relic-human-3',
+        stageProgress: { highestUnlocked: 6, completedStageIds: ['stage-1'] },
+      }),
+    )
+    await game.continueAsGuest()
+    expect((await game.save())?.equippedRelicId).toBeNull()
+  })
+})
+
+test.describe('endless tower', () => {
+  const TOWER_BUTTON = MENU.tower
+  // Five floor rows from y=250, 74 apart, with the Fight button at x=396.
+  // Rows moved when the band header landed above them, and the window is now
+  // aligned to the five-floor band rather than to the player's next floor — so
+  // a row index is an offset inside the band, not an offset from "next".
+  const FLOOR_ACTION = (i: number) => ({ x: 396, y: 262 + i * 70 })
+  const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
+  // The tower is balanced against a hero who bought gear on the way through the
+  // campaign, not a bare level-34 stat block — without it even floor 1 is a loss.
+  const EQUIPPED = {
+    weapon: 'worldbreaker',
+    head: 'crown-of-dawn',
+    body: 'aegis-of-dawn',
+    boots: 'treads-of-the-titan',
+    accessory1: 'heros-emblem',
+    accessory2: 'eternity-shard',
+  }
+  const geared = {
+    level: 34,
+    gold: 40_000,
+    ownedItemIds: Object.values(EQUIPPED),
+    equipped: EQUIPPED,
+  }
+
+  test('stays shut until the whole campaign is cleared', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ stageProgress: { highestUnlocked: 100, completedStageIds: allStages.slice(0, 99) } }))
+    await game.continueAsGuest()
+    await game.tap(TOWER_BUTTON.x, TOWER_BUTTON.y)
+    await game.settle(500)
+
+    // The locked screen has no floor rows, so tapping where one would be does
+    // nothing and the record stays at zero.
+    await game.tap(FLOOR_ACTION(0).x, FLOOR_ACTION(0).y)
+    await game.settle(500)
+    expect((await game.save())?.tower).toEqual({ bestFloor: 0 })
+  })
+
+  test('a graduate can climb, and the record survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ ...geared, stageProgress: { highestUnlocked: 100, completedStageIds: allStages } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(TOWER_BUTTON.x, TOWER_BUTTON.y)
+    await game.settle(600)
+
+    // The window opens on floor 1, which is the only one open.
+    await game.tap(FLOOR_ACTION(0).x, FLOOR_ACTION(0).y)
+    await game.settle(600)
+    await game.pickPlan()
+    await expect
+      .poll(async () => (await game.save())?.tower, { timeout: 30_000 })
+      .toEqual({ bestFloor: 1 })
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.tower).toEqual({ bestFloor: 1 })
+  })
+
+  test('a floor is never recorded as campaign progress', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        ...geared,
+        tower: { bestFloor: 4 },
+        idle: { farmingStageId: 'stage-3', lastSeenAt: Date.now() },
+        stageProgress: { highestUnlocked: 100, completedStageIds: allStages },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(TOWER_BUTTON.x, TOWER_BUTTON.y)
+    await game.settle(600)
+
+    // One page is one band, so floors 1-5 are on screen and floor 5 — the next
+    // unbeaten one — is the fifth row.
+    await game.tap(FLOOR_ACTION(4).x, FLOOR_ACTION(4).y)
+    await game.settle(600)
+    await game.pickPlan()
+    await expect.poll(async () => (await game.save())?.tower, { timeout: 30_000 }).toEqual({ bestFloor: 5 })
+
+    const save = await game.save()
+    // A tower id in the cleared list would be dropped by the validator, and a
+    // tower id as the farming target would switch offline rewards off.
+    expect((save as unknown as { stageProgress: { completedStageIds: string[] } }).stageProgress.completedStageIds)
+      .toHaveLength(100)
+    expect((save as unknown as { idle: { farmingStageId: string } }).idle.farmingStageId).toBe('stage-3')
+  })
+})
+
+test.describe('tower band rules and relics', () => {
+  // The tower list opens on the band containing the next floor, five rows to a
+  // page. Row 1 is the band's first floor.
+  const TOWER_ROW = (i: number) => ({ x: 386, y: 262 + i * 70 })
+
+  const climber = {
+    level: 90,
+    ownedItemIds: ['worldbreaker', 'crown-of-dawn', 'aegis-of-dawn', 'treads-of-the-titan'],
+    equipped: {
+      weapon: 'worldbreaker',
+      head: 'crown-of-dawn',
+      body: 'aegis-of-dawn',
+      boots: 'treads-of-the-titan',
+      accessory1: null,
+      accessory2: null,
+    },
+    stageProgress: {
+      highestUnlocked: 100,
+      completedStageIds: Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`),
+    },
+  }
+
+  test('clearing the first boss floor hands over its relic, exactly once', async ({ page }) => {
+    const game = new GamePage(page)
+    // Floor 10 is the last floor of the first Warded band, and pays Void Pike —
+    // the piece whose Pierce answers that very rule.
+    await game.open(makeSave({ ...climber, tower: { bestFloor: 9 } }))
+    await game.continueAsGuest()
+
+    await game.tap(MENU.tower.x, MENU.tower.y)
+    // Band 2 is floors 6-10, so floor 10 is the fifth row.
+    await game.tap(TOWER_ROW(4).x, TOWER_ROW(4).y)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.tower?.bestFloor ?? 0, { timeout: 25_000 })
+      .toBe(10)
+
+    const save = await game.save()
+    expect(save?.ownedItemIds).toContain('void-pike')
+    // One copy only — the list must not have grown two entries.
+    expect(save?.ownedItemIds?.filter((id: string) => id === 'void-pike')).toHaveLength(1)
+  })
+
+  test('a relic cannot be bought, only won', async ({ page }) => {
+    // Walking all fourteen pages of the gear shelf costs more than the default
+    // budget. Paging less would leave most of the shelf unchecked, which is the
+    // part of the shelf a relic would have to be hiding on.
+    test.setTimeout(90_000)
+    const game = new GamePage(page)
+    await game.open(makeSave({ ...climber, gold: 999999, tower: { bestFloor: 0 } }))
+    await game.continueAsGuest()
+
+    // Page to the end of the gear shelf and try to buy from the last page,
+    // which is where a relic would sit if it were ever put on sale. Fifteen
+    // taps clears the fourteen pages with one to spare; twenty timed the test
+    // out without testing anything more.
+    await game.tap(MENU.shop.x, MENU.shop.y)
+    await game.tap(324, 128)
+    for (let i = 0; i < 15; i += 1) await game.tap(350, 572)
+    for (let row = 0; row < 4; row += 1) await game.tap(378, 196 + row * 92)
+
+    const save = await game.save()
+    // Gold *should* have moved — the shelf sells plenty, and tapping every buy
+    // button is the point. What must not have happened is a relic arriving in
+    // the bag, from any page, at any price.
+    expect(save?.gold).toBeLessThan(999999)
+    for (const relic of [
+      'void-pike',
+      'bastion-mail',
+      'clockwork-blades',
+      'crown-of-resolve',
+      'hunter-mantle',
+      'spring-totem',
+      'hunter-knives',
+      'sunbreaker-axe',
+      'aegis-lance',
+      'mirror-plate',
+      'fortress-heart',
+      'rhythm-dial',
+    ]) {
+      expect(save?.ownedItemIds, relic).not.toContain(relic)
+    }
+  })
+})
+
+test.describe('realm rift', () => {
+  const RIFT_BUTTON = MENU.rift
+  const ENTER = { x: 240, y: 556 }
+  const eightWorlds = Array.from({ length: 40 }, (_, i) => `stage-${i + 1}`)
+
+  test('stays shut until eight worlds are cleared', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ stageProgress: { highestUnlocked: 40, completedStageIds: eightWorlds.slice(0, 39) } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(RIFT_BUTTON.x, RIFT_BUTTON.y)
+    await game.settle(600)
+
+    // The locked screen has no Enter button, so this tap cannot start a fight.
+    await game.tap(ENTER.x, ENTER.y)
+    await game.settle(600)
+    expect((await game.save())?.rift).toEqual({ clearedWeek: -1 })
+  })
+
+  test('clearing it marks the week, and never campaign progress', async ({ page }) => {
+    const game = new GamePage(page)
+    const EQUIPPED = {
+      weapon: 'worldbreaker',
+      head: 'crown-of-dawn',
+      body: 'aegis-of-dawn',
+      boots: 'treads-of-the-titan',
+      accessory1: 'heros-emblem',
+      accessory2: 'eternity-shard',
+    }
+    await game.open(
+      makeSave({
+        level: 40,
+        gold: 40_000,
+        ownedItemIds: Object.values(EQUIPPED),
+        equipped: EQUIPPED,
+        idle: { farmingStageId: 'stage-3', lastSeenAt: Date.now() },
+        stageProgress: { highestUnlocked: 41, completedStageIds: eightWorlds },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(RIFT_BUTTON.x, RIFT_BUTTON.y)
+    await game.settle(600)
+    await game.tap(ENTER.x, ENTER.y)
+    await game.settle(600)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.rift?.clearedWeek ?? -1, { timeout: 30_000 })
+      .toBeGreaterThan(-1)
+
+    const save = await game.save()
+    // A rift id in the cleared list would be dropped by the validator, and one
+    // as the farming target would switch offline rewards off.
+    expect(save?.stageProgress?.completedStageIds).toHaveLength(40)
+    expect(save?.idle?.farmingStageId).toBe('stage-3')
+    expect(save?.tower).toEqual({ bestFloor: 0 })
+  })
+
+  test('a save claiming a future week is pulled back to the current one', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        rift: { clearedWeek: 99_999 },
+        stageProgress: { highestUnlocked: 41, completedStageIds: eightWorlds },
+      }),
+    )
+    await game.continueAsGuest()
+    const week = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000))
+    expect((await game.save())?.rift).toEqual({ clearedWeek: week })
+  })
+})
+
+test.describe('boss remix', () => {
+  const REMIX_MENU = { x: 240, y: 652 }
+  const TIER = (i: number) => ({ x: 88 + i * 152, y: 128 })
+  const BOSS_ROW = (i: number) => ({ x: 386, y: 268 + i * 76 })
+
+  const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
+
+  test('is absent until a world boss has been beaten, then appears', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ stageProgress: { highestUnlocked: 3, completedStageIds: ['stage-1', 'stage-2'] } }))
+    await game.continueAsGuest()
+    // Nothing on the fourth row, so the tap falls through and the menu stays.
+    await game.tap(REMIX_MENU.x, REMIX_MENU.y)
+    await game.tap(240, 396) // Character still reachable => we never left the menu
+    await expect.poll(async () => (await game.save())?.name).toBe('Tester')
+  })
+
+  test('a mythic first clear hands over its relic and records no campaign progress', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        level: 120,
+        ownedItemIds: ['worldbreaker', 'crown-of-dawn', 'aegis-of-dawn', 'treads-of-the-titan'],
+        equipped: {
+          weapon: 'worldbreaker',
+          head: 'crown-of-dawn',
+          body: 'aegis-of-dawn',
+          boots: 'treads-of-the-titan',
+          accessory1: null,
+          accessory2: null,
+        },
+        stageProgress: { highestUnlocked: 100, completedStageIds: allStages },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(REMIX_MENU.x, REMIX_MENU.y)
+    await game.tap(TIER(2).x, TIER(2).y) // Mythic
+    // World 5 is the first boss that pays a relic, and sits fifth in the list —
+    // page 2, first row.
+    await game.tap(350, 592)
+    await game.tap(BOSS_ROW(0).x, BOSS_ROW(0).y)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.ownedItemIds?.includes('hunter-knives') ?? false, {
+        timeout: 30_000,
+      })
+      .toBe(true)
+
+    const save = await game.save()
+    // A remix is not a stage: nothing may have been added to campaign progress,
+    // and the idle target must not have been pointed at an id that does not
+    // exist in the campaign.
+    expect(save?.stageProgress?.completedStageIds).toHaveLength(allStages.length)
+    expect(save?.stageProgress?.completedStageIds?.some((id: string) => id.startsWith('remix-'))).toBe(false)
+    expect(save?.idle?.farmingStageId ?? '').not.toContain('remix-')
+  })
+})
+
+test.describe('weekly contracts', () => {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+  const CONTRACTS_MENU = { x: 240, y: 652 }
+  const CLAIM = { x: 240, y: 556 }
+
+  test('pays a banked week once, and then has nothing left to pay', async ({ page }) => {
+    const game = new GamePage(page)
+    const week = Math.floor(Date.now() / WEEK_MS)
+    await game.open(
+      makeSave({
+        gold: 0,
+        // Last week finished but never collected — the grace period is the
+        // whole point of the feature, so this is the case worth driving.
+        contracts: { week, counts: [], unclaimed: [week - 1] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(CONTRACTS_MENU.x, CONTRACTS_MENU.y)
+    await game.tap(CLAIM.x, CLAIM.y)
+
+    await expect.poll(async () => (await game.save())?.gold ?? 0, { timeout: 10_000 }).toBeGreaterThan(0)
+    const paid = (await game.save())?.gold ?? 0
+
+    // Tapping again must not pay twice.
+    await game.tap(CLAIM.x, CLAIM.y)
+    await page.waitForTimeout(600)
+    expect((await game.save())?.gold).toBe(paid)
+    expect((await game.save())?.contracts?.unclaimed).toEqual([])
+  })
+
+  test('a win moves this week’s counters and survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    const week = Math.floor(Date.now() / WEEK_MS)
+    await game.open(
+      makeSave({
+        contracts: { week, counts: [], unclaimed: [] },
+        stageProgress: { highestUnlocked: 1, completedStageIds: [] },
+      }),
+    )
+    await game.continueAsGuest()
+
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y)
+    await game.pickPlan()
+
+    await expect
+      .poll(
+        async () => ((await game.save())?.contracts?.counts ?? []).reduce((a: number, b: number) => a + b, 0),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThan(0)
+
+    const before = (await game.save())?.contracts?.counts
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    expect((await game.save())?.contracts?.counts).toEqual(before)
+  })
+})
+
+test.describe('codex', () => {
+  // Four tabs at y=140 from x=66, 116 apart; rows from y=200, 74 apart.
+  const TAB = (i: number) => ({ x: 66 + i * 116, y: 140 })
+
+  /** Opens the Codex from a given save and returns what it looks like. */
+  const codexShot = async (page: import('@playwright/test').Page, save: string) => {
+    const game = new GamePage(page)
+    await game.open(save)
+    await game.continueAsGuest()
+    await game.tap(MENU.codex.x, MENU.codex.y)
+    await game.settle(700)
+    return page.locator('canvas').first().screenshot()
+  }
+
+  test('fills in from progress alone, with nothing else changed', async ({ page }) => {
+    // Two saves identical but for the stages cleared. Discovery is derived, so
+    // the book has to differ — and no field was written to make it happen.
+    const barren = makeSave({
+      ownedItemIds: [],
+      stageProgress: { highestUnlocked: 1, completedStageIds: [] },
+    })
+    const travelled = makeSave({
+      ownedItemIds: [],
+      stageProgress: {
+        highestUnlocked: 41,
+        completedStageIds: Array.from({ length: 40 }, (_, i) => `stage-${i + 1}`),
+      },
+    })
+
+    const empty = await codexShot(page, barren)
+    const filled = await codexShot(page, travelled)
+    expect(filled.equals(empty)).toBe(false)
+  })
+
+  test('writes nothing to the save', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        stageProgress: {
+          highestUnlocked: 41,
+          completedStageIds: Array.from({ length: 40 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    const before = JSON.stringify(await game.save())
+
+    await game.tap(MENU.codex.x, MENU.codex.y)
+    await game.settle(500)
+    for (let tab = 0; tab < 4; tab++) {
+      await game.tap(TAB(tab).x, TAB(tab).y)
+      await game.settle(400)
+    }
+    // Browsing a reference screen must not touch progress. The revision would
+    // move if anything had persisted.
+    expect(JSON.stringify(await game.save())).toBe(before)
+  })
+
+  test('switching tabs shows a different set of rows', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({
+        stageProgress: {
+          highestUnlocked: 100,
+          completedStageIds: Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`),
+        },
+      }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.codex.x, MENU.codex.y)
+    await game.settle(600)
+    const traits = await page.locator('canvas').first().screenshot()
+    await game.tap(TAB(3).x, TAB(3).y)
+    await game.settle(600)
+    const relics = await page.locator('canvas').first().screenshot()
+    expect(relics.equals(traits)).toBe(false)
+  })
+})
+
+test.describe('ascension', () => {
+  const ASCEND = { x: 240, y: 612 }
+  const CONFIRM = { x: 240, y: 582 }
+  const allStages = Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`)
+
+  const finished = (over = {}) =>
+    makeSave({
+      level: 34,
+      gold: 5000,
+      ownedItemIds: ['iron-sword'],
+      equipped: {
+        weapon: 'iron-sword',
+        head: null,
+        body: null,
+        boots: null,
+        accessory1: null,
+        accessory2: null,
+      },
+      idle: { farmingStageId: 'stage-88', lastSeenAt: Date.now() },
+      stageProgress: { highestUnlocked: 100, completedStageIds: allStages },
+      ...over,
+    })
+
+  test('is not offered before the campaign is finished', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(
+      makeSave({ stageProgress: { highestUnlocked: 100, completedStageIds: allStages.slice(0, 99) } }),
+    )
+    await game.continueAsGuest()
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.settle(500)
+    // With no ascend button the row is not there, so this tap does nothing.
+    await game.tap(ASCEND.x, ASCEND.y)
+    await game.settle(500)
+    expect((await game.save())?.ascension).toEqual({ count: 0 })
+  })
+
+  test('takes two taps, and the first one alone changes nothing', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(finished())
+    await game.continueAsGuest()
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(ASCEND.x, ASCEND.y)
+    await game.settle(600)
+
+    // Arm it, then walk away without confirming.
+    await game.tap(CONFIRM.x, CONFIRM.y)
+    await game.settle(600)
+    await game.tap(240, 656) // Back
+    await game.settle(600)
+
+    const save = await game.save()
+    expect(save?.ascension).toEqual({ count: 0 })
+    expect(save?.level).toBe(34)
+    expect(save?.stageProgress?.completedStageIds).toHaveLength(100)
+  })
+
+  test('resets the run, keeps what it promised, and survives a reload', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(finished({ tower: { bestFloor: 7 } }))
+    await game.continueAsGuest()
+    await game.tap(MENU.stages.x, MENU.stages.y)
+    await game.tap(ASCEND.x, ASCEND.y)
+    await game.settle(600)
+    await game.tap(CONFIRM.x, CONFIRM.y)
+    await game.settle(600)
+    await game.tap(CONFIRM.x, CONFIRM.y)
+
+    await expect
+      .poll(async () => (await game.save())?.ascension?.count ?? 0, { timeout: 10_000 })
+      .toBe(1)
+
+    await page.reload()
+    await game.settle()
+    await game.continueAsGuest()
+    const save = await game.save()
+    expect(save?.level).toBe(1)
+    expect(save?.gold).toBe(0)
+    expect(save?.ownedItemIds).toEqual([])
+    expect(save?.stageProgress).toEqual({ highestUnlocked: 1, completedStageIds: [] })
+    // Farming a stage the reset just locked would pay for an unreachable fight.
+    expect(save?.idle?.farmingStageId).toBeNull()
+    // Won outside the campaign, so the reset does not touch it.
+    expect(save?.tower).toEqual({ bestFloor: 7 })
   })
 })

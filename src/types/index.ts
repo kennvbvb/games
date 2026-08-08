@@ -1,7 +1,12 @@
 import type { TraitId } from '../data/enemyTraits'
+import type { StatusApplication } from '../systems/status'
 import type { PlanId } from '../data/battlePlans'
 import type { RaceId } from '../data/races'
 import type { StageVisual } from '../data/biomes'
+import type { DifficultyId } from '../data/difficulties'
+import type { Rarity } from '../data/affixes'
+import type { BuildTag } from '../data/builds'
+import type { ModifierSource } from '../systems/combatModifiers'
 
 export interface PlayerStats {
   maxHp: number
@@ -24,22 +29,62 @@ export interface StatBonus {
   def?: number
 }
 
-export type EquipSlot = 'weapon' | 'armor' | 'charm'
+/**
+ * Six worn slots. Two accessory slots rather than one because a set needs four
+ * pieces to be assemblable at all, and three armour slots plus one trinket left
+ * no room for a second half of any set.
+ */
+export type EquipSlot = 'weapon' | 'head' | 'body' | 'boots' | 'accessory1' | 'accessory2'
+
+/**
+ * What an item *is*, as opposed to where it goes. One accessory kind fits
+ * either accessory slot, so a player can wear two charms without the catalogue
+ * having to duplicate every trinket.
+ */
+export type ItemKind = 'weapon' | 'head' | 'body' | 'boots' | 'accessory'
 
 /** One item may be equipped per slot; the rest stay in the bag. */
 export type Equipment = Record<EquipSlot, string | null>
 
 export interface ShopItem {
   id: string
-  slot: EquipSlot
+  kind: ItemKind
   name: string
   emoji: string
   bonus: StatBonus
   cost: number
   minLevel?: number
+  /** Which of the three answers this piece leans towards; see data/builds. */
+  buildTag: BuildTag
+  /**
+   * A named effect the piece carries, on top of its derived affixes.
+   *
+   * Relic-tier gear has one; ordinary gear does not. The distinction matters:
+   * affixes are rolled from the item's id and are the same kind of small
+   * numeric nudge on every piece, while this is the *reason* a piece exists —
+   * the thing a player picks it up for and builds around.
+   *
+   * Shaped like a set bonus, and for the same reason: the sentence the player
+   * reads and the modifier the fight runs under sit in one literal, so an
+   * effect cannot be retuned without its description moving with it.
+   */
+  effect?: { description: string; mods: ModifierSource }
+  /**
+   * Where a piece comes from. Absent means the shop, which is where all but
+   * the relics come from.
+   *
+   * The expansion plan's whole reward loop rests on important gear having a
+   * guaranteed path that is *played for* rather than paid for: gear that can be
+   * bought with farmed gold makes every activity that drops it pointless.
+   */
+  source?: 'shop' | 'tower' | 'remix'
+  /** Drives affix count and how the card reads; see data/affixes. */
+  rarity: Rarity
+  /** Members of the same set count towards its 2- and 4-piece bonuses. */
+  setId?: string
 }
 
-export const SAVE_SCHEMA_VERSION = 11
+export const SAVE_SCHEMA_VERSION = 19
 
 export type BattleSpeed = 1 | 2 | 4
 
@@ -66,10 +111,40 @@ export interface GameSettings {
    */
   battlePlan: PlanId
   /**
+   * Campaign difficulty. Lives in settings rather than on the stage so a mode
+   * change re-rates every stage at once, including the previews and the
+   * offline payout, instead of only the fight about to be fought.
+   */
+  difficulty: DifficultyId
+  /**
    * Opt-in gameplay analytics. Always starts false, including on upgraded
    * saves — consent cannot be inherited from a version that never asked.
    */
   analytics: boolean
+}
+
+export interface TowerProgress {
+  /** Deepest floor beaten; 0 before the first climb. */
+  bestFloor: number
+}
+
+export interface RiftProgress {
+  /** Week index of the last rift beaten; -1 before the first one. */
+  clearedWeek: number
+}
+
+export interface AscensionProgress {
+  /** Completed campaigns given back for permanent power; 0 before the first. */
+  count: number
+}
+
+export interface ContractProgress {
+  /** Week index the counters belong to; older ones reset on read. */
+  week: number
+  /** Progress on each of this week's three contracts. */
+  counts: number[]
+  /** Weeks finished but not yet paid, kept for a short grace period. */
+  unclaimed: number[]
 }
 
 /** Running totals that cannot be derived from the current state alone. */
@@ -115,6 +190,56 @@ export interface PlayerState {
   upgrades: UpgradeCounts
   ownedItemIds: string[]
   equipped: Equipment
+  /**
+   * Skills bought from the tree. The *points* that paid for them are derived
+   * from level and bosses cleared rather than stored, so an edited save can
+   * claim any list it likes and still only keep what the budget covers — see
+   * systems/skills.
+   */
+  unlockedSkillIds: string[]
+  /** Up to LOADOUT_SIZE unlocked skills, the ones a fight actually runs under. */
+  loadout: string[]
+  /**
+   * The one relic carried into fights, or null. Mastery rank itself is derived
+   * from progress rather than stored; this is the only part of the track the
+   * player chooses, so it is the only part written down — see systems/mastery.
+   */
+  equippedRelicId: string | null
+  /**
+   * Endless Tower record. Stored rather than derived, because there is no list
+   * of cleared floors to count and keeping one would grow the save without
+   * bound — see systems/tower for the bounds that stand in for derivation.
+   */
+  tower: TowerProgress
+  /**
+   * Which week's Realm Rift has been beaten. Stored for the same reason the
+   * tower record is — there is nothing in the save to derive it from — and
+   * deliberately worth only gold and EXP, because the week comes from the
+   * device clock. See data/rifts.
+   */
+  rift: RiftProgress
+  /**
+   * Wins earned by each owned piece while it was worn, keyed by item id.
+   *
+   * The fourth and last stored-not-derived exception in this save: nothing
+   * records which pieces were worn for a fight already fought, so there is
+   * nothing to derive it from — see systems/equipmentMastery for the bounds
+   * that stand in for derivation.
+   */
+  equipmentMastery: Record<string, number>
+  /**
+   * Weekly Contract progress. The fifth and last stored-not-derived block:
+   * nothing in the save records that ten fights were won under one plan.
+   * Deliberately worth only gold and EXP, for the same reason the rift is —
+   * the week comes from the device clock. See systems/contracts.
+   */
+  contracts: ContractProgress
+  /**
+   * How many finished campaigns have been given back. A reset campaign is
+   * indistinguishable from one never played, so this counter is the only
+   * evidence an ascension happened — see systems/ascension.
+   */
+  ascension: AscensionProgress
   stageProgress: StageProgress
   settings: GameSettings
   idle: IdleState
@@ -137,6 +262,31 @@ export interface BossConfig {
   enrageAfterTurn: number
   /** Fraction of base ATK the boss gains per enraged turn. */
   enrageAtkPerTurn: number
+  /**
+   * Ordered by threshold, highest first. A phase is entered the moment the
+   * boss's health crosses `atHpBelow`, and entering is one-way — a boss healed
+   * back above the line does not un-transform, because a fight that could
+   * re-trigger a phase could re-trigger it forever.
+   */
+  phases?: BossPhase[]
+}
+
+export interface BossPhase {
+  /** Fraction of Max HP at or below which this phase begins. */
+  atHpBelow: number
+  /** Message key naming what changes, for the pre-fight intel panel. */
+  labelKey: string
+  /** Multipliers applied to the boss from this phase onward. */
+  atkScale?: number
+  defScale?: number
+  /** Shield granted on entering, as a fraction of the boss's Max HP. */
+  shield?: number
+  /** Clears every harmful status the boss is carrying. */
+  cleanse?: true
+  /** Replaces the boss's trait from this phase onward. */
+  trait?: TraitId
+  /** A status the boss puts on the player on entering. */
+  inflict?: StatusApplication
 }
 
 export interface EnemyConfig {
@@ -190,7 +340,14 @@ export interface StageConfig {
  * per fight — recurring things like dodges and heals get sprite-level feedback
  * instead, or the log would be unreadable.
  */
-export type AnnounceKind = 'enraged' | 'fierce' | 'bloodrage' | 'precision' | 'attrition'
+export type AnnounceKind =
+  | 'enraged'
+  | 'fierce'
+  | 'bloodrage'
+  | 'precision'
+  | 'attrition'
+  | 'execute'
+  | 'phase'
 
 export interface TurnEvent {
   turn: number
@@ -206,8 +363,23 @@ export interface TurnEvent {
   crit?: true
   /** How much the attacker restored to itself. Omitted when nothing was healed. */
   healed?: number
-  /** The attacker's own HP after healing. Present exactly when `healed` is. */
+  /** Healing past Max HP banked as shield instead of being discarded. */
+  barriered?: number
+  /** The attacker's own HP after healing or barriering. */
   selfHpAfter?: number
+  /** Part of this blow that shield ate rather than health. */
+  absorbed?: number
+  /** Damage the player dealt back on a dodge, on the enemy's own event. */
+  counter?: number
+  /** Enemy HP after the counter landed. Present exactly when `counter` is. */
+  counterHpAfter?: number
+
+  /** Statuses this blow put on the side that was struck. */
+  applied?: string[]
+  /** Damage the struck side took from statuses at the start of its turn. */
+  statusDamage?: number
+  /** The struck side could not act at all this turn. */
+  frozen?: true
 
   /** Latched: the one blow where this effect announces itself. */
   announce?: AnnounceKind
@@ -226,6 +398,17 @@ export interface BattleResult {
    * blow against that side silently reads a stale value.
    */
   playerHpLeft: number
+  /**
+   * The Max HP the fight was actually resolved with. Skills and gear can scale
+   * the player's health pool, so dividing `playerHpLeft` by the *unscaled*
+   * stat block reports more than 100% left — which is what the stage preview
+   * did until this was returned alongside it.
+   */
+  playerMaxHp: number
   enemyHpLeft: number
+  /** Shield still standing at the end; 0 unless a shield effect was running. */
+  shieldLeft: number
+  /** How many boss phases the fight actually reached. */
+  phasesEntered: number
   rewards: StageRewards
 }
