@@ -421,6 +421,20 @@ never downloads it.
   list would have been a second copy of the truth: editable, driftable, and
   wrong for anyone whose save predated it.
 
+- **Twelve relics of the plan's eighteen, and why the other six are not here.**
+  Six are won from tower boss floors and six from Mythic Boss Remix. The
+  remaining six are deliberately not shipped: the balance walk shows the
+  twelve that exist already take Mythic Boss Remix from "walls three kin" to
+  "100% health on every kin at every boss". Six more pieces of power before
+  that is addressed would make the hardest content in the game easier, which
+  is the opposite of what the expansion is for. They are worth adding *after*
+  a pass that gives the endgame something the relics do not simply answer.
+
+  Two of the plan's own sources are also closed to relics on purpose. Weekly
+  Contracts pay gold and EXP only — a clock-driven reward cannot hand out
+  anything scarce — so relics cannot come from there without reopening the
+  hole the rift's reward design exists to close.
+
 - **Weekly Contracts.** Three jobs a week, of which **two** pay. Three offered
   and two required so a player who cannot stand one of them is not locked out
   of the week, and nobody has to force a build they dislike to keep a streak.
