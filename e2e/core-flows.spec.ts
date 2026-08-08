@@ -767,6 +767,66 @@ test.describe('endless tower', () => {
   })
 })
 
+test.describe('tower band rules and relics', () => {
+  // The tower list opens on the band containing the next floor, five rows to a
+  // page. Row 1 is the band's first floor.
+  const TOWER_ROW = (i: number) => ({ x: 386, y: 262 + i * 70 })
+
+  const climber = {
+    level: 90,
+    ownedItemIds: ['worldbreaker', 'crown-of-dawn', 'aegis-of-dawn', 'treads-of-the-titan'],
+    equipped: {
+      weapon: 'worldbreaker',
+      head: 'crown-of-dawn',
+      body: 'aegis-of-dawn',
+      boots: 'treads-of-the-titan',
+      accessory1: null,
+      accessory2: null,
+    },
+    stageProgress: {
+      highestUnlocked: 100,
+      completedStageIds: Array.from({ length: 100 }, (_, i) => `stage-${i + 1}`),
+    },
+  }
+
+  test('clearing the first boss floor hands over its relic, exactly once', async ({ page }) => {
+    const game = new GamePage(page)
+    // Floor 10 is the last floor of the first Warded band, and pays Void Pike —
+    // the piece whose Pierce answers that very rule.
+    await game.open(makeSave({ ...climber, tower: { bestFloor: 9 } }))
+    await game.continueAsGuest()
+
+    await game.tap(MENU.tower.x, MENU.tower.y)
+    // Band 2 is floors 6-10, so floor 10 is the fifth row.
+    await game.tap(TOWER_ROW(4).x, TOWER_ROW(4).y)
+    await game.pickPlan()
+
+    await expect
+      .poll(async () => (await game.save())?.tower?.bestFloor ?? 0, { timeout: 25_000 })
+      .toBe(10)
+
+    const save = await game.save()
+    expect(save?.ownedItemIds).toContain('void-pike')
+    // One copy only — the list must not have grown two entries.
+    expect(save?.ownedItemIds?.filter((id: string) => id === 'void-pike')).toHaveLength(1)
+  })
+
+  test('a relic cannot be bought, only won', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave({ ...climber, gold: 999999, tower: { bestFloor: 0 } }))
+    await game.continueAsGuest()
+
+    // Walk every page of the gear shelf; no relic may appear on any of them.
+    await game.tap(MENU.shop.x, MENU.shop.y)
+    await game.tap(324, 128)
+    for (let i = 0; i < 20; i += 1) await game.tap(350, 572)
+
+    const save = await game.save()
+    expect(save?.ownedItemIds).not.toContain('void-pike')
+    expect(save?.gold).toBe(999999)
+  })
+})
+
 test.describe('realm rift', () => {
   const RIFT_BUTTON = MENU.rift
   const ENTER = { x: 240, y: 556 }

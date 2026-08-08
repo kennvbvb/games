@@ -165,6 +165,9 @@ export function buyUpgrade(state: PlayerState, type: UpgradeType): PlayerState |
 export function buyItem(state: PlayerState, itemId: string): PlayerState | null {
   const item = ITEM_BY_ID.get(itemId)
   if (!item) return null
+  // Won gear has no price, whatever number its card carries. Checked here and
+  // not only in the shop's list, so the rule survives any other call site.
+  if ((item.source ?? 'shop') !== 'shop') return null
   if (state.ownedItemIds.includes(itemId)) return null
   if (item.minLevel && state.level < item.minLevel) return null
   if (state.gold < item.cost) return null

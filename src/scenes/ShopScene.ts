@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { BALANCE } from '../data/balance'
 import { buildOf } from '../data/builds'
-import { ITEMS } from '../data/items'
+import { SHOP_ITEMS } from '../data/items'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
 import { recordEvent } from '../services/analytics'
@@ -128,9 +128,9 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private renderGear(): void {
-    const pageCount = Math.ceil(ITEMS.length / ITEMS_PER_PAGE)
+    const pageCount = Math.ceil(SHOP_ITEMS.length / ITEMS_PER_PAGE)
     this.page = Math.min(this.page, pageCount - 1)
-    const pageItems = ITEMS.slice(this.page * ITEMS_PER_PAGE, (this.page + 1) * ITEMS_PER_PAGE)
+    const pageItems = SHOP_ITEMS.slice(this.page * ITEMS_PER_PAGE, (this.page + 1) * ITEMS_PER_PAGE)
 
     this.subtitle(t('shop.gearHint'))
     pageItems.forEach((item, i) => this.renderGearCard(item, ROW_YS[i]))

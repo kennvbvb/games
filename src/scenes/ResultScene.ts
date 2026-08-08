@@ -4,7 +4,7 @@ import { STAGES, isBossStage } from '../data/stages'
 import { isTowerStageId, towerFloor } from '../data/tower'
 import { isRiftStageId } from '../data/rifts'
 import { recordRiftCleared, riftAvailable } from '../systems/rift'
-import { recordFloorCleared } from '../systems/tower'
+import { TOWER_RERUN_PAYOUT, grantFloorRelic, recordFloorCleared } from '../systems/tower'
 import { recordFightWon } from '../systems/equipmentMastery'
 import { recordEvent } from '../services/analytics'
 import { GameState } from '../state/GameState'
@@ -45,15 +45,26 @@ export class ResultScene extends Phaser.Scene {
     // Read before the win is recorded: once the week is marked cleared the
     // answer flips, and a rift beaten twice in a week would pay twice.
     const riftPays = inRift && riftAvailable(GameState.player!)
+    // Also read before the record moves: a floor already beaten pays a quarter.
+    // Re-running the tower has to stay *worth something* — it is where a stuck
+    // player farms — without being a better gold rate than the floor they
+    // cannot beat yet, which is what a full payout on floor 1 would be.
+    const towerRerun = inTower && stage.order <= GameState.player!.tower.bestFloor
 
     // A rift already cleared this week still counts as a battle won — it just
     // does not pay. Zeroing the payout rather than skipping `applyRewards`
     // outright keeps the lifetime tally (and the achievements built on it)
     // honest about a fight that really did happen.
-    let player = applyRewards(
-      GameState.player!,
-      inRift && !riftPays ? { ...result, rewards: { exp: 0, gold: 0 } } : result,
-    )
+    const payout =
+      inRift && !riftPays
+        ? { exp: 0, gold: 0 }
+        : towerRerun
+          ? {
+              exp: Math.round(result.rewards.exp * TOWER_RERUN_PAYOUT),
+              gold: Math.round(result.rewards.gold * TOWER_RERUN_PAYOUT),
+            }
+          : result.rewards
+    let player = applyRewards(GameState.player!, { ...result, rewards: payout })
     // A tower floor is not campaign progress. Its id is outside the `stage-`
     // namespace, so recording it as a cleared stage would be dropped by the
     // validator on the next load, and setting it as the farming target would
@@ -66,6 +77,10 @@ export class ResultScene extends Phaser.Scene {
     if (result.win) player = recordFightWon(player, stage)
 
     if (result.win && inTower) {
+      // The relic before the record: `grantFloorRelic` is idempotent, but
+      // reading "first clear" off a record that has already moved would be a
+      // trap waiting for the next person to add a first-clear reward.
+      player = grantFloorRelic(player, stage.order)
       player = recordFloorCleared(player, stage.order)
     } else if (result.win && inRift) {
       player = recordRiftCleared(player)

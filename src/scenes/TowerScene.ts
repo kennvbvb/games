@@ -2,13 +2,15 @@ import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
 import { isTowerBossFloor } from '../data/tower'
+import { FLOORS_PER_BAND, bandStart, mutatorForFloor } from '../data/towerMutators'
 import { traitOf } from '../data/enemyTraits'
-import { bestFloor, canAttempt, floorConfig, nextFloor, towerUnlocked } from '../systems/tower'
+import { bestFloor, canAttempt, floorConfig, nextFloor, relicForFloor, towerUnlocked } from '../systems/tower'
 import { stageOutlook } from '../systems/difficulty'
 import { makeButton } from '../ui/components/makeButton'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makePanel } from '../ui/components/makePanel'
 import { makeTitle } from '../ui/components/makeTitle'
+import { ITEM_BY_ID } from '../data/items'
 import { COLORS, FONT } from '../ui/styles'
 import type { PlayerState } from '../types'
 import { t } from '../i18n'
@@ -18,9 +20,15 @@ interface TowerSceneData {
   from?: number
 }
 
-const ROWS = 5
-const ROW_TOP = 250
-const ROW_GAP = 74
+/**
+ * One page is one band, which is one rule. Aligning the window to the band
+ * boundaries is what turns a checkpoint from a label into structure: the list
+ * cannot show half of one rule and half of another, so the rule can be stated
+ * once at the top and be true of everything under it.
+ */
+const ROWS = FLOORS_PER_BAND
+const ROW_TOP = 262
+const ROW_GAP = 70
 const ROW_H = 66
 
 /**
@@ -56,10 +64,11 @@ export class TowerScene extends Phaser.Scene {
     // Default window: the next floor sits second from the top, so the floors
     // already beaten stay visible as a record without pushing the live one off.
     const next = nextFloor(player)
-    if (this.from <= 0) this.from = Math.max(1, next - 1)
+    if (this.from <= 0) this.from = next
+    this.from = bandStart(this.from)
 
     const best = bestFloor(player)
-    makePanel(this, GAME_W / 2, 150, 440, 96)
+    makePanel(this, GAME_W / 2, 158, 440, 112)
     this.add
       .text(GAME_W / 2, 122, t('tower.best', { floor: best }), {
         fontSize: '19px',
@@ -75,8 +84,19 @@ export class TowerScene extends Phaser.Scene {
         color: COLORS.text,
       })
       .setOrigin(0.5)
+    // The rule this page fights under, said before the floors rather than
+    // discovered inside one of them.
+    const mutator = mutatorForFloor(this.from)
     this.add
-      .text(GAME_W / 2, 178, t('tower.explain'), {
+      .text(GAME_W / 2, 176, t('tower.mutBand', { name: t(mutator.nameKey) }), {
+        fontSize: '13px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: mutator.id === 'open' ? COLORS.textDim : COLORS.danger,
+      })
+      .setOrigin(0.5)
+    this.add
+      .text(GAME_W / 2, 200, t(mutator.descriptionKey), {
         fontSize: '11px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -157,6 +177,22 @@ export class TowerScene extends Phaser.Scene {
         color: open || beaten ? COLORS.text : COLORS.textDisabled,
       })
       .setOrigin(0, 0.5)
+
+    const relic = relicForFloor(floor)
+    if (relic && !player.ownedItemIds.includes(relic)) {
+      // Only while it is still unclaimed: a relic already won is not a reason
+      // to come back, and saying otherwise would send the player up for nothing.
+      this.add
+        // Right-aligned to the button's left edge, not the panel's: the panel
+        // runs under the Fight button, and anything aligned to it is clipped.
+        .text(332, y - 13, `★ ${ITEM_BY_ID.get(relic)!.name}`, {
+          fontSize: '9px',
+          fontFamily: FONT.family,
+          fontStyle: 'bold',
+          color: COLORS.gold,
+        })
+        .setOrigin(1, 0.5)
+    }
 
     if (boss) {
       this.add

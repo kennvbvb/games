@@ -69,6 +69,15 @@ export interface ShopItem {
    * effect cannot be retuned without its description moving with it.
    */
   effect?: { description: string; mods: ModifierSource }
+  /**
+   * Where a piece comes from. Absent means the shop, which is where all but
+   * the relics come from.
+   *
+   * The expansion plan's whole reward loop rests on important gear having a
+   * guaranteed path that is *played for* rather than paid for: gear that can be
+   * bought with farmed gold makes every activity that drops it pointless.
+   */
+  source?: 'shop' | 'tower'
   /** Drives affix count and how the card reads; see data/affixes. */
   rarity: Rarity
   /** Members of the same set count towards its 2- and 4-piece bonuses. */

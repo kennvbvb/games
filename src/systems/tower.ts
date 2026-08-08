@@ -1,5 +1,6 @@
 import { TOWER_FIRST_FLOOR, TOWER_UNLOCK_WORLDS, towerFloor } from '../data/tower'
 import { worldsCleared } from './campaignModes'
+import { ITEM_BY_ID } from '../data/items'
 import type { StageConfig, PlayerState } from '../types'
 
 /**
@@ -17,6 +18,51 @@ import type { StageConfig, PlayerState } from '../types'
  * skips content rather than unlocking it.
  */
 export const MAX_TOWER_FLOOR = 9999
+
+/** What a floor already beaten pays on a re-run, as a fraction of first clear. */
+export const TOWER_RERUN_PAYOUT = 0.25
+
+/**
+ * Which boss floor pays which relic, and the order they arrive in.
+ *
+ * Every one is a *guaranteed first clear*, which is the point: the expansion
+ * plan asks that important rewards have a path that is played for rather than
+ * gambled on, and a drop rate would make the sixth relic a story about luck
+ * rather than about the climb.
+ *
+ * The order is not arbitrary. Floor 10 sits at the end of the first Warded
+ * band, and pays Void Pike — the piece whose Pierce is the answer to exactly
+ * the rule that band just enforced. Beating a rule is what hands you the tool
+ * for it.
+ *
+ * Six relics across floors 10 to 60 lines up with the measured wall: a hero who
+ * has just finished the campaign stops somewhere in floors 40-60, so a first
+ * climb yields four to six of them and the rest come with ascensions.
+ */
+export const TOWER_RELIC_FLOORS: { floor: number; itemId: string }[] = [
+  { floor: 10, itemId: 'void-pike' },
+  { floor: 20, itemId: 'bastion-mail' },
+  { floor: 30, itemId: 'clockwork-blades' },
+  { floor: 40, itemId: 'crown-of-resolve' },
+  { floor: 50, itemId: 'hunter-mantle' },
+  { floor: 60, itemId: 'spring-totem' },
+]
+
+export function relicForFloor(floor: number): string | undefined {
+  return TOWER_RELIC_FLOORS.find((entry) => entry.floor === floor)?.itemId
+}
+
+/**
+ * Hands over a floor's relic, if it has one and the player does not.
+ *
+ * Owning it already is the no-op rather than an error: a floor can be replayed,
+ * and a second copy of a one-of-a-kind piece is not a reward.
+ */
+export function grantFloorRelic(state: PlayerState, floor: number): PlayerState {
+  const itemId = relicForFloor(floor)
+  if (!itemId || !ITEM_BY_ID.has(itemId) || state.ownedItemIds.includes(itemId)) return state
+  return { ...state, ownedItemIds: [...state.ownedItemIds, itemId] }
+}
 
 export function towerUnlocked(state: PlayerState): boolean {
   return worldsCleared(state) >= TOWER_UNLOCK_WORLDS

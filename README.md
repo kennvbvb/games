@@ -341,6 +341,39 @@ never downloads it.
   bound that actually matters — no piece may claim more wins than the hero has
   ever won, which is what stops a fresh edited save arriving fully mastered.
 
+- **Tower band rules.** Every five floors the tower changes the rule it is
+  fought under, and the five-floor boundary is the checkpoint: one page of the
+  tower list is one band, so the rule can be stated once above the floors it
+  applies to. Four rules cycle — **Open Halls** (no rule, where the stat curve
+  alone is the test), **Warded** (flat extra armour), **Charmless** (both
+  accessory slots go quiet) and **Withered** (healing and shields halved).
+
+  Warded is flat rather than a multiplier, and that was measured rather than
+  assumed. Defence is subtracted before the minimum-1 damage floor, so scaling
+  it scales the gap between a kin's attack and the wall — and even a 10%
+  multiplier pushed Dwarf, the lowest-attack kin, onto the damage floor two
+  bands in. That is not a harder fight; it is an arithmetically impossible one
+  behind a health bar that still looks like a fight. The flat bump is set to
+  exactly what a fully committed Breaker build strips (Void Pike's Pierce 6 plus
+  the Breaker resonance's 4), so bringing the answer cancels the band outright.
+  A test pins the two numbers together.
+
+  Charmless is the only rule that is not a modifier: it fights the floor with a
+  state whose accessory slots are empty. Saying it that way means stats, affixes,
+  set membership and a relic's named effect all fall away together, rather than
+  four consequences having to be listed and kept in step.
+
+- **Relics are won, not bought.** The six relic pieces left the shop and became
+  guaranteed first-clear rewards on tower boss floors 10 to 60. Gear that can be
+  bought with farmed gold makes every activity that drops it pointless, and the
+  expansion plan's whole reward loop rests on important gear having a path that
+  is played for. The order is deliberate: floor 10 closes the first Warded band
+  and pays Void Pike, whose Pierce is the answer to exactly the rule that band
+  just enforced. Beating a rule is what hands you the tool for it. Re-running a
+  floor already beaten pays a quarter, so the tower stays somewhere a stuck
+  player can farm without being a better gold rate than the floor they cannot
+  beat yet.
+
 - **The Codex.** A compendium of enemy traits, status effects, equipment sets
   and the kin's own relics, with locked rows shown rather than hidden — a
   reference that hides what you have not met cannot tell you how much is left,
@@ -363,10 +396,13 @@ never downloads it.
   past that as a record while the power stops, because an uncapped multiplier
   turns every later run into a formality.
 
-  What one is worth was measured, not guessed. Walking the campaign and then
-  climbing the tower until it walls: **0 ascensions → floor 40-60, 2 → 40-90,
-  5 → 60-100, 10 → 80-100.** So an ascension buys roughly five floors, or one
-  boss gate per two of them.
+  What one is worth was measured, not guessed — and re-measured once the tower
+  grew band rules, which moved the numbers a long way. Campaign finisher, every
+  shop piece, every skill, the stat treats bought, climbing until walled:
+  **0 ascensions → floor 30-40, 1 → 40, 5 → 40-50, 10 → 40-60.** So an
+  ascension is worth far less than it was against the ruleless tower: roughly
+  one boss gate per five, and the first one matters most because it is what
+  lifts the lowest-attack kin back to the gate everyone else already reaches.
 
   Kin mastery survives the reset, because a finished campaign is banked into
   the mastery budget rather than forgotten. Losing your relics at the exact

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { BUILDS, BUILD_TAGS, RESONANCE_AT, activeResonances, buildOf, tagCounts } from '../src/data/builds'
-import { ITEMS, ITEM_BY_ID } from '../src/data/items'
+import { ITEMS, ITEM_BY_ID, SHOP_ITEMS } from '../src/data/items'
 import { STAGES } from '../src/data/stages'
 import { NEUTRAL, foldModifiers } from '../src/systems/combatModifiers'
 import { resolveBattle } from '../src/systems/combat'
@@ -14,7 +14,10 @@ import type { PlayerState } from '../src/types'
 /** Best worn set of one build tag, filling as many slots as that tag can. */
 function wearing(tag: BuildTag, level: number): PlayerState {
   const base = createDefaultPlayerState('Sim')
-  const pool = ITEMS.filter((i) => (i.minLevel ?? 1) <= level).sort((a, b) => b.cost - a.cost)
+  // Shop stock only: this asks whether three builds can *finish the campaign*,
+  // and the campaign ends before the tower — and therefore before any relic —
+  // is reachable at all.
+  const pool = SHOP_ITEMS.filter((i) => (i.minLevel ?? 1) <= level).sort((a, b) => b.cost - a.cost)
   const slots: Record<string, string | null> = {
     weapon: null,
     head: null,

@@ -165,7 +165,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
   // Shield sits in front of health and is spent first. It is deliberately not
   // part of Max HP: a build that runs on shields should read as fragile on the
   // health bar, because it is — nothing refills it once the sources stop.
-  let shield = Math.round(player.maxHp * mods.shield)
+  let shield = Math.round(player.maxHp * mods.shield * mods.sustainScale)
   // Counters advance on every *attempted* attack, dodged or not. One counter
   // per side means a dodge cannot silently shift an unrelated effect's cadence,
   // and the player can predict every proc by counting blows on screen.
@@ -193,7 +193,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
    */
   const applyHeal = (fraction: number): { healed: number; banked: number } => {
     if (fraction <= 0) return { healed: 0, banked: 0 }
-    const raw = Math.round(player.maxHp * fraction * healScale(turn))
+    const raw = Math.round(player.maxHp * fraction * healScale(turn) * mods.sustainScale)
     if (raw <= 0) return { healed: 0, banked: 0 }
     const healed = Math.min(raw, player.maxHp - playerHp)
     const banked = mods.barrier ? raw - healed : 0

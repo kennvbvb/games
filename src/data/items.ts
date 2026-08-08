@@ -91,21 +91,28 @@ export const ITEMS: ShopItem[] = [
   // stat line. Two per build, so each of the three has a real pair to lean on
   // and the two-piece resonance is reachable without wearing a whole set.
   //
-  // These are shop-gated for now. The expansion plan hands them out as Tower
-  // and Boss Remix first-clear rewards; neither of those drop tables is built,
-  // and putting the gear behind content that does not exist would ship six
-  // items nobody can reach.
+  // Won from the tower, never bought. Every one is a guaranteed first-clear
+  // reward on a boss floor — see systems/tower for which floor pays which. A
+  // relic on a shop shelf is a relic with a gold price rather than a reason to
+  // climb, and the tower's whole job is to be the reason.
   // ---------------------------------------------------------------------------
-  { id: 'void-pike', kind: 'weapon', name: 'Void Pike', emoji: '🔱', bonus: { atk: 32 }, cost: 5200, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', effect: { description: 'Strips 6 defence from every enemy', mods: { pierce: 6 } } },
-  { id: 'hunter-mantle', kind: 'body', name: "Hunter's Mantle", emoji: '🥷', bonus: { hp: 75, atk: 12, def: 18 }, cost: 5000, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', effect: { description: 'Below 35% health, deal 30% more', mods: { execute: 1.3, executeBelow: 0.35 } } },
-  { id: 'bastion-mail', kind: 'body', name: 'Bastion Mail', emoji: '🛡️', bonus: { hp: 110, def: 28 }, cost: 5200, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', effect: { description: 'Start behind a 22% shield, take 7% less', mods: { shield: 0.22, incoming: 0.93 } } },
-  { id: 'crown-of-resolve', kind: 'head', name: 'Crown of Resolve', emoji: '👑', bonus: { hp: 85, def: 14 }, cost: 5000, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', effect: { description: 'Take 10% less from every hit', mods: { incoming: 0.9 } } },
-  { id: 'clockwork-blades', kind: 'weapon', name: 'Clockwork Blades', emoji: '⚙️', bonus: { atk: 29 }, cost: 5200, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', effect: { description: 'Every 3rd blow hits 35% harder', mods: { comboEvery: 3, combo: 1.35 } } },
-  { id: 'spring-totem', kind: 'accessory', name: 'Spring Totem', emoji: '💧', bonus: { hp: 75, atk: 12 }, cost: 5000, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', effect: { description: 'Mend 3% of health every 3rd attack', mods: { heal: 0.03, healEvery: 3 } } },
+  { id: 'void-pike', kind: 'weapon', name: 'Void Pike', emoji: '🔱', bonus: { atk: 32 }, cost: 5200, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', source: 'tower', effect: { description: 'Strips 6 defence from every enemy', mods: { pierce: 6 } } },
+  { id: 'hunter-mantle', kind: 'body', name: "Hunter's Mantle", emoji: '🥷', bonus: { hp: 75, atk: 12, def: 18 }, cost: 5000, minLevel: 22, buildTag: 'breaker', rarity: 'legendary', source: 'tower', effect: { description: 'Below 35% health, deal 30% more', mods: { execute: 1.3, executeBelow: 0.35 } } },
+  { id: 'bastion-mail', kind: 'body', name: 'Bastion Mail', emoji: '🛡️', bonus: { hp: 110, def: 28 }, cost: 5200, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', source: 'tower', effect: { description: 'Start behind a 22% shield, take 7% less', mods: { shield: 0.22, incoming: 0.93 } } },
+  { id: 'crown-of-resolve', kind: 'head', name: 'Crown of Resolve', emoji: '👑', bonus: { hp: 85, def: 14 }, cost: 5000, minLevel: 22, buildTag: 'bulwark', rarity: 'legendary', source: 'tower', effect: { description: 'Take 10% less from every hit', mods: { incoming: 0.9 } } },
+  { id: 'clockwork-blades', kind: 'weapon', name: 'Clockwork Blades', emoji: '⚙️', bonus: { atk: 29 }, cost: 5200, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', source: 'tower', effect: { description: 'Every 3rd blow hits 35% harder', mods: { comboEvery: 3, combo: 1.35 } } },
+  { id: 'spring-totem', kind: 'accessory', name: 'Spring Totem', emoji: '💧', bonus: { hp: 75, atk: 12 }, cost: 5000, minLevel: 22, buildTag: 'tempo', rarity: 'legendary', source: 'tower', effect: { description: 'Mend 3% of health every 3rd attack', mods: { heal: 0.03, healEvery: 3 } } },
 
 ]
 
 export const ITEM_BY_ID = new Map(ITEMS.map((item) => [item.id, item]))
+
+/**
+ * The pieces the shop actually sells. Everything else in the catalogue is won,
+ * and still lives in `ITEMS` so it can be worn, compared and collected exactly
+ * like a bought piece once it has been earned.
+ */
+export const SHOP_ITEMS = ITEMS.filter((item) => (item.source ?? 'shop') === 'shop')
 
 export const ITEM_KINDS: ItemKind[] = ['weapon', 'head', 'body', 'boots', 'accessory']
 

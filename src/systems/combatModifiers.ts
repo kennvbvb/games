@@ -52,6 +52,16 @@ export interface CombatModifiers {
   bossDamage: number
   /** Shield, as a fraction of Max HP, granted before the first turn. */
   shield: number
+  /**
+   * Multiplier on everything that puts health or shield back — the heal
+   * cadence, the opening shield, and the barrier overflow that feeds it.
+   *
+   * A scale rather than a cut to each source, because healing and shielding are
+   * fractions of Max HP that *add* across sources: halving them one at a time
+   * would depend on how many the player happened to be running, and stacking
+   * two small heals would survive a rule meant to switch sustain off.
+   */
+  sustainScale: number
   /** Healing past Max HP becomes shield instead of being discarded. */
   barrier: boolean
   /**
@@ -86,6 +96,7 @@ export const NEUTRAL: CombatModifiers = {
   executeBelow: 0,
   bossDamage: 1,
   shield: 0,
+  sustainScale: 1,
   barrier: false,
   pierce: 0,
   hpScale: 1,
@@ -122,6 +133,7 @@ export function combine(base: CombatModifiers, source: ModifierSource): CombatMo
     executeBelow: Math.max(base.executeBelow, source.executeBelow ?? 0),
     bossDamage: base.bossDamage * (source.bossDamage ?? 1),
     shield: base.shield + (source.shield ?? 0),
+    sustainScale: base.sustainScale * (source.sustainScale ?? 1),
     barrier: base.barrier || (source.barrier ?? false),
     pierce: base.pierce + (source.pierce ?? 0),
     hpScale: base.hpScale * (source.hpScale ?? 1),

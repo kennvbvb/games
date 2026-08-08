@@ -6,7 +6,7 @@ import { RACES, raceOf } from '../src/data/races'
 import { PLAN_IDS } from '../src/data/battlePlans'
 import { resolveBattle } from '../src/systems/combat'
 import { bestOwnedPerSlot, effectiveStats } from '../src/systems/upgrades'
-import { ITEMS } from '../src/data/items'
+import { SHOP_ITEMS } from '../src/data/items'
 import { SKILLS, SKILL_BY_ID } from '../src/data/skills'
 import { LOADOUT_SIZE, equipSkill, unlockSkill } from '../src/systems/skills'
 import { equipRelic, unlockedRelics } from '../src/systems/mastery'
@@ -228,7 +228,10 @@ const REPLAY_CEILING = 18
  */
 function restock(state: PlayerState): PlayerState {
   let current = state
-  for (const item of [...ITEMS].sort((a, b) => a.cost - b.cost)) {
+  // SHOP_ITEMS, not ITEMS: relics are won from the tower, so a hero walking the
+  // campaign cannot have one at any price. Simulating a campaign player holding
+  // endgame rewards would be simulating a different game.
+  for (const item of [...SHOP_ITEMS].sort((a, b) => a.cost - b.cost)) {
     if (current.ownedItemIds.includes(item.id)) continue
     if ((item.minLevel ?? 1) > current.level) continue
     if (current.gold < item.cost) continue
@@ -309,7 +312,7 @@ describe('balance', () => {
     // test above.
     for (const race of RACES) {
       const base = createDefaultPlayerState('Sim', undefined, race.id)
-      const owned = ITEMS.filter((item) => (item.minLevel ?? 1) <= 45).map((item) => item.id)
+      const owned = SHOP_ITEMS.filter((item) => (item.minLevel ?? 1) <= 45).map((item) => item.id)
       const grown: PlayerState = {
         ...base,
         level: 45,

@@ -1,6 +1,7 @@
 import { BIOMES, backgroundFor } from './biomes'
 import { TRAIT_IDS } from './enemyTraits'
 import { STAGES } from './stages'
+import { applyMutatorToEnemy, mutatorForFloor } from './towerMutators'
 import type { BiomeId, StageVisual } from './biomes'
 import type { BossPhase, EnemyConfig, StageConfig } from '../types'
 
@@ -120,7 +121,12 @@ export function towerVisual(floor: number): StageVisual {
   return { biome, landmark: pool[(floor - 1) % pool.length] }
 }
 
-export function towerEnemy(floor: number): EnemyConfig {
+/**
+ * The floor's enemy, before the band rule is applied. Kept separate so the
+ * curve above stays readable as a curve — the rule is a layer on top of it,
+ * exactly as the difficulty modes are a layer on top of the campaign's.
+ */
+function baseTowerEnemy(floor: number): EnemyConfig {
   const n = floor - 1
   const maxHp = Math.round(HP_BASE * HP_GROWTH ** n)
   const atk = Math.round(ATK_BASE * ATK_GROWTH ** n)
@@ -149,6 +155,10 @@ export function towerEnemy(floor: number): EnemyConfig {
  * The id is positional and outside the `stage-` namespace, which keeps a floor
  * from ever being mistaken for campaign progress by the save validator.
  */
+export function towerEnemy(floor: number): EnemyConfig {
+  return applyMutatorToEnemy(baseTowerEnemy(floor), mutatorForFloor(floor))
+}
+
 export function towerFloor(floor: number): StageConfig {
   const clamped = Math.max(TOWER_FIRST_FLOOR, Math.floor(floor))
   const visual = towerVisual(clamped)
