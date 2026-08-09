@@ -1,9 +1,12 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { GameState } from '../state/GameState'
+import { isTowerStageId } from '../data/tower'
+import { isRiftStageId } from '../data/rifts'
 import { persist } from '../services/saveService'
 import { BATTLE_PLANS } from '../data/battlePlans'
 import { traitOf } from '../data/enemyTraits'
+import { equippedSkills } from '../systems/skills'
 import { isBossStage } from '../data/stages'
 import { FORECAST_LABEL_KEYS, planOutlooks, recommendPlan } from '../systems/difficulty'
 import { makeButton } from '../ui/components/makeButton'
@@ -13,9 +16,13 @@ import { makeTitle } from '../ui/components/makeTitle'
 import { COLORS, FONT } from '../ui/styles'
 import type { PlanId } from '../data/battlePlans'
 import type { StageOutlook } from '../systems/difficulty'
+import type { StageConfig } from '../types'
+import type { MessageKey } from '../i18n'
 import { t } from '../i18n'
 
-const ROW_YS = [268, 380, 492]
+// Shifted down 20px to make room for Boss Intel, which needs three lines on a
+// late boss and would otherwise have run under the first plan card.
+const ROW_YS = [288, 400, 512]
 const ROW_H = 104
 
 const TIER_COLOR = {
@@ -44,30 +51,32 @@ export class PrepareBattleScene extends Phaser.Scene {
 
     makeTitle(this, 44, t('plan.title'), 'icon_bolt')
 
-    // Who you are about to fight, and the one thing that makes them awkward.
-    makePanel(this, GAME_W / 2, 148, 430, 104)
-    makeEmoji(this, 66, 128, stage.enemy.sprite, 40)
+    // Who you are about to fight, everything that makes them awkward, and what
+    // you are bringing — all inside one panel, because the plan cards below
+    // need every pixel from y=236 down.
+    makePanel(this, GAME_W / 2, 158, 430, 140)
+    makeEmoji(this, 66, 112, stage.enemy.sprite, 38)
     const name = this.add
-      .text(102, 118, stage.enemy.name, {
+      .text(100, 104, stage.enemy.name, {
         fontSize: '17px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
         color: isBossStage(stage) ? COLORS.danger : COLORS.text,
       })
       .setOrigin(0, 0.5)
-    if (isBossStage(stage)) makeEmoji(this, name.x + name.width + 14, 118, 'decor_skull', 15)
+    if (isBossStage(stage)) makeEmoji(this, name.x + name.width + 14, 104, 'decor_skull', 15)
 
     const traitLabel = this.add
-      .text(102, 144, t(trait.nameKey), {
+      .text(100, 128, t(trait.nameKey), {
         fontSize: '13px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
         color: COLORS.gold,
       })
       .setOrigin(0, 0.5)
-    makeEmoji(this, traitLabel.x + traitLabel.width + 12, 144, trait.icon, 14)
+    makeEmoji(this, traitLabel.x + traitLabel.width + 12, 128, trait.icon, 14)
     this.add
-      .text(66, 176, t(trait.descriptionKey), {
+      .text(66, 152, t(trait.descriptionKey), {
         fontSize: '11px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -75,13 +84,16 @@ export class PrepareBattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0.5)
 
+    this.renderLoadout()
+    this.renderBossIntel(stage)
+
     BATTLE_PLANS.forEach((plan, i) => {
       this.renderPlan(plan.id, outlooks[plan.id], ROW_YS[i], best?.plan === plan.id)
     })
 
     if (best === null) {
       this.add
-        .text(GAME_W / 2, 574, t('plan.noneWork'), {
+        .text(GAME_W / 2, 590, t('plan.noneWork'), {
           fontSize: '12px',
           fontFamily: FONT.family,
           color: COLORS.danger,
@@ -91,11 +103,91 @@ export class PrepareBattleScene extends Phaser.Scene {
         .setOrigin(0.5)
     }
 
-    makeButton(this, GAME_W / 2, 626, t('common.back'), () => this.scene.start('StageSelect'), {
+    // Back goes where the fight was picked, not always to stage select: a
+    // tower floor reached from the tower has no row on the campaign screen.
+    makeButton(this, GAME_W / 2, 648, t('common.back'), () => this.scene.start(isRiftStageId(stage.id) ? 'Rift' : isTowerStageId(stage.id) ? 'Tower' : 'StageSelect'), {
       variant: 'secondary',
       minWidth: 180,
       fontSize: '15px',
     })
+  }
+
+  /**
+   * What the boss will do, before the player commits. A phase that only reveals
+   * itself at 30% health is a rewind for anyone who brought the wrong build, so
+   * every transition is spelled out in advance.
+   */
+  private renderBossIntel(stage: StageConfig): void {
+    if (!isBossStage(stage)) return
+    const phases = stage.enemy.boss?.phases ?? []
+    const label = this.add
+      .text(66, 180, t('boss.intel'), {
+        fontSize: '11px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.danger,
+      })
+      .setOrigin(0, 0.5)
+
+    if (phases.length === 0) {
+      this.add
+        .text(label.x + label.width + 10, 180, t('boss.noPhases'), {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(0, 0.5)
+      return
+    }
+
+    phases.forEach((phase, i) => {
+      this.add
+        .text(
+          134,
+          180 + i * 14,
+          t('boss.phase', {
+            hp: Math.round(phase.atHpBelow * 100),
+            effect: t(phase.labelKey as MessageKey),
+          }),
+          { fontSize: '10px', fontFamily: FONT.family, color: COLORS.textDim, wordWrap: { width: 314 } },
+        )
+        .setOrigin(0, 0.5)
+    })
+  }
+
+  /**
+   * The build this forecast was computed under. Without it the numbers below
+   * look like a property of the stage, and a player who forgot to fill a slot
+   * has no way to see why the fight got harder.
+   */
+  private renderLoadout(): void {
+    const skills = equippedSkills(GameState.player!)
+    // Top-right of the enemy panel, on the name line. Labelled rather than four
+    // bare icons — an unlabelled sprite row reads as decoration.
+    const label = this.add
+      .text(GAME_W - 34, 104, t('plan.loadout'), {
+        fontSize: '10px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.textDim,
+      })
+      .setOrigin(1, 0.5)
+
+    if (skills.length === 0) {
+      label.setY(112)
+      this.add
+        .text(GAME_W - 34, 126, t('plan.noSkills'), {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: COLORS.textDisabled,
+        })
+        .setOrigin(1, 0.5)
+      return
+    }
+    const right = GAME_W - 40
+    skills.forEach((skill, i) =>
+      makeEmoji(this, right - (skills.length - 1 - i) * 22, 126, skill.icon, 18),
+    )
   }
 
   private renderPlan(id: PlanId, outlook: StageOutlook, y: number, recommended: boolean): void {

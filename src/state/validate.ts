@@ -2,12 +2,21 @@ import { SAVE_SCHEMA_VERSION, TUTORIAL_DONE } from '../types'
 import type { Equipment, PlayerState } from '../types'
 import { ITEM_BY_ID } from '../data/items'
 import { ACHIEVEMENT_BY_ID } from '../data/achievements'
-import { EQUIP_SLOTS, bestOwnedPerSlot } from '../systems/upgrades'
+import { EMPTY_EQUIPMENT, EQUIP_SLOTS, bestOwnedPerSlot, slotsForKind } from '../systems/upgrades'
 import { STAGES } from '../data/stages'
 import { normalizeAvatar } from '../data/avatars'
 import { normalizePlan } from '../data/battlePlans'
+import { normalizeDifficulty } from '../data/difficulties'
 import { normalizeAppearance, normalizeRace } from '../data/races'
 import { statsForLevel } from '../systems/leveling'
+import { POINTS_PER_BOSS, POINTS_PER_LEVEL, sanitizeLoadout, sanitizeSkills } from '../systems/skills'
+import { masteryXpFor, rankForXp, sanitizeRelic } from '../systems/mastery'
+import { sanitizeTower } from '../systems/tower'
+import { sanitizeRift } from '../systems/rift'
+import { sanitizeAscension } from '../systems/ascension'
+import { sanitizeEquipmentMastery } from '../systems/equipmentMastery'
+import { sanitizeContracts } from '../systems/contracts'
+import { BOSS_STAGE_IDS } from '../data/worlds'
 import { systemPrefersReducedMotion } from '../platform/prefers'
 import { detectLocale, isLocale } from '../i18n'
 
@@ -36,6 +45,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * recognisable save object at all returns null; recognisable saves get every
  * field coerced into safe bounds and unknown ids dropped.
  */
+/**
+ * Reads the worn-gear block, across two schema changes at once.
+ *
+ * - Pre-v4 saves have no block at all: fill from the best owned pieces rather
+ *   than silently stripping stats those players already had.
+ * - Pre-v13 saves have the three-slot shape (`weapon`/`armor`/`charm`). Armour
+ *   becomes body and the charm becomes the first accessory, so a returning
+ *   player finds every piece still worn and two new slots empty — rather than
+ *   an unexplained stat drop and a bag full of gear.
+ *
+ * Either way an id is only kept if the player owns it *and* it fits the slot,
+ * so an edited save cannot wear a weapon on its head.
+ */
+function parseEquipment(raw: unknown, ownedItemIds: string[]): Equipment {
+  if (!isRecord(raw)) return bestOwnedPerSlot(ownedItemIds)
+
+  const legacy = 'armor' in raw || 'charm' in raw
+  const source: Record<string, unknown> = legacy
+    ? { weapon: raw.weapon, body: raw.armor, accessory1: raw.charm }
+    : raw
+
+  return EQUIP_SLOTS.reduce((acc, slot) => {
+    const id = source[slot]
+    const item = typeof id === 'string' ? ITEM_BY_ID.get(id) : undefined
+    const fits = item !== undefined && slotsForKind(item.kind).includes(slot)
+    acc[slot] = fits && ownedItemIds.includes(id as string) ? (id as string) : null
+    return acc
+  }, { ...EMPTY_EQUIPMENT })
+}
+
 export function parsePlayerState(raw: unknown): PlayerState | null {
   if (!isRecord(raw)) return null
   // Require at least one signature field so arbitrary objects don't "recover"
@@ -63,20 +102,29 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
 
   const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim().slice(0, 14) : 'Hero'
 
-  // Pre-v4 saves have no `equipped` block. Rather than silently stripping the
-  // stats those players already had, fill each slot with the best thing they own.
-  const equippedRaw = isRecord(raw.equipped) ? raw.equipped : null
-  const equipped = equippedRaw
-    ? EQUIP_SLOTS.reduce((acc, slot) => {
-        const id = equippedRaw[slot]
-        // Only keep an equipped id the player actually owns and that fits the slot.
-        acc[slot] =
-          typeof id === 'string' && ownedItemIds.includes(id) && ITEM_BY_ID.get(id)?.slot === slot ? id : null
-        return acc
-      }, { weapon: null, armor: null, charm: null } as Equipment)
-    : bestOwnedPerSlot(ownedItemIds)
+  const equipped = parseEquipment(raw.equipped, ownedItemIds)
 
   const lifetimeRaw = isRecord(raw.lifetime) ? raw.lifetime : {}
+
+  // Skills come after progress because their budget is derived from it. A
+  // pre-v12 save has neither field and simply starts with an empty tree, which
+  // is exactly what a player who never spent a point would have.
+  const bossesCleared = completedStageIds.filter((id) => BOSS_STAGE_IDS.includes(id)).length
+  const skillBudget = (level - 1) * POINTS_PER_LEVEL + bossesCleared * POINTS_PER_BOSS
+  const unlockedSkillIds = sanitizeSkills(raw.unlockedSkillIds, raceId, skillBudget)
+  const loadout = sanitizeLoadout(raw.loadout, unlockedSkillIds)
+
+  // Mastery rank is derived from the same cleared-stage list, so a pre-v14 save
+  // arrives already holding whatever rank its progress had earned all along —
+  // the track is retroactive rather than starting everyone at zero.
+  // Ascensions are banked into the mastery budget, so a hero who ascended keeps
+  // the relics they earned rather than having them stripped by the reset.
+  const ascension = sanitizeAscension(raw.ascension)
+  const equippedRelicId = sanitizeRelic(
+    raw.equippedRelicId,
+    raceId,
+    rankForXp(masteryXpFor(completedStageIds, ascension.count)),
+  )
 
   // v2 saves predate settings/idle; absent blocks fall back to defaults.
   const settingsRaw = isRecord(raw.settings) ? raw.settings : {}
@@ -114,6 +162,26 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
     },
     ownedItemIds,
     equipped,
+    unlockedSkillIds,
+    loadout,
+    equippedRelicId,
+    // Absent in pre-v15 saves, which simply start the tower at zero — there is
+    // no campaign progress that implies a climb, so there is nothing to infer.
+    tower: sanitizeTower(raw.tower),
+    // Absent in pre-v16 saves, which read as "never cleared a rift".
+    rift: sanitizeRift(raw.rift),
+    // Absent in pre-v17 saves, which have simply never ascended.
+    ascension,
+    // Absent in pre-v18 saves. Every piece simply starts at rank 1, which is
+    // what the whole track pays out anyway until ten wins are on it — there is
+    // nothing to back-fill and nothing lost by not back-filling it.
+    // Absent in pre-v19 saves, which simply start this week's contracts at
+    // zero — there is no history to infer three jobs from.
+    contracts: sanitizeContracts(raw.contracts),
+    equipmentMastery: sanitizeEquipmentMastery(
+      raw.equipmentMastery,
+      clampInt(lifetimeRaw.battlesWon, 0, Number.MAX_SAFE_INTEGER, 0),
+    ),
     stageProgress: {
       highestUnlocked: clampInt(progressRaw.highestUnlocked, 1, STAGES.length, 1),
       completedStageIds,
@@ -134,6 +202,9 @@ export function parsePlayerState(raw: unknown): PlayerState | null {
       // closest to plain trading blows, so an upgraded save fights roughly the
       // way it did before there were plans.
       battlePlan: normalizePlan(settingsRaw.battlePlan),
+      // Absent in pre-v12 saves. Normal is the campaign as it was balanced, so
+      // an upgraded save keeps fighting exactly the numbers it always did.
+      difficulty: normalizeDifficulty(settingsRaw.difficulty),
     },
     idle: { farmingStageId, lastSeenAt },
     tutorialStep: clampInt(raw.tutorialStep, 0, TUTORIAL_DONE, 0),

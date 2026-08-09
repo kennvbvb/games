@@ -1,30 +1,70 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
-import { ITEMS_BY_SLOT, ITEM_BY_ID } from '../data/items'
+import { ITEM_BY_ID, itemsForSlot } from '../data/items'
+import { RARITY_COLOR, RARITY_LABEL_KEYS } from '../data/affixes'
+import { activeSets } from '../data/sets'
+import { RESONANCE_AT, activeResonances, buildOf } from '../data/builds'
+import { MAX_EQUIP_RANK, equipRank, winsFor, winsToNextRank } from '../systems/equipmentMastery'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
-import { EQUIP_SLOTS, SLOT_LABEL_KEYS, effectiveStats, equipItem, unequipSlot } from '../systems/upgrades'
+import {
+  EQUIP_SLOTS,
+  SLOT_LABEL_KEYS,
+  affixesOf,
+  effectiveStats,
+  equipItem,
+  equippedItems,
+  unequipSlot,
+} from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
 import { makePanel } from '../ui/components/makePanel'
 import { makeEmoji } from '../ui/components/makeEmoji'
 import { makeStatRow, type StatEntry } from '../ui/components/makeStatRow'
 import { makeTitle } from '../ui/components/makeTitle'
 import { COLORS, FONT } from '../ui/styles'
-import type { EquipSlot, ShopItem, StatBonus } from '../types'
+import type { EquipSlot, PlayerState, ShopItem, StatBonus } from '../types'
 import { t } from '../i18n'
 
-/** Footer row for the picker, below five choice rows. */
-const PICKER_FOOTER_Y = 578
+/**
+ * Six slots do not fit as six full-width cards, so the overview is a
+ * two-column grid of compact tiles. The detail those cards used to carry —
+ * rarity, affixes — moves to the picker, which is where a player is actually
+ * comparing one piece against another.
+ */
+const GRID_X = [GAME_W / 2 - 108, GAME_W / 2 + 108]
+const GRID_Y = [158, 246, 334]
+const TILE_W = 206
+const TILE_H = 80
+
+/**
+ * Four per page rather than five, and taller.
+ *
+ * A row has to carry four affixes, the build lean, and — on relic gear — the
+ * effect that is the reason the piece exists. The old row put the Equip button
+ * in the middle of the right edge, which left the text a 250px column; four
+ * legendary affixes wrapped to four lines there and ran straight through the
+ * stat row and out of the panel. The button moves to the top-right so the text
+ * gets the full width, and the affix and effect lines are laid out top-down
+ * from the measured height of the one above rather than at fixed offsets.
+ */
+const PICKER_ROWS = [161, 271, 381, 491]
+const PICKER_ROW_H = 106
+const PICKER_FOOTER_Y = 574
+const PICKER_ACTIONS_Y = 640
 
 const SLOT_ICON: Record<EquipSlot, string> = {
   weapon: 'icon_atk',
-  armor: 'icon_def',
-  charm: 'icon_hp',
+  head: 'icon_face',
+  body: 'icon_def',
+  boots: 'icon_bolt',
+  accessory1: 'icon_hp',
+  accessory2: 'icon_star',
 }
 
 interface EquipmentSceneData {
   /** When set, the scene shows the picker for this slot instead of the overview. */
   picking?: EquipSlot | null
+  page?: number
 }
 
 function bonusEntries(bonus: StatBonus): StatEntry[] {
@@ -37,6 +77,7 @@ function bonusEntries(bonus: StatBonus): StatEntry[] {
 
 export class EquipmentScene extends Phaser.Scene {
   private picking: EquipSlot | null = null
+  private page = 0
 
   constructor() {
     super('Equipment')
@@ -44,11 +85,12 @@ export class EquipmentScene extends Phaser.Scene {
 
   init(data: EquipmentSceneData): void {
     this.picking = data.picking ?? null
+    this.page = data.page ?? 0
   }
 
   create(): void {
     setupScene(this)
-    makeTitle(this, 46, this.picking ? t(SLOT_LABEL_KEYS[this.picking]) : t('equipment.title'), 'icon_bag')
+    makeTitle(this, 44, this.picking ? t(SLOT_LABEL_KEYS[this.picking]) : t('equipment.title'), 'icon_bag')
 
     if (this.picking) this.renderPicker(this.picking)
     else this.renderOverview()
@@ -59,152 +101,397 @@ export class EquipmentScene extends Phaser.Scene {
     const stats = effectiveStats(player)
 
     this.add
-      .text(GAME_W / 2, 82, t('equipment.subtitle'), {
-        fontSize: '13px',
+      .text(GAME_W / 2, 76, t('equipment.subtitle'), {
+        fontSize: '12px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
 
     EQUIP_SLOTS.forEach((slot, i) => {
-      const y = 150 + i * 104
-      const equippedId = player.equipped[slot]
-      const item = equippedId ? ITEM_BY_ID.get(equippedId) : undefined
-      const ownedInSlot = ITEMS_BY_SLOT[slot].filter((it) => player.ownedItemIds.includes(it.id))
-
-      makePanel(this, GAME_W / 2, y, 430, 92)
-      const icon = makeEmoji(this, 62, y - 10, item ? `item_${item.id}` : SLOT_ICON[slot], 38)
-      if (!item) icon.setAlpha(0.3)
-
-      this.add
-        .text(100, y - 26, t(SLOT_LABEL_KEYS[slot]), {
-          fontSize: '13px',
-          fontFamily: FONT.family,
-          color: COLORS.textDim,
-        })
-        .setOrigin(0, 0.5)
-      this.add
-        .text(100, y - 4, item ? item.name : t('equipment.empty'), {
-          fontSize: '16px',
-          fontFamily: FONT.family,
-          fontStyle: 'bold',
-          color: item ? COLORS.text : COLORS.textDisabled,
-        })
-        .setOrigin(0, 0.5)
-
-      if (item) makeStatRow(this, 100, y + 22, bonusEntries(item.bonus), { fontSize: '13px', iconSize: 15, gap: 12 })
-      else
-        this.add
-          .text(100, y + 22, ownedInSlot.length ? t('equipment.available', { count: ownedInSlot.length }) : t('equipment.nothingOwned'), {
-            fontSize: '12px',
-            fontFamily: FONT.family,
-            color: COLORS.textDim,
-          })
-          .setOrigin(0, 0.5)
-
-      makeButton(this, 372, y, t('equipment.change'), () => this.scene.restart({ picking: slot } satisfies EquipmentSceneData), {
-        disabled: ownedInSlot.length === 0,
-        minWidth: 100,
-        fontSize: '14px',
-        minHeight: 50,
-      })
+      this.renderSlotTile(slot, GRID_X[i % 2], GRID_Y[Math.floor(i / 2)])
     })
 
-    makePanel(this, GAME_W / 2, 494, 430, 62)
-    this.add
-      .text(70, 494, t('equipment.total'), { fontSize: '15px', fontFamily: FONT.family, fontStyle: 'bold', color: COLORS.text })
-      .setOrigin(0, 0.5)
+    this.renderSets()
+    this.renderResonance()
+
     makeStatRow(
       this,
-      140,
-      494,
+      GAME_W / 2 - 92,
+      598,
       [
         { icon: 'icon_hp', value: stats.maxHp },
         { icon: 'icon_atk', value: stats.atk },
         { icon: 'icon_def', value: stats.def },
       ],
-      { fontSize: '16px', iconSize: 18, gap: 20 },
+      { fontSize: '16px', iconSize: 18, gap: 26 },
     )
 
-    makeButton(this, GAME_W / 2, 576, t('common.back'), () => this.scene.start('Character'), {
+    makeButton(this, GAME_W / 2, 660, t('common.back'), () => this.scene.start('Character'), {
       variant: 'secondary',
       minWidth: 180,
       fontSize: '15px',
     })
   }
 
-  private renderPicker(slot: EquipSlot): void {
+  private renderSlotTile(slot: EquipSlot, cx: number, cy: number): void {
     const player = GameState.player!
-    const owned = ITEMS_BY_SLOT[slot].filter((item) => player.ownedItemIds.includes(item.id))
+    const id = player.equipped[slot]
+    const item = id ? ITEM_BY_ID.get(id) : undefined
+    const owned = itemsForSlot(slot).filter((it) => player.ownedItemIds.includes(it.id))
+
+    makePanel(this, cx, cy, TILE_W, TILE_H)
+    const left = cx - TILE_W / 2
+
+    const icon = makeEmoji(this, left + 30, cy - 6, item ? `item_${item.id}` : SLOT_ICON[slot], 28)
+    if (!item) icon.setAlpha(0.28)
 
     this.add
-      .text(GAME_W / 2, 82, t('equipment.pick'), {
-        fontSize: '13px',
+      .text(left + 52, cy - 22, t(SLOT_LABEL_KEYS[slot]), {
+        fontSize: '10px',
+        fontFamily: FONT.family,
+        color: COLORS.textDim,
+      })
+      .setOrigin(0, 0.5)
+    this.add
+      .text(left + 52, cy - 3, item ? item.name : t('equipment.empty'), {
+        fontSize: '12px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: item ? RARITY_COLOR[item.rarity] : COLORS.textDisabled,
+        wordWrap: { width: TILE_W - 64 },
+      })
+      .setOrigin(0, 0.5)
+
+    if (item) {
+      const rank = equipRank(player, item.id)
+      if (rank > 1) {
+        this.add
+          .text(left + 30, cy + 22, `★${rank}`, {
+            fontSize: '10px',
+            fontFamily: FONT.family,
+            fontStyle: 'bold',
+            color: COLORS.success,
+          })
+          .setOrigin(0.5)
+      }
+      this.add
+        .text(cx + TILE_W / 2 - 12, cy - 22, t(buildOf(item.buildTag).nameKey), {
+          fontSize: '9px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(1, 0.5)
+      makeStatRow(this, left + 52, cy + 22, bonusEntries(item.bonus), {
+        fontSize: '11px',
+        iconSize: 12,
+        gap: 10,
+      })
+      const extra = affixesOf(item).length
+      if (extra > 0) {
+        this.add
+          .text(cx + TILE_W / 2 - 12, cy + 22, `+${extra}`, {
+            fontSize: '11px',
+            fontFamily: FONT.family,
+            fontStyle: 'bold',
+            color: RARITY_COLOR[item.rarity],
+          })
+          .setOrigin(1, 0.5)
+      }
+    } else {
+      this.add
+        .text(left + 52, cy + 22, t('equipment.available', { count: owned.length }), {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(0, 0.5)
+    }
+
+    const hit = this.add.rectangle(cx, cy, TILE_W, TILE_H, 0xffffff, 0.001).setInteractive({ useHandCursor: true })
+    hit.on('pointerdown', () => this.scene.restart({ picking: slot, page: 0 }))
+  }
+
+  /** Sets only pay at two and four pieces, so partial progress has to be visible. */
+  private renderSets(): void {
+    const sets = activeSets(equippedItems(GameState.player!).map((item) => item.id))
+    this.add
+      .text(GAME_W / 2, 392, t('equipment.sets'), {
+        fontSize: '12px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.text,
+      })
+      .setOrigin(0.5)
+
+    if (sets.length === 0) {
+      this.add
+        .text(GAME_W / 2, 414, t('equipment.noSets'), {
+          fontSize: '11px',
+          fontFamily: FONT.family,
+          color: COLORS.textDisabled,
+        })
+        .setOrigin(0.5)
+      return
+    }
+
+    sets.slice(0, 3).forEach((active, i) => {
+      const y = 414 + i * 26
+      this.add
+        .text(38, y, t('equipment.setProgress', { name: active.set.name, worn: active.worn }), {
+          fontSize: '12px',
+          fontFamily: FONT.family,
+          fontStyle: 'bold',
+          color: active.twoActive ? COLORS.success : COLORS.textDim,
+        })
+        .setOrigin(0, 0.5)
+      this.add
+        .text(
+          160,
+          y,
+          active.fourActive ? active.set.fourPiece.description : active.set.twoPiece.description,
+          {
+            fontSize: '10px',
+            fontFamily: FONT.family,
+            color: active.twoActive ? COLORS.textDim : COLORS.textDisabled,
+            wordWrap: { width: 282 },
+          },
+        )
+        .setOrigin(0, 0.5)
+    })
+  }
+
+  /**
+   * Which builds the worn pieces add up to. Resonance costs two slots rather
+   * than a set's four, so it is the lean a player falls into by accident more
+   * often than by plan — which makes saying so out loud the whole job here.
+   */
+  private renderResonance(): void {
+    const worn = equippedItems(GameState.player!)
+    const active = activeResonances(worn.map((item) => item.buildTag))
+
+    this.add
+      .text(GAME_W / 2, 496, t('equip.resonanceTitle'), {
+        fontSize: '12px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: COLORS.text,
+      })
+      .setOrigin(0.5)
+
+    if (active.length === 0) {
+      this.add
+        .text(GAME_W / 2, 518, t('equip.noResonance', { count: RESONANCE_AT }), {
+          fontSize: '11px',
+          fontFamily: FONT.family,
+          color: COLORS.textDisabled,
+        })
+        .setOrigin(0.5)
+      return
+    }
+
+    // Named *and* spelled out, the same way a set bonus is: knowing a lean is
+    // in force is useless without knowing what it does.
+    active.forEach((build, i) => {
+      const y = 518 + i * 26
+      this.add
+        .text(38, y, t(build.nameKey), {
+          fontSize: '12px',
+          fontFamily: FONT.family,
+          fontStyle: 'bold',
+          color: COLORS.success,
+        })
+        .setOrigin(0, 0.5)
+      this.add
+        .text(160, y, t(build.resonanceKey), {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+          wordWrap: { width: 282 },
+        })
+        .setOrigin(0, 0.5)
+    })
+  }
+
+  /** Every owned piece for this slot, four per page with the affixes spelled out. */
+  private renderPicker(slot: EquipSlot): void {
+    const player = GameState.player!
+    const owned = itemsForSlot(slot).filter((item) => player.ownedItemIds.includes(item.id))
+    const pages = Math.max(1, Math.ceil(owned.length / PICKER_ROWS.length))
+    const page = Math.min(Math.max(this.page, 0), pages - 1)
+    const shown = owned.slice(page * PICKER_ROWS.length, (page + 1) * PICKER_ROWS.length)
+
+    this.add
+      .text(GAME_W / 2, 76, t('equipment.pick'), {
+        fontSize: '12px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
       })
       .setOrigin(0.5)
 
-    owned.slice(0, 5).forEach((item, i) => this.renderChoice(item, 140 + i * 82, slot))
+    if (owned.length === 0) {
+      this.add
+        .text(GAME_W / 2, 260, t('equipment.nothingOwned'), {
+          fontSize: '14px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(0.5)
+    }
 
+    shown.forEach((item, i) => this.renderPickerRow(item, slot, PICKER_ROWS[i]))
+
+    if (pages > 1) {
+      makeButton(
+        this,
+        GAME_W / 2 - 110,
+        PICKER_FOOTER_Y,
+        '◀',
+        () => this.scene.restart({ picking: slot, page: page - 1 }),
+        { disabled: page === 0, minWidth: 64, minHeight: 46, fontSize: '16px' },
+      )
+      this.add
+        .text(GAME_W / 2, PICKER_FOOTER_Y, `${page + 1} / ${pages}`, {
+          fontSize: '14px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(0.5)
+      makeButton(
+        this,
+        GAME_W / 2 + 110,
+        PICKER_FOOTER_Y,
+        '▶',
+        () => this.scene.restart({ picking: slot, page: page + 1 }),
+        { disabled: page >= pages - 1, minWidth: 64, minHeight: 46, fontSize: '16px' },
+      )
+    }
+
+    const worn = player.equipped[slot]
     makeButton(
       this,
-      GAME_W / 2 - 92,
-      PICKER_FOOTER_Y,
-      t('equipment.unequip'),
-      () => {
-        this.commit(unequipSlot(player, slot))
-      },
-      { variant: 'secondary', minWidth: 150, fontSize: '15px', disabled: player.equipped[slot] === null },
+      GAME_W / 2 - 96,
+      PICKER_ACTIONS_Y,
+      t('equipment.empty'),
+      () => this.commit(unequipSlot(player, slot), slot),
+      { variant: 'secondary', disabled: worn === null, minWidth: 156, fontSize: '14px' },
     )
-    makeButton(this, GAME_W / 2 + 92, PICKER_FOOTER_Y, t('common.back'), () => this.scene.restart({ picking: null }), {
+    makeButton(this, GAME_W / 2 + 96, PICKER_ACTIONS_Y, t('common.back'), () => this.scene.restart({ picking: null }), {
       variant: 'secondary',
-      minWidth: 150,
-      fontSize: '15px',
+      minWidth: 156,
+      fontSize: '14px',
     })
   }
 
-  private renderChoice(item: ShopItem, y: number, slot: EquipSlot): void {
+  private renderPickerRow(item: ShopItem, slot: EquipSlot, y: number): void {
     const player = GameState.player!
-    const isEquipped = player.equipped[slot] === item.id
+    const wornHere = player.equipped[slot] === item.id
+    // An accessory worn in the *other* accessory slot is not available here.
+    // Saying so beats a button that silently moves the piece across.
+    const wornElsewhere = !wornHere && equippedItems(player).some((i) => i.id === item.id)
+    const affixes = affixesOf(item)
+    const build = buildOf(item.buildTag)
 
-    makePanel(this, GAME_W / 2, y, 430, 72)
-    makeEmoji(this, 62, y, `item_${item.id}`, 36)
-    this.add
-      .text(100, y - 12, item.name, {
-        fontSize: '16px',
+    makePanel(this, GAME_W / 2, y, 440, PICKER_ROW_H)
+    const top = y - PICKER_ROW_H / 2
+
+    makeEmoji(this, 46, top + 24, `item_${item.id}`, 28)
+    const name = this.add
+      .text(70, top + 20, item.name, {
+        fontSize: '14px',
         fontFamily: FONT.family,
         fontStyle: 'bold',
         color: COLORS.text,
       })
       .setOrigin(0, 0.5)
-    makeStatRow(this, 100, y + 12, bonusEntries(item.bonus), { fontSize: '13px', iconSize: 15, gap: 12 })
+    const rarity = this.add
+      .text(name.x + name.width + 10, top + 21, t(RARITY_LABEL_KEYS[item.rarity]), {
+        fontSize: '9px',
+        fontFamily: FONT.family,
+        fontStyle: 'bold',
+        color: RARITY_COLOR[item.rarity],
+      })
+      .setOrigin(0, 0.5)
 
-    if (isEquipped) {
+    makeEmoji(this, rarity.x + rarity.width + 14, top + 21, build.icon, 12)
+    this.add
+      .text(rarity.x + rarity.width + 24, top + 21, t(build.nameKey), {
+        fontSize: '9px',
+        fontFamily: FONT.family,
+        color: COLORS.textDim,
+      })
+      .setOrigin(0, 0.5)
+
+    makeStatRow(this, 70, top + 44, bonusEntries(item.bonus), { fontSize: '11px', iconSize: 12, gap: 12 })
+
+    // Right of the stat line, where it reads as a property of the piece rather
+    // than of the hero: the rank it has earned, and what the next one costs.
+    const wins = winsFor(player, item.id)
+    const rank = equipRank(player, item.id)
+    const toNext = winsToNextRank(wins)
+    this.add
+      .text(
+        330,
+        top + 44,
+        toNext === null
+          ? t('equip.masteryMax', { rank: MAX_EQUIP_RANK })
+          : t('equip.masteryNext', { rank, wins, next: wins + toNext }),
+        {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: rank > 1 ? COLORS.success : COLORS.textDim,
+        },
+      )
+      .setOrigin(1, 0.5)
+
+    // Laid out downwards from whatever the block above actually measured, so a
+    // long affix roll pushes the effect line instead of printing on top of it.
+    let flow = top + 58
+    if (affixes.length > 0) {
+      const text = this.add
+        .text(30, flow, affixes.map((a) => `${a.config.name} ${a.text}`).join('  ·  '), {
+          fontSize: '9px',
+          fontFamily: FONT.family,
+          color: RARITY_COLOR[item.rarity],
+          wordWrap: { width: 420 },
+        })
+        .setOrigin(0, 0)
+      flow += text.height + 2
+    }
+
+    if (item.effect) {
       this.add
-        .text(378, y, t('equipment.worn'), {
-          fontSize: '14px',
+        .text(30, flow, `★ ${item.effect.description}`, {
+          fontSize: '10px',
           fontFamily: FONT.family,
           fontStyle: 'bold',
           color: COLORS.success,
+          wordWrap: { width: 420 },
         })
-        .setOrigin(0.5)
-    } else {
-      makeButton(this, 378, y, t('equipment.equip'), () => this.commit(equipItem(player, item.id)), {
-        minWidth: 96,
-        fontSize: '14px',
-        minHeight: 48,
-      })
+        .setOrigin(0, 0)
     }
+
+    makeButton(
+      this,
+      386,
+      top + 24,
+      wornHere ? t('equipment.equipped') : wornElsewhere ? t('equipment.elsewhere') : t('equipment.equip'),
+      () => this.commit(equipItem(player, item.id, slot), slot),
+      {
+        variant: wornHere ? 'secondary' : 'primary',
+        disabled: wornHere || wornElsewhere,
+        minWidth: 92,
+        minHeight: 40,
+        fontSize: '12px',
+      },
+    )
   }
 
-  private commit(next: typeof GameState.player): void {
-    if (!next) return
+  private commit(next: PlayerState, slot: EquipSlot): void {
     GameState.player = next
     void persist(next, GameState.userId).then((stamped) => {
       GameState.player = stamped
     })
-    this.scene.restart({ picking: null } satisfies EquipmentSceneData)
+    this.scene.restart({ picking: slot, page: this.page })
   }
 }
-

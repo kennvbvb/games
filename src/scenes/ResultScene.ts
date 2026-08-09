@@ -1,6 +1,14 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { STAGES, isBossStage } from '../data/stages'
+import { isTowerStageId, towerFloor } from '../data/tower'
+import { isRiftStageId } from '../data/rifts'
+import { recordRiftCleared, riftAvailable } from '../systems/rift'
+import { TOWER_RERUN_PAYOUT, grantFloorRelic, recordFloorCleared } from '../systems/tower'
+import { grantRemixRelic } from '../systems/bossRemix'
+import { recordContractWin } from '../systems/contracts'
+import { isRemixStageId } from '../data/bossRemix'
+import { recordFightWon } from '../systems/equipmentMastery'
 import { recordEvent } from '../services/analytics'
 import { GameState } from '../state/GameState'
 import { applyRewards } from '../systems/rewards'
@@ -14,6 +22,11 @@ import { drawStageScenery } from '../ui/scenery'
 import { ambientTween } from '../ui/motion'
 import { COLORS, FONT } from '../ui/styles'
 import type { PlayerState, StageConfig } from '../types'
+import { LOSS_REASON_KEYS, diagnoseLoss } from '../admin/battleLab'
+import { enemyFor } from '../data/difficulties'
+import { activeDifficulty } from '../systems/campaignModes'
+import { recommendPlan } from '../systems/difficulty'
+import { PLAN_BY_ID } from '../data/battlePlans'
 import { t } from '../i18n'
 
 /** How long the result screen lingers before the next queued auto-battle. */
@@ -30,8 +43,68 @@ export class ResultScene extends Phaser.Scene {
     const stage = GameState.selectedStage!
     const prevLevel = GameState.player!.level
 
-    let player = applyRewards(GameState.player!, result)
+    const inTower = isTowerStageId(stage.id)
+    const inRift = isRiftStageId(stage.id)
+    const inRemix = isRemixStageId(stage.id)
+    // Read before the win is recorded: once the week is marked cleared the
+    // answer flips, and a rift beaten twice in a week would pay twice.
+    const riftPays = inRift && riftAvailable(GameState.player!)
+    // Also read before the record moves: a floor already beaten pays a quarter.
+    // Re-running the tower has to stay *worth something* — it is where a stuck
+    // player farms — without being a better gold rate than the floor they
+    // cannot beat yet, which is what a full payout on floor 1 would be.
+    const towerRerun = inTower && stage.order <= GameState.player!.tower.bestFloor
+
+    // A rift already cleared this week still counts as a battle won — it just
+    // does not pay. Zeroing the payout rather than skipping `applyRewards`
+    // outright keeps the lifetime tally (and the achievements built on it)
+    // honest about a fight that really did happen.
+    const payout =
+      inRift && !riftPays
+        ? { exp: 0, gold: 0 }
+        : towerRerun
+          ? {
+              exp: Math.round(result.rewards.exp * TOWER_RERUN_PAYOUT),
+              gold: Math.round(result.rewards.gold * TOWER_RERUN_PAYOUT),
+            }
+          : result.rewards
+    let player = applyRewards(GameState.player!, { ...result, rewards: payout })
+    // A tower floor is not campaign progress. Its id is outside the `stage-`
+    // namespace, so recording it as a cleared stage would be dropped by the
+    // validator on the next load, and setting it as the farming target would
+    // silently switch offline rewards off. The climb has its own record.
+    // Worn gear earns its mastery from the fight that just happened, whichever
+    // mode it was — the tower and the rift both scale to the player, so neither
+    // can be farmed for it. Credited before the win is recorded so that
+    // clearing a *new* stage is measured against the frontier the player was
+    // standing on when they fought it, not the one they just moved to.
+    if (result.win) player = recordFightWon(player, stage)
+    // Contracts see every mode, from the one place a fight finishes — four
+    // separate call sites would be four chances for one of them to drift.
     if (result.win) {
+      player = recordContractWin(
+        player,
+        stage,
+        result,
+        GameState.selectedPlan ?? player.settings.battlePlan,
+      )
+    }
+
+    // A remix is not campaign progress either: `remix-<world>-<tier>` is
+    // outside the `stage-` namespace, so recording it would be dropped by the
+    // validator, and setting it as the farming target would switch offline
+    // rewards off. Owning the relic *is* the first-clear record.
+    if (result.win && inRemix) player = grantRemixRelic(player, stage.id)
+
+    if (result.win && inTower) {
+      // The relic before the record: `grantFloorRelic` is idempotent, but
+      // reading "first clear" off a record that has already moved would be a
+      // trap waiting for the next person to add a first-clear reward.
+      player = grantFloorRelic(player, stage.order)
+      player = recordFloorCleared(player, stage.order)
+    } else if (result.win && inRift) {
+      player = recordRiftCleared(player)
+    } else if (result.win && !inRemix) {
       const nextUnlock = Math.max(player.stageProgress.highestUnlocked, stage.order + 1)
       const completedStageIds = player.stageProgress.completedStageIds.includes(stage.id)
         ? player.stageProgress.completedStageIds
@@ -61,20 +134,30 @@ export class ResultScene extends Phaser.Scene {
     if (!result.win) GameState.stopAutoBattle()
     if (result.win) advanceTutorial(2)
 
-    const nextStage = STAGES.find((s) => s.order === stage.order + 1) ?? null
-    const nextUnlocked = nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
+    const nextStage = inRift || inRemix
+      ? null
+      : inTower
+        ? towerFloor(stage.order + 1)
+        : (STAGES.find((s) => s.order === stage.order + 1) ?? null)
+    // In the tower the next floor is only ever offered after a win, which is
+    // exactly the rule `canAttempt` enforces — one past the deepest beaten.
+    const nextUnlocked = inRift || inRemix
+      ? false
+      : inTower
+        ? result.win
+        : nextStage !== null && nextStage.order <= player.stageProgress.highestUnlocked
 
     drawStageScenery(this, stage.bg, stage.order, { horizon: 470 })
-    this.renderOutcome(result.win, player, prevLevel)
+    this.renderOutcome(result.win, player, prevLevel, stage)
 
     if (GameState.autoRunsRemaining > 0) {
       this.runAutoBattle(player, stage, nextStage, nextUnlocked)
       return
     }
-    this.renderActions(result.win, stage, nextStage, nextUnlocked)
+    this.renderActions(result.win, stage, nextStage, nextUnlocked, inTower, inRift, inRemix)
   }
 
-  private renderOutcome(win: boolean, player: PlayerState, prevLevel: number): void {
+  private renderOutcome(win: boolean, player: PlayerState, prevLevel: number, stage: StageConfig): void {
     const result = GameState.lastBattleResult!
     const banner = makeEmoji(this, GAME_W / 2, 120, win ? 'icon_victory' : 'icon_defeat', 76)
     this.tweens.add({
@@ -129,15 +212,37 @@ export class ResultScene extends Phaser.Scene {
     } else {
       // A stalemate is not a defeat — telling the player to level up when the
       // real problem is that nobody can finish would be the wrong advice.
+      const reason = diagnoseLoss(result, enemyFor(stage.enemy, activeDifficulty(player)).maxHp)
       this.add
-        .text(GAME_W / 2, 292, result.outcome === 'timeout' ? t('battle.stalemate') : t('result.noRewards'), {
-          fontSize: '14px',
-          fontFamily: FONT.family,
-          color: COLORS.textDim,
-          align: 'center',
-          wordWrap: { width: 330 },
-        })
+        .text(
+          GAME_W / 2,
+          286,
+          reason ? t(LOSS_REASON_KEYS[reason]) : t('result.noRewards'),
+          {
+            fontSize: '14px',
+            fontFamily: FONT.family,
+            color: COLORS.textDim,
+            align: 'center',
+            wordWrap: { width: 340 },
+          },
+        )
         .setOrigin(0.5)
+
+      // "Get stronger" is advice the player can already guess. If a plan they
+      // did not pick would have cleared it, that is the thing worth saying.
+      const better = recommendPlan(player, stage)
+      if (better && better.plan !== (GameState.selectedPlan ?? player.settings.battlePlan)) {
+        this.add
+          .text(GAME_W / 2, 320, t('loss.tryPlan', { plan: t(PLAN_BY_ID.get(better.plan)!.nameKey) }), {
+            fontSize: '12px',
+            fontFamily: FONT.family,
+            fontStyle: 'bold',
+            color: COLORS.gold,
+            align: 'center',
+            wordWrap: { width: 340 },
+          })
+          .setOrigin(0.5)
+      }
     }
   }
 
@@ -186,6 +291,9 @@ export class ResultScene extends Phaser.Scene {
     stage: StageConfig,
     nextStage: StageConfig | null,
     nextUnlocked: boolean,
+    inTower: boolean,
+    inRift: boolean,
+    inRemix: boolean,
   ): void {
     const startRun = (target: StageConfig, runs: number) => {
       GameState.selectedStage = target
@@ -201,6 +309,31 @@ export class ResultScene extends Phaser.Scene {
         fontSize: '16px',
       })
       makeButton(this, GAME_W / 2, 452, t('result.farmTen'), () => startRun(stage, 10), {
+        variant: 'secondary',
+        minWidth: 280,
+        fontSize: '15px',
+      })
+    } else if (win && inRemix) {
+      // A remix pays gold and exp on every clear, so farming it is legitimate —
+      // unlike the rift, which pays once a week.
+      makeButton(this, GAME_W / 2, 384, t('result.farmTen'), () => startRun(stage, 10), {
+        minWidth: 280,
+        fontSize: '16px',
+      })
+      makeButton(this, GAME_W / 2, 452, t('remix.leave'), () => this.scene.start('Remix'), {
+        variant: 'secondary',
+        minWidth: 280,
+        fontSize: '15px',
+      })
+    } else if (win && inRift) {
+      // No farm button here. The rift pays once a week, so ten runs of it would
+      // be ten fights for nothing — offering it would read as a reward loop.
+      makeButton(this, GAME_W / 2, 384, t('rift.again'), () => startRun(stage, 0), {
+        minWidth: 280,
+        fontSize: '16px',
+        icon: 'decor_portal',
+      })
+      makeButton(this, GAME_W / 2, 452, t('rift.leave'), () => this.scene.start('Rift'), {
         variant: 'secondary',
         minWidth: 280,
         fontSize: '15px',
@@ -232,12 +365,21 @@ export class ResultScene extends Phaser.Scene {
       fontSize: '14px',
       minHeight: 50,
     })
-    makeButton(this, GAME_W / 2 + 92, 522, t('result.stageSelect'), () => this.scene.start('StageSelect'), {
-      variant: 'secondary',
-      minWidth: 168,
-      fontSize: '14px',
-      minHeight: 50,
-    })
+    makeButton(
+      this,
+      GAME_W / 2 + 92,
+      522,
+      inRift
+        ? t('rift.leave')
+        : inTower
+          ? t('tower.leave')
+          : inRemix
+            ? t('remix.leave')
+            : t('result.stageSelect'),
+      () =>
+        this.scene.start(inRift ? 'Rift' : inTower ? 'Tower' : inRemix ? 'Remix' : 'StageSelect'),
+      { variant: 'secondary', minWidth: 168, fontSize: '14px', minHeight: 50 },
+    )
 
     makeTutorialTip(this, 2, t('tutorial.step2'), 606)
   }

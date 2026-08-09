@@ -1,7 +1,8 @@
 import Phaser from 'phaser'
 import { GAME_W, setupScene } from '../config/layout'
 import { BALANCE } from '../data/balance'
-import { ITEMS } from '../data/items'
+import { buildOf } from '../data/builds'
+import { SHOP_ITEMS } from '../data/items'
 import { GameState } from '../state/GameState'
 import { persist } from '../services/saveService'
 import { recordEvent } from '../services/analytics'
@@ -127,9 +128,9 @@ export class ShopScene extends Phaser.Scene {
   }
 
   private renderGear(): void {
-    const pageCount = Math.ceil(ITEMS.length / ITEMS_PER_PAGE)
+    const pageCount = Math.ceil(SHOP_ITEMS.length / ITEMS_PER_PAGE)
     this.page = Math.min(this.page, pageCount - 1)
-    const pageItems = ITEMS.slice(this.page * ITEMS_PER_PAGE, (this.page + 1) * ITEMS_PER_PAGE)
+    const pageItems = SHOP_ITEMS.slice(this.page * ITEMS_PER_PAGE, (this.page + 1) * ITEMS_PER_PAGE)
 
     this.subtitle(t('shop.gearHint'))
     pageItems.forEach((item, i) => this.renderGearCard(item, ROW_YS[i]))
@@ -139,7 +140,7 @@ export class ShopScene extends Phaser.Scene {
       fontSize: '14px',
     })
     this.add
-      .text(GAME_W / 2, 572, `Page ${this.page + 1} / ${pageCount}`, {
+      .text(GAME_W / 2, 572, `${this.page + 1} / ${pageCount}`, {
         fontSize: '14px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -160,9 +161,16 @@ export class ShopScene extends Phaser.Scene {
       y,
       icon: `item_${item.id}`,
       name: item.name,
+      tag: t(buildOf(item.buildTag).nameKey),
       bonus: bonusEntries(item.bonus),
-      note: owned ? t('shop.inBag') : locked ? t('shop.requiresLevel', { level: item.minLevel ?? 0 }) : '',
+      // A level gate blocks the purchase, so it outranks everything. After
+      // that the effect is the reason the piece exists and earns the line —
+      // "In bag" is already said by the tick on the right.
+      note: locked
+        ? t('shop.requiresLevel', { level: item.minLevel ?? 0 })
+        : (item.effect?.description ?? (owned ? t('shop.inBag') : '')),
       noteIcon: locked ? 'icon_lock' : undefined,
+      noteHighlight: !locked && item.effect !== undefined,
       cost: owned ? null : item.cost,
       disabled: locked || player.gold < item.cost,
       ownedTag: owned,
@@ -178,9 +186,12 @@ export class ShopScene extends Phaser.Scene {
     y: number
     icon: string
     name: string
+    /** Small label beside the name; the build a piece leans towards. */
+    tag?: string
     bonus: StatEntry[]
     note: string
     noteIcon?: string
+    noteHighlight?: boolean
     cost: number | null
     disabled: boolean
     ownedTag?: boolean
@@ -188,7 +199,7 @@ export class ShopScene extends Phaser.Scene {
   }): void {
     makePanel(this, GAME_W / 2, opts.y, 430, 84)
     makeEmoji(this, 64, opts.y, opts.icon, 40)
-    this.add
+    const name = this.add
       .text(100, opts.y - 20, opts.name, {
         fontSize: '16px',
         fontFamily: FONT.family,
@@ -196,6 +207,15 @@ export class ShopScene extends Phaser.Scene {
         color: COLORS.text,
       })
       .setOrigin(0, 0.5)
+    if (opts.tag) {
+      this.add
+        .text(name.x + name.width + 10, opts.y - 19, opts.tag, {
+          fontSize: '10px',
+          fontFamily: FONT.family,
+          color: COLORS.textDim,
+        })
+        .setOrigin(0, 0.5)
+    }
     makeStatRow(this, 100, opts.y + 3, opts.bonus, { fontSize: '13px', iconSize: 15, gap: 12 })
 
     if (opts.note) {
@@ -205,7 +225,9 @@ export class ShopScene extends Phaser.Scene {
         .text(noteX, opts.y + 25, opts.note, {
           fontSize: '11px',
           fontFamily: FONT.family,
-          color: opts.ownedTag ? COLORS.success : COLORS.textDim,
+          fontStyle: opts.noteHighlight ? 'bold' : 'normal',
+          color: opts.ownedTag || opts.noteHighlight ? COLORS.success : COLORS.textDim,
+          wordWrap: { width: 224 },
         })
         .setOrigin(0, 0.5)
     }

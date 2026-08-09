@@ -49,6 +49,12 @@ framing is not uniform across them: some glyphs are head-and-shoulders and
 others full-body, and Orc's second look is a mask rather than a figure. That is
 the cost of holding to a single licensed source instead of mixing packs.
 
+Per-asset attribution — every texture key, its file, source URL and licence —
+is generated into [`public/assets/THIRD_PARTY_ASSETS.md`](./public/assets/THIRD_PARTY_ASSETS.md)
+by `npm run assets`, so adding a sprite cannot leave its attribution behind. A
+test walks every texture the data files reference and checks it against both
+that manifest and the files on disk.
+
 The home-screen icons in `public/assets/icons/` are derived from the same
 source — `avatar_cat.png` scaled onto the game's background colour by
 `scripts/make-icons.mjs` — and are covered by the same license.

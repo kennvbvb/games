@@ -26,6 +26,14 @@ const WORLD_META: { nameKey: MessageKey; icon: string }[] = [
   { nameKey: 'world.10', icon: 'decor_snowflake' },
   { nameKey: 'world.11', icon: 'decor_portal' },
   { nameKey: 'world.12', icon: 'decor_feather' },
+  { nameKey: 'world.13', icon: 'decor_shell' },
+  { nameKey: 'world.14', icon: 'decor_flower' },
+  { nameKey: 'world.15', icon: 'decor_moon' },
+  { nameKey: 'world.16', icon: 'decor_fire' },
+  { nameKey: 'world.17', icon: 'decor_comet' },
+  { nameKey: 'world.18', icon: 'decor_orb' },
+  { nameKey: 'world.19', icon: 'decor_clock' },
+  { nameKey: 'world.20', icon: 'decor_sun' },
 ]
 
 /**
@@ -58,7 +66,7 @@ export function worldCleared(state: PlayerState, world: World): number {
 
 /**
  * The page to open on: where the player actually is, not where they started.
- * With twelve worlds, defaulting to the first would mean up to eleven taps
+ * With twenty worlds, defaulting to the first would mean up to nineteen taps
  * before reaching the next fight.
  */
 export function worldPageFor(state: PlayerState): number {

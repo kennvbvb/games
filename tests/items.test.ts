@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ITEMS, ITEM_BY_ID } from '../src/data/items'
+import { ITEMS, ITEM_BY_ID, ITEM_KINDS, SHOP_ITEMS } from '../src/data/items'
 import { buyItem, effectiveStats } from '../src/systems/upgrades'
 import { createDefaultPlayerState } from '../src/state/playerState'
 import { parsePlayerState } from '../src/state/validate'
@@ -27,20 +27,32 @@ describe('shop items', () => {
     }
   })
 
-  it('gives every slot something in the late game', () => {
-    for (const slot of ['weapon', 'armor', 'charm'] as const) {
-      const late = ITEMS.filter((i) => i.slot === slot && (i.minLevel ?? 1) >= 15)
-      expect(late.length, `${slot} has no late-game option`).toBeGreaterThanOrEqual(2)
+  it('gives every kind something in the late game', () => {
+    for (const kind of ITEM_KINDS) {
+      const late = ITEMS.filter((i) => i.kind === kind && (i.minLevel ?? 1) >= 15)
+      expect(late.length, `${kind} has no late-game option`).toBeGreaterThanOrEqual(2)
     }
   })
 
   it('has no item that is simply better than a cheaper one', () => {
     // A piece that wins on every stat while costing less ends the slot as a
-    // choice — which is the whole point of one item per slot.
+    // choice — which is the whole point of one item per slot. Affixes are
+    // deliberately not counted here: they are the *reason* two similarly
+    // statted pieces differ, so folding them in would let a dominant stat
+    // block hide behind a weaker affix.
+    //
+    // A piece carrying a **named effect** is exempt from being dominated, and
+    // only from that direction. Void Pike has less raw attack than Worldbreaker
+    // and costs more, so on stats alone it looks pointless — but it strips six
+    // defence, which is the answer to an armoured enemy that no amount of
+    // attack solves once damage is on the minimum-1 floor. An effect is a real
+    // reason to exist. A piece with an effect can still *dominate* a plain one,
+    // and that half of the check stays live.
     const stats = (i: (typeof ITEMS)[number]) => [i.bonus.hp ?? 0, i.bonus.atk ?? 0, i.bonus.def ?? 0]
     for (const a of ITEMS) {
       for (const b of ITEMS) {
-        if (a.id === b.id || a.slot !== b.slot) continue
+        if (a.id === b.id || a.kind !== b.kind) continue
+        if (b.effect) continue
         const [ah, aa, ad] = stats(a)
         const [bh, ba, bd] = stats(b)
         const betterEverywhere = ah >= bh && aa >= ba && ad >= bd && (ah > bh || aa > ba || ad > bd)
@@ -53,7 +65,10 @@ describe('shop items', () => {
   it('keeps cost climbing with power', () => {
     const power = (i: (typeof ITEMS)[number]) =>
       (i.bonus.hp ?? 0) / 4 + (i.bonus.atk ?? 0) * 1.5 + (i.bonus.def ?? 0)
-    const sorted = [...ITEMS].sort((a, b) => a.cost - b.cost)
+    // Shop stock only: won gear is priced at zero, so including it would
+    // compare a free legendary against a 60-gold starter sword and call the
+    // catalogue broken.
+    const sorted = [...SHOP_ITEMS].sort((a, b) => a.cost - b.cost)
     // Not strictly monotonic — same-tier alternates trade off — but the
     // cheapest third must not out-power the dearest third.
     const third = Math.floor(sorted.length / 3)
@@ -92,7 +107,7 @@ describe('shop items', () => {
     const owned = { ...state, ownedItemIds: ['ruby-ring'] }
     expect(effectiveStats(owned)).toEqual(base)
 
-    const worn = effectiveStats({ ...owned, equipped: { ...state.equipped, charm: 'ruby-ring' } })
+    const worn = effectiveStats({ ...owned, equipped: { ...state.equipped, accessory1: 'ruby-ring' } })
     expect(worn.maxHp).toBe(base.maxHp + (ring.bonus.hp ?? 0))
     expect(worn.atk).toBe(base.atk + (ring.bonus.atk ?? 0))
     expect(worn.def).toBe(base.def)

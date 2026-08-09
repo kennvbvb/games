@@ -6,6 +6,9 @@ import { heroTexture, raceOf } from '../data/races'
 import { expToNext } from '../systems/leveling'
 import { effectiveStats, equippedItems, totalBonus } from '../systems/upgrades'
 import { makeButton } from '../ui/components/makeButton'
+import { availableSkillPoints } from '../systems/skills'
+import { masteryRank } from '../systems/mastery'
+import { EQUIP_SLOTS } from '../systems/upgrades'
 import { makePanel } from '../ui/components/makePanel'
 import { makeBar } from '../ui/components/makeBar'
 import { makeEmoji } from '../ui/components/makeEmoji'
@@ -102,7 +105,7 @@ export class CharacterScene extends Phaser.Scene {
     const worn = equippedItems(player).length
     makeEmoji(this, 128, 500, 'icon_bag', 17)
     this.add
-      .text(146, 500, t('character.gearSummary', { worn, owned: player.ownedItemIds.length }), {
+      .text(146, 500, t('character.gearSummary', { worn, slots: EQUIP_SLOTS.length, owned: player.ownedItemIds.length }), {
         fontSize: '15px',
         fontFamily: FONT.family,
         color: COLORS.textDim,
@@ -142,15 +145,31 @@ export class CharacterScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
 
-    makeButton(this, GAME_W / 2 - 92, 604, t('character.equipment'), () => this.scene.start('Equipment'), {
-      minWidth: 168,
-      fontSize: '15px',
-      icon: 'icon_bag',
+    // Four across rather than a menu: the skill badge is the only thing that
+    // tells a player an unspent point is sitting there, and the mastery rank is
+    // the only place the passive ramp is visible at all, so both have to be on
+    // the page they already visit to look at their build.
+    const points = availableSkillPoints(player)
+    const rank = masteryRank(player)
+    makeButton(this, 66, 604, t('character.equipment'), () => this.scene.start('Equipment'), {
+      minWidth: 108,
+      fontSize: '12px',
     })
-    makeButton(this, GAME_W / 2 + 92, 604, t('menu.shop'), () => this.scene.start('Shop'), {
-      minWidth: 168,
-      fontSize: '15px',
-      icon: 'icon_cart',
+    makeButton(
+      this,
+      182,
+      604,
+      points > 0 ? t('character.skillsBadge', { points }) : t('character.skills'),
+      () => this.scene.start('SkillTree'),
+      { variant: points > 0 ? 'primary' : 'secondary', minWidth: 108, fontSize: '12px' },
+    )
+    makeButton(this, 298, 604, t('character.masteryBadge', { rank }), () => this.scene.start('Mastery'), {
+      minWidth: 108,
+      fontSize: '12px',
+    })
+    makeButton(this, 414, 604, t('menu.shop'), () => this.scene.start('Shop'), {
+      minWidth: 108,
+      fontSize: '12px',
     })
     makeButton(this, GAME_W / 2, 670, t('common.back'), () => this.scene.start('MainMenu'), {
       variant: 'secondary',
