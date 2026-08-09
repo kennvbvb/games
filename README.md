@@ -29,8 +29,8 @@ The game works fully in guest mode with zero configuration — progress is store
    (Project Settings → API).
 4. Restart `npm run dev`.
 
-Without a `.env` file, the "Sign In"/"Sign Up" buttons are disabled and the game falls back to
-guest-only mode automatically.
+Without a `.env` file, every control that would call a server is disabled and the game falls
+back to guest-only mode automatically — see [Accounts](#accounts).
 
 ## Saves
 
@@ -71,6 +71,51 @@ again.
 An unreachable cloud is not a fork, and a save upgraded from before the marker
 existed defaults to "assume in sync", so neither situation can pop the dialog
 spuriously.
+
+## Accounts
+
+Four things happen on one screen — sign in, sign up, forgotten password and
+reset — because they share every fiddly part: the form, the busy guard, the
+status line, and what happens once a session exists. Four scenes would have
+meant four copies of the double-submit guard, and the copy that got forgotten
+would have been the bug.
+
+**Addresses are normalised, not just validated.** Trimmed because a trailing
+space from a phone keyboard is the commonest reason a correct password
+"fails", and lower-cased because one mailbox must not become two accounts.
+It happens inside the auth service rather than at the call sites, so no caller
+can forget. Validation itself is a shape check only: the sole authority on
+whether an address exists is the mail sent to it, and anything stricter starts
+refusing real addresses.
+
+**The minimum password length applies only where a password is being chosen.**
+Enforcing a new minimum on sign-in would lock out every account created before
+the rule existed — a self-inflicted outage rather than a security measure,
+since the server is what actually decides whether the password is right. A test
+pins this.
+
+**A forgotten-password request says the same thing either way.** Reporting "no
+such account" would turn the form into a way to ask which addresses are
+registered.
+
+**Sign-out reports failure.** It used to swallow the error and return `void`,
+which made a failed sign-out indistinguishable from a successful one: the
+player was returned to the sign-in screen still holding a live session, and the
+next visit resumed straight into the account they had just left. On a shared
+device that is worse than a bug. Local state is now cleared only if the server
+agreed.
+
+**Without a cloud configured**, exactly the controls that would call a server
+are disabled — not the navigation. A player who taps "Forgot password?" and
+lands on a screen explaining why it is unavailable has learned something; a
+dead grey link teaches nothing. Guest play is never disabled.
+
+`onAuthStateChange` covers the three transitions the game has to react to: a
+password-recovery link arriving (without it the player would be silently signed
+in and shown the main menu instead of the form they were sent there to fill
+in), a session ending somewhere this tab did not do it, and the same in
+reverse. The subscription is torn down on scene shutdown — a scene that
+restarts without unsubscribing accumulates a listener per restart.
 
 ## Analytics
 

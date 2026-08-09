@@ -333,8 +333,32 @@ export class MainMenuScene extends Phaser.Scene {
     claim.setDepth(12)
   }
 
+  /**
+   * Signs out, and only clears local state if the server agreed.
+   *
+   * The failure case is the point. A sign-out that errored used to be
+   * indistinguishable from one that worked: the player was returned to the
+   * sign-in screen while still holding a live session, so the next visit
+   * resumed straight back into the account they had just left — which reads as
+   * "sign out is broken" and, on a shared device, is worse than that.
+   */
   private async handleExit(): Promise<void> {
-    if (GameState.userId) await signOut()
+    if (GameState.userId) {
+      const result = await signOut()
+      if (!result.ok) {
+        this.add
+          .text(GAME_W / 2, GAME_H - 24, t('auth.signOutFailed'), {
+            fontSize: '12px',
+            fontFamily: FONT.family,
+            color: COLORS.danger,
+            align: 'center',
+            wordWrap: { width: GAME_W - 40 },
+          })
+          .setOrigin(0.5)
+          .setDepth(20)
+        return
+      }
+    }
     GameState.userId = null
     GameState.player = null
     this.scene.start('Auth')
