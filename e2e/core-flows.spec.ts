@@ -199,6 +199,68 @@ test.describe('idle and accessibility', () => {
   })
 })
 
+test.describe('auth screen', () => {
+  // Cloud accounts are not configured in CI, so anything that needs a server is
+  // switched off. What is worth driving here is the part that works regardless:
+  // the mode switching, the fields each mode asks for, and the guarantee that a
+  // player can always still reach the game as a guest.
+
+  test('offers a way out of a forgotten password, and back again', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave())
+
+    await expect(page.locator('#password')).toBeVisible()
+    await expect(page.locator('#confirm')).toHaveCount(0)
+
+    await page.locator('#email').fill('  Player@Example.COM ')
+    await page.locator('#forgot').click()
+    await game.settle()
+
+    // Forgot asks for an address and nothing else...
+    await expect(page.locator('#email')).toBeVisible()
+    await expect(page.locator('#password')).toHaveCount(0)
+    // ...and carries the address across rather than making them retype it.
+    //
+    // Case survives but the surrounding spaces do not, and that is the browser
+    // rather than this code: an `<input type="email">` runs a value sanitisation
+    // step that strips leading and trailing whitespace. Worth knowing, and worth
+    // not relying on — normalizeEmail still trims, because the case-folding half
+    // has no such help and nothing stops a future field being a plain text one.
+    expect(await page.locator('#email').inputValue()).toBe('Player@Example.COM')
+
+    await page.locator('#back').click()
+    await game.settle()
+    await expect(page.locator('#password')).toBeVisible()
+    await expect(page.locator('#guest')).toBeVisible()
+  })
+
+  test('asks a new account to confirm its password', async ({ page }) => {
+    const game = new GamePage(page)
+    await game.open(makeSave())
+
+    await page.locator('#secondary').click()
+    await game.settle()
+    await expect(page.locator('#confirm')).toBeVisible()
+
+    await page.locator('#back').click()
+    await game.settle()
+    await expect(page.locator('#confirm')).toHaveCount(0)
+  })
+
+  test('never traps a player who cannot use an account', async ({ page }) => {
+    // The guarantee that matters most on this screen: with no cloud configured
+    // every server-backed control is off, and guest play still gets you in.
+    const game = new GamePage(page)
+    await game.open(makeSave())
+
+    await expect(page.locator('#primary')).toBeDisabled()
+    await expect(page.locator('#guest')).toBeEnabled()
+
+    await game.continueAsGuest()
+    expect(await game.save()).not.toBeNull()
+  })
+})
+
 test.describe('quests', () => {
   test('a completed achievement pays out exactly once', async ({ page }) => {
     const game = new GamePage(page)
