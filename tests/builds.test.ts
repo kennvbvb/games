@@ -3,7 +3,7 @@ import { BUILDS, BUILD_TAGS, RESONANCE_AT, activeResonances, buildOf, tagCounts 
 import { ITEMS, ITEM_BY_ID, SHOP_ITEMS } from '../src/data/items'
 import { STAGES } from '../src/data/stages'
 import { NEUTRAL, foldModifiers } from '../src/systems/combatModifiers'
-import { resolveBattle } from '../src/systems/combat'
+import { MIN_DAMAGE_FRACTION, resolveBattle } from '../src/systems/combat'
 import { playerBattleInputs } from '../src/systems/playerBattle'
 import { statsForLevel } from '../src/systems/leveling'
 import { createDefaultPlayerState } from '../src/state/playerState'
@@ -120,23 +120,37 @@ describe('the three builds', () => {
 })
 
 describe('pierce is the answer armour has', () => {
-  it('beats an armoured enemy that raw attack cannot', () => {
-    // The exact trap the balance walk kept finding: once armour pushes damage
-    // onto the minimum-1 floor, more attack buys nothing and only taking the
-    // armour away helps.
-    const wall = { name: 'Wall', sprite: 'enemy_1', maxHp: 400, atk: 5, def: 60 }
-    const player = { maxHp: 300, atk: 58, def: 10 }
+  it('buys more than the same points of raw attack would', () => {
+    // Armour is subtracted, so a point of pierce and a point of attack are worth
+    // the same *through* armour — but pierce also gets you off the proportional
+    // floor sooner, and it is the only one of the two that gear actually offers
+    // at this scale.
+    const wall = { name: 'Wall', sprite: 'enemy_1', maxHp: 900, atk: 5, def: 60 }
+    const player = { maxHp: 300, atk: 80, def: 10 }
     const rewards = { exp: 0, gold: 0 }
+    const hit = (r: ReturnType<typeof resolveBattle>) =>
+      r.log.find((e) => e.attacker === 'player')!.damage
 
     const blunt = resolveBattle({ player, enemy: wall, rewards })
-    const sharper = resolveBattle({ player: { ...player, atk: 61 }, enemy: wall, rewards })
-    const pierced = resolveBattle({ player, enemy: wall, rewards, modifiers: [{ pierce: 8 }] })
+    const pierced = resolveBattle({ player, enemy: wall, rewards, modifiers: [{ pierce: 20 }] })
 
-    // Three more attack against sixty defence is still the floor.
-    expect(blunt.log.find((e) => e.attacker === 'player')!.damage).toBe(1)
-    expect(sharper.log.find((e) => e.attacker === 'player')!.damage).toBe(1)
-    expect(pierced.log.find((e) => e.attacker === 'player')!.damage).toBeGreaterThan(1)
-    expect(pierced.enemyHpLeft).toBeLessThan(blunt.enemyHpLeft)
+    // Per blow, which is the claim. Both fights end in a kill, so comparing
+    // health left would compare two zeroes.
+    expect(hit(pierced)).toBeGreaterThan(hit(blunt))
+    expect(hit(pierced) - hit(blunt)).toBe(20)
+  })
+
+  it('is not needed to escape armour entirely, because nothing is', () => {
+    // What used to be true here — that heavy armour pinned every blow to 1 — is
+    // no longer true, and that is deliberate. Armour caps a blow at a share of
+    // the attack rather than erasing it. Pierce is an optimisation now, not a
+    // rescue.
+    const fortress = { name: 'Fort', sprite: 'enemy_1', maxHp: 900, atk: 5, def: 10_000 }
+    const player = { maxHp: 300, atk: 80, def: 10 }
+    const r = resolveBattle({ player, enemy: fortress, rewards: { exp: 0, gold: 0 } })
+    expect(r.log.find((e) => e.attacker === 'player')!.damage).toBe(
+      Math.round(80 * MIN_DAMAGE_FRACTION),
+    )
   })
 
   it('never turns missing armour into bonus damage', () => {

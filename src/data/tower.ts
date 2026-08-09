@@ -39,11 +39,19 @@ const HP_GROWTH = 1.035
 const ATK_BASE = 92
 const ATK_GROWTH = 1.022
 /**
- * Defence is nearly flat and capped on purpose. It is subtracted before the
- * minimum-1 damage floor, so a defence that climbed with the rest of the curve
- * would stop a low-attack kin dealing anything at all — the run would not get
- * harder, it would become arithmetically impossible while the health bar still
- * suggested a fight. Health and attack carry the difficulty instead.
+ * Defence is nearly flat and capped, and the reason has changed.
+ *
+ * It used to be a safety rail: defence is subtracted, and while the damage
+ * floor was an absolute 1, a defence that climbed with the rest of the curve
+ * stopped a low-attack kin dealing anything at all — not a harder run, an
+ * arithmetically impossible one behind a health bar that still suggested a
+ * fight. The floor is now a share of the attacker's attack (see
+ * MIN_DAMAGE_FRACTION), so that failure is gone.
+ *
+ * The cap stays because armour is still the least interesting axis to climb: it
+ * flattens every kin's damage towards the same floor rather than asking anything
+ * of a build. Health and attack carry the difficulty; the Warded band is where
+ * armour is allowed to matter, and it can now scale because of the floor.
  */
 const DEF_BASE = 52
 const DEF_PER_FLOOR = 1.4

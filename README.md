@@ -541,9 +541,37 @@ currently measures, recorded here rather than left in a comment nobody reads:
   the campaign on Nightmare arrives at the last boss at level 42; on Normal, at
   level 34. Both finish it at full health.
 
-Raising the multipliers, or flattening the defence curve that makes an endgame
-hero take exactly 1 damage a swing, is a design decision rather than a bug fix,
-so the numbers are left as they are and the finding is written down instead.
+The second of these is still open; raising the multipliers is a design decision
+rather than a bug fix, so the numbers are left as they are and the finding is
+written down instead.
+
+**The third finding — an endgame hero taking exactly 1 damage a swing — is
+fixed.** Defence is subtracted, and the damage floor used to be an absolute
+`1`, so the moment either side's defence overtook the other's attack every blow
+landed for one and the fight stopped being a fight while the health bar carried
+on suggesting otherwise. A hero who has finished the campaign carries **134-178
+defence** against a World 20 boss that attacks for **90**, so every boss in the
+game was landing 1 a swing.
+
+The floor is now a share of the attacker's attack — `MIN_DAMAGE_FRACTION`,
+15% — applied identically to the player's swing, the enemy's, and a counter,
+through one `strikeDamage` helper so the three cannot drift. Armour still
+matters right up until it is stopping 85% of a blow, and then it stops scaling
+instead of becoming immunity. That World 20 boss now lands **11** a swing.
+
+It was the root of three separate workarounds, and undoing them is most of the
+value:
+
+| | before | after |
+| --- | --- | --- |
+| Tower `DEF_CAP` | a safety rail against arithmetic lock-out | a design choice about which axis is interesting |
+| Warded band | forced flat, because ×1.10 put Dwarf on the floor two bands in | back to a multiplier; the same sweep bottoms out at 67 even at ×2.0 |
+| Boss Remix relics | tower relics took Mythic to 100% on every kin at every boss | still 36-100% at World 17, and Dwarf cannot clear it at all |
+
+Measured after the change: the campaign walk is unchanged at **zero forced
+replays**, and the tower walls in the same place it did before (floor 30-40
+bare, 40 with relics and five ascensions), so the fix costs nothing that was
+already working.
 
 ## Admin Test Lab
 

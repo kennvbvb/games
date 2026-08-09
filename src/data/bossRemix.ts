@@ -50,10 +50,13 @@ export interface RemixTier {
    * A multiplier on the campaign boss cannot work for the gated tiers, and the
    * measurement is unambiguous. A hero who has finished the campaign carries
    * 134-178 defence; the World 20 boss attacks for 90, and x1.45 of that is
-   * 131. Defence is subtracted before the minimum-1 damage floor, so *every*
-   * blow lands for exactly 1 and multiplying the boss's health only makes the
-   * formality longer. Measured across all six kin, every relic boss at every
-   * tier finished with the hero on 100% health.
+   * 131 — below the armour it is swinging at. Measured across all six kin,
+   * every relic boss at every tier finished with the hero on 100% health.
+   *
+   * The proportional damage floor later stopped that from meaning *one* damage
+   * a swing, but it did not make the fight a fight: 15% of 131 is still under
+   * twenty against a thousand-point health pool. An endgame boss has to swing
+   * like one.
    *
    * Health needs a floor for the same reason: a World 5 boss at x2.4 health is
    * still under a thousand, which an endgame hero deletes in three turns no

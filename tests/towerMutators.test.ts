@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   FLOORS_PER_BAND,
   TOWER_MUTATORS,
-  WARDED_DEFENCE,
+  WARDED_DEFENCE_SCALE,
   bandOfFloor,
   bandStart,
   isCheckpointFloor,
@@ -14,7 +14,7 @@ import { isTowerBossFloor, towerEnemy, towerFloor } from '../src/data/tower'
 import { ITEMS, ITEM_BY_ID, SHOP_ITEMS } from '../src/data/items'
 import { buildOf } from '../src/data/builds'
 import { NEUTRAL, foldModifiers } from '../src/systems/combatModifiers'
-import { resolveBattle } from '../src/systems/combat'
+import { MIN_DAMAGE_FRACTION, resolveBattle } from '../src/systems/combat'
 import { playerBattleInputs } from '../src/systems/playerBattle'
 import { createDefaultPlayerState } from '../src/state/playerState'
 import { statsForLevel } from '../src/systems/leveling'
@@ -56,7 +56,7 @@ describe('tower bands', () => {
   it('gives every other band a rule that actually does something', () => {
     for (const mutator of TOWER_MUTATORS.filter((m) => m.id !== 'open')) {
       const changesPlayer = mutator.mods !== undefined && foldModifiers([mutator.mods]) !== NEUTRAL
-      const changesEnemy = mutator.enemyDefBonus !== undefined
+      const changesEnemy = mutator.enemyDefScale !== undefined
       const changesGear = mutator.silenceAccessories === true
       expect(changesPlayer || changesEnemy || changesGear, mutator.id).toBe(true)
     }
@@ -83,29 +83,50 @@ describe('what each rule does to a fight', () => {
     // floor apart the defence jumps by exactly the rule and nothing else.
     expect(mutatorForFloor(5).id).toBe('open')
     expect(mutatorForFloor(6).id).toBe('warded')
-    expect(mutatorForFloor(1).enemyDefBonus).toBeUndefined()
-    expect(towerEnemy(6).def - towerEnemy(5).def).toBeGreaterThanOrEqual(WARDED_DEFENCE)
+    expect(mutatorForFloor(1).enemyDefScale).toBeUndefined()
+    expect(towerEnemy(6).def).toBeGreaterThan(towerEnemy(5).def)
   })
 
-  it('adds exactly what a committed Breaker build strips, and no more', () => {
-    // The rule *is* this equality: bring the answer and the band is cancelled
-    // outright. Pinned so neither number can move without the other.
-    const pierceAvailable =
+  it('keeps pierce worth bringing to the band it answers', () => {
+    // The rule is no longer "exactly cancellable", but Pierce must still be the
+    // thing that helps most against it — otherwise Warded is just a stat wall.
+    const wall = { name: 'W', sprite: 'enemy_1', maxHp: 4000, atk: 5, def: 90 }
+    const player = { maxHp: 800, atk: 150, def: 40 }
+    const rewards = { exp: 0, gold: 0 }
+    const pierce =
       (ITEM_BY_ID.get('void-pike')!.effect!.mods.pierce ?? 0) + (buildOf('breaker').resonance.pierce ?? 0)
-    expect(WARDED_DEFENCE).toBe(pierceAvailable)
+
+    const plain = resolveBattle({ player, enemy: wall, rewards })
+    const pierced = resolveBattle({ player, enemy: wall, rewards, modifiers: [{ pierce }] })
+    const hit = (r: typeof plain) => r.log.find((e) => e.attacker === 'player')!.damage
+    expect(hit(pierced)).toBeGreaterThan(hit(plain))
   })
 
-  it('never scales the armour, because scaling it walls the low-attack kin', () => {
-    // A multiplier was measured and rejected: even x1.10 pushed Dwarf onto the
-    // minimum-1 damage floor two bands in. Flat is the guarantee, so this is
-    // worth a test rather than only a comment.
-    for (const mutator of TOWER_MUTATORS) {
-      expect(Object.keys(mutator), mutator.id).not.toContain('enemyDefScale')
-    }
-    // And the cost of the rule is the same absolute number on every floor.
+  it('scales the armour, which the proportional damage floor made safe', () => {
+    // A multiplier was measured and rejected while the damage floor was an
+    // absolute 1 — even x1.10 pushed Dwarf onto it two bands in. With a
+    // proportional floor the same sweep bottoms out at 67 at x2.0, so armour
+    // saturates rather than winning outright.
     for (const floor of [6, 26, 46, 66]) {
       expect(mutatorForFloor(floor).id).toBe('warded')
-      expect(mutatorForFloor(floor).enemyDefBonus).toBe(WARDED_DEFENCE)
+      expect(mutatorForFloor(floor).enemyDefScale).toBe(WARDED_DEFENCE_SCALE)
+    }
+    expect(WARDED_DEFENCE_SCALE).toBeGreaterThan(1)
+  })
+
+  it('never lets armour reduce a blow below the proportional floor', () => {
+    // The guarantee the whole change rests on, stated as a number: however
+    // absurd the armour, a swing still lands for its share of the attack.
+    const player = { maxHp: 500, atk: 200, def: 10 }
+    const rewards = { exp: 0, gold: 0 }
+    for (const def of [0, 100, 200, 1000, 100000]) {
+      const r = resolveBattle({
+        player,
+        enemy: { name: 'W', sprite: 'enemy_1', maxHp: 9000, atk: 1, def },
+        rewards,
+      })
+      const hit = r.log.find((e) => e.attacker === 'player')!.damage
+      expect(hit, `def ${def}`).toBeGreaterThanOrEqual(Math.round(200 * MIN_DAMAGE_FRACTION))
     }
   })
 

@@ -23,6 +23,46 @@ import type {
   TurnEvent,
 } from '../types'
 
+/**
+ * The share of an attacker's attack that always gets through, however much
+ * defence stands in the way.
+ *
+ * Defence is *subtracted*, so without this the damage floor is an absolute 1 —
+ * and the moment either side's defence overtakes the other's attack, every blow
+ * lands for exactly 1 and the fight stops being a fight while the health bar
+ * carries on suggesting otherwise. That is not a hypothetical: a hero who has
+ * finished the campaign carries 134-178 defence against a World 20 boss that
+ * attacks for 90, so *every* boss in the game was landing 1 a swing.
+ *
+ * It is the root cause of three separate workarounds. The tower caps enemy
+ * defence (DEF_CAP) so a low-attack kin is not arithmetically locked out; the
+ * tower's Warded band had to become a flat bump after a multiplier was measured
+ * pushing Dwarf onto the floor; and Boss Remix needed its own attack curve
+ * because scaling the campaign boss could never break through player armour.
+ *
+ * Making the floor proportional fixes all three at the source. Armour still
+ * matters — right up until it is stopping 85% of a blow — and then it stops
+ * scaling instead of becoming absolute immunity. The rule is symmetric, so it
+ * reads the same whichever side is swinging.
+ */
+export const MIN_DAMAGE_FRACTION = 0.15
+
+/**
+ * One blow, from raw attack and defence to a whole number of damage.
+ *
+ * Every strike in the turn loop goes through here so the floor cannot differ
+ * between the player's swing, the enemy's, and a counter — three call sites
+ * that used to spell the same arithmetic out three times.
+ *
+ * Rounded exactly once, at the end, so multipliers stay commutative: rounding
+ * per step makes the order in which a plan, a passive and a skill are applied
+ * change the result by a point, invisibly.
+ */
+export function strikeDamage(attack: number, defence: number, multiplier: number): number {
+  const throughArmour = Math.max(attack * MIN_DAMAGE_FRACTION, attack - defence)
+  return Math.max(1, Math.round(throughArmour * multiplier))
+}
+
 /** Backstop only. The healing ramp below is what actually bounds a fight. */
 const MAX_TURNS = 200
 
@@ -288,7 +328,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       // *bonus* damage for defence it does not have.
       const scaledDef = enemy.def * (activeTrait.defScale ?? 1) * phaseDef * defenceScale(enemyStatuses)
       const def = Math.max(0, scaledDef - mods.pierce)
-      const damage = Math.max(1, Math.round((atk - def) * multiplier))
+      const damage = strikeDamage(atk, def, multiplier)
       const absorbed = strikeEnemy(damage)
       enemyHitsTaken += 1
       playerEvent.damage = damage
@@ -349,7 +389,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       // A counter rides on the dodge rather than taking its own turn, so a
       // dodge build still trades in the same number of turns as everyone else.
       if (mods.counter > 0) {
-        const damage = Math.max(1, Math.round((player.atk - enemy.def) * mods.counter))
+        const damage = strikeDamage(player.atk, enemy.def, mods.counter)
         enemyHp = Math.max(0, enemyHp - damage)
         enemyEvent.counter = damage
         enemyEvent.counterHpAfter = enemyHp
@@ -371,7 +411,7 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
       if (fierce) multiplier *= activeTrait.fierce
 
       const def = player.def * defenceScale(playerStatuses)
-      const damage = Math.max(1, Math.round((attack - def) * multiplier))
+      const damage = strikeDamage(attack, def, multiplier)
       const absorbed = strikePlayer(damage)
       playerHitsTaken += 1
       enemyEvent.damage = damage

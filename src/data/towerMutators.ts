@@ -14,9 +14,8 @@ import type { ModifierSource } from '../systems/combatModifiers'
  * So every five floors the rule changes, and each rule has a build that answers
  * it:
  *
- * - **Warded** adds flat defence — exactly as much as a fully committed Breaker
- *   build can strip. Raw attack cannot solve armour once damage is on the
- *   minimum-1 floor; Pierce can, and here it cancels the rule outright.
+ * - **Warded** multiplies enemy defence. Raw attack loses value fast against
+ *   armour; Pierce takes the armour away instead. This band is Breaker's.
  * - **Charmless** switches both accessory slots off. Four slots have to carry
  *   what six did, which is the one rule that cannot be answered by swapping a
  *   single piece — it has to be answered by rebuilding.
@@ -54,26 +53,31 @@ export interface TowerMutator {
   /** Applied to the player's half of the fight; see systems/playerBattle. */
   mods?: ModifierSource
   /**
-   * Flat defence added to the floor enemy.
+   * Multiplier on the floor enemy's defence.
    *
-   * Flat, not a multiplier, and the measurement is why. Defence is subtracted
-   * before the minimum-1 damage floor, so scaling it scales the *gap* between a
-   * kin's attack and the wall — and in this tower that gap is thin. Damage per
-   * hit for Dwarf, the lowest-attack kin, fully geared, on the warded floors:
+   * This was a flat bump for exactly as long as the damage floor was an
+   * absolute 1. Under that rule, scaling defence scaled the *gap* between a
+   * kin's attack and the point where every blow lands for one — and the gap is
+   * thin. Damage per hit for Dwarf, the lowest-attack kin, fully geared, on the
+   * warded floors, measured then:
    *
    *   floors      6-10            26-30           46-50
    *   x1.00       131..132        46,43,37,1,32   1 (already floored)
    *   x1.10       113..107        18,15,9,1,1
-   *   x1.25        85..75         1,1,1,1,1
-   *   x1.60        24..1          1,1,1,1,1
+   *   x1.25        85..75          1,1,1,1,1
    *
-   * A ten percent bump already erases Dwarf two bands in, which is the failure
-   * the tower's own DEF_CAP exists to prevent: not a harder fight, an
-   * arithmetically impossible one behind a health bar that still looks like a
-   * fight. A flat bump costs every kin the same absolute damage and cannot
-   * scale into that wall.
+   * A ten percent bump erased Dwarf two bands in. Now that the floor is a share
+   * of the attacker's attack (see MIN_DAMAGE_FRACTION), the same sweep bottoms
+   * out at 67 even at x2.0 — armour saturates instead of winning outright, so
+   * the rule can scale again.
+   *
+   * A multiplier rather than the flat bump back, because the tower is endless:
+   * ten defence is a real cost at floor 10 and rounding error at floor 500,
+   * so a flat rule quietly stops being a rule. x1.35 keeps subtraction the
+   * binding term for most kin through the measured wall rather than pinning
+   * them to the floor.
    */
-  enemyDefBonus?: number
+  enemyDefScale?: number
   /** Both accessory slots contribute nothing: no stats, no affixes, no effect. */
   silenceAccessories?: true
 }
@@ -81,16 +85,8 @@ export interface TowerMutator {
 /** Floors per band; also the tower list's page size, so one page is one rule. */
 export const FLOORS_PER_BAND = 5
 
-/**
- * Armour the Warded bands add, chosen to be exactly what a fully committed
- * Breaker build strips: Void Pike's Pierce 6 plus the Breaker resonance's 4.
- *
- * That equality is the rule. A player who brings the answer cancels the band
- * outright rather than merely coping with it, and a player who does not pays a
- * flat, visible price. A test pins the two numbers together so neither can be
- * retuned without the other.
- */
-export const WARDED_DEFENCE = 10
+/** How much the Warded bands multiply enemy defence by. */
+export const WARDED_DEFENCE_SCALE = 1.35
 
 export const TOWER_MUTATORS: TowerMutator[] = [
   {
@@ -102,7 +98,7 @@ export const TOWER_MUTATORS: TowerMutator[] = [
     id: 'warded',
     nameKey: 'tower.mutWarded',
     descriptionKey: 'tower.mutWardedHint',
-    enemyDefBonus: WARDED_DEFENCE,
+    enemyDefScale: WARDED_DEFENCE_SCALE,
   },
   {
     id: 'charmless',
@@ -151,6 +147,6 @@ export function mutatorForStageId(id: string): TowerMutator | undefined {
 
 /** Applies the band's rule to a floor's enemy. */
 export function applyMutatorToEnemy(enemy: EnemyConfig, mutator: TowerMutator): EnemyConfig {
-  if (mutator.enemyDefBonus === undefined) return enemy
-  return { ...enemy, def: enemy.def + mutator.enemyDefBonus }
+  if (mutator.enemyDefScale === undefined) return enemy
+  return { ...enemy, def: Math.round(enemy.def * mutator.enemyDefScale) }
 }
