@@ -18,8 +18,10 @@ import type { PlanId } from '../data/battlePlans'
  * - **Cadences take the strictest.** Two sources of "dodge every Nth" give the
  *   smaller N rather than two independent dodges — a second dodge on the same
  *   blow is invisible, so adding them would pay nothing for a real cost.
- * - **Percentages of Max HP add.** Healing 6% and 3% on the same blow is one
- *   9% heal, matching how a player reads two heal sources stacking.
+ * - **Percentages of Max HP add, at the rate they were written.** Healing 6%
+ *   and 3% on the same cadence is one 9% heal, matching how a player reads two
+ *   heal sources stacking. On *different* cadences the amount is restated at
+ *   the strictest one so the healing per blow still adds up — see `healRate`.
  * - **Flat reductions add.** Two sources of Pierce 6 give 12 — armour is
  *   subtracted, so the thing that counters it has to be subtracted too.
  * - **Thresholds take the most generous.** A skill that executes below 15% and
@@ -37,7 +39,14 @@ export interface CombatModifiers {
   dodgeEvery: number
   /** Fraction of the player's attack dealt back on a dodge; 0 disables. */
   counter: number
-  /** Fraction of Max HP restored every `healEvery`-th player attack. */
+  /**
+   * Fraction of Max HP restored every `healEvery`-th player attack.
+   *
+   * The pair is a *rate*, and folding has to preserve it. Adding the fractions
+   * while taking the strictest cadence does not: it pays every source at the
+   * fastest source's cadence, so a small fast heal silently doubles the value
+   * of every slow one beside it. See `combine`.
+   */
   heal: number
   healEvery: number
   /** Multiplier on the first player attack that actually lands. */
@@ -131,7 +140,40 @@ function tightest(a: number, b: number): number {
   return Math.min(a, b)
 }
 
+/**
+ * Healing per player attack that a `(fraction, everyN)` pair describes.
+ *
+ * A heal with no cadence never fires, so it contributes nothing. Every shipped
+ * source declares the two together — `data/battlePlans`, `data/affixes`,
+ * `data/skills`, `data/relics` and the race passives — and a test holds that.
+ */
+function healRate(fraction: number, everyN: number): number {
+  return everyN > 0 ? fraction / everyN : 0
+}
+
 export function combine(base: CombatModifiers, source: ModifierSource): CombatModifiers {
+  // Healing folds as a rate, then is restated at the strictest cadence.
+  //
+  // The obvious rule — add the fractions, take the tighter cadence — pays
+  // *every* source at the fastest source's cadence. Undead's passive is 5% of
+  // Max HP every second attack; beside six gear and skill heals of ~6% every
+  // fourth, the naive fold gave 41.9% every second attack: a rate of 21% of
+  // Max HP per blow where the sources between them describe 11.7%. The small
+  // fast heal was not adding its own 2.5% but nearly doubling everything else.
+  //
+  // At the top of the game that was worth 320 points of sustain a turn against
+  // a World-20 Mythic boss dealing 265, so the boss took nothing off the hero
+  // it did not immediately hand back. Preserving the rate leaves the two cases
+  // a player can actually read untouched — one source is unchanged, and sources
+  // sharing a cadence still simply add — and only bites where the cadences
+  // differ, which is exactly where the old rule invented healing nobody had
+  // bought.
+  //
+  // It is not, on its own, why a farmed hero ends a boss on full health. See
+  // the README's balance notes: that is the health bar being unable to move
+  // while a barrier is running, which is a separate and still-open finding.
+  const healEvery = tightest(base.healEvery, source.healEvery ?? 0)
+  const rate = healRate(base.heal, base.healEvery) + healRate(source.heal ?? 0, source.healEvery ?? 0)
   return {
     outgoing: base.outgoing * (source.outgoing ?? 1),
     incoming: base.incoming * (source.incoming ?? 1),
@@ -139,8 +181,8 @@ export function combine(base: CombatModifiers, source: ModifierSource): CombatMo
     comboEvery: tightest(base.comboEvery, source.comboEvery ?? 0),
     dodgeEvery: tightest(base.dodgeEvery, source.dodgeEvery ?? 0),
     counter: Math.max(base.counter, source.counter ?? 0),
-    heal: base.heal + (source.heal ?? 0),
-    healEvery: tightest(base.healEvery, source.healEvery ?? 0),
+    heal: rate * healEvery,
+    healEvery,
     firstStrike: base.firstStrike * (source.firstStrike ?? 1),
     lowHp: base.lowHp * (source.lowHp ?? 1),
     // The most generous threshold wins; a stricter one would silently cancel
