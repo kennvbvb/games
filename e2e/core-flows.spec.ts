@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { GamePage, GUEST_KEY, QUARANTINE_KEY, makeSave, userKey } from './helpers'
+import { contractsForWeek } from '../src/data/contracts'
 
 // Menu button positions in the game's logical coordinate space.
 const MENU = {
@@ -1057,6 +1058,27 @@ test.describe('weekly contracts', () => {
   const CONTRACTS_MENU = { x: 240, y: 652 }
   const CLAIM = { x: 240, y: 556 }
 
+  // World 1's five rows, from ROW_YS/BOSS_Y in StageSelectScene.
+  const WORLD1_ROW = (i: number) => ({ x: 374, y: [146, 226, 306, 386, 472][i] })
+  // Which of world 1's rows opens on which trait — stage 1 carries none.
+  const TRAIT_ROW: Record<string, number> = { slippery: 1, fierce: 2, mending: 3 }
+  const PLAN_ROW: Record<string, 0 | 1 | 2> = { brave: 0, cozy: 1, clever: 2 }
+
+  /**
+   * A fight on world 1 that satisfies one of the week's jobs, and the plan to
+   * fight it under. Ordered by how directly the job is aimed at: a plan job
+   * fixes the plan and leaves the stage free, so it comes first.
+   */
+  const campaignTarget = (jobs: { kind: string; plan?: string; trait?: string }[]) => {
+    const plan = jobs.find((c) => c.kind === 'winsWithPlan')
+    if (plan) return { row: WORLD1_ROW(0), planRow: PLAN_ROW[plan.plan!] }
+    const trait = jobs.find((c) => c.kind === 'beatTrait' && TRAIT_ROW[c.trait!] !== undefined)
+    if (trait) return { row: WORLD1_ROW(TRAIT_ROW[trait.trait!]), planRow: 0 as const }
+    const boss = jobs.find((c) => c.kind === 'bossHealthy')
+    if (boss) return { row: WORLD1_ROW(4), planRow: 1 as const }
+    throw new Error(`week offers no campaign-satisfiable job: ${jobs.map((c) => c.kind).join(', ')}`)
+  }
+
   test('pays a banked week once, and then has nothing left to pay', async ({ page }) => {
     const game = new GamePage(page)
     const week = Math.floor(Date.now() / WEEK_MS)
@@ -1086,17 +1108,32 @@ test.describe('weekly contracts', () => {
   test('a win moves this week’s counters and survives a reload', async ({ page }) => {
     const game = new GamePage(page)
     const week = Math.floor(Date.now() / WEEK_MS)
+    // The three jobs on offer are a pure function of the week index, so a fight
+    // chosen without consulting them satisfies none of them for weeks at a
+    // time. This test used to win stage 1 on Brave and assert the counters
+    // moved, which is only true in a week that happens to offer "win with
+    // Brave" — measured, 22% of weeks offer no plan job at all, and the whole
+    // week beginning 2026-08-13 offers Cozy, the tower and Fierce, so it went
+    // red for seven days at a stretch on a codebase that had not changed.
+    //
+    // Instead, pick the fight from what the week actually asked for. Every
+    // campaign-satisfiable job kind can be met on world 1: rows 2, 3 and 4 open
+    // on Slippery, Fierce and Mending, and row 5 is a boss. Only two jobs in
+    // the pool (the tower and the remix) need progress this save does not have,
+    // and three jobs are drawn from nine, so at least one is always reachable.
+    const jobs = contractsForWeek(week)
+    const target = campaignTarget(jobs)
     await game.open(
       makeSave({
         contracts: { week, counts: [], unclaimed: [] },
-        stageProgress: { highestUnlocked: 1, completedStageIds: [] },
+        stageProgress: { highestUnlocked: 5, completedStageIds: [] },
       }),
     )
     await game.continueAsGuest()
 
     await game.tap(MENU.stages.x, MENU.stages.y)
-    await game.tap(STAGE_ROW_1.x, STAGE_ROW_1.y)
-    await game.pickPlan()
+    await game.tap(target.row.x, target.row.y)
+    await game.pickPlan(target.planRow)
 
     await expect
       .poll(
