@@ -21,8 +21,15 @@ import { STAGES } from '../src/data/stages'
 import { BOSS_STAGE_IDS } from '../src/data/worlds'
 import { createDefaultPlayerState } from '../src/state/playerState'
 import { parsePlayerState } from '../src/state/validate'
-import { resolveBattle } from '../src/systems/combat'
+import { SHIELD_CAP_FRACTION, raceModifiers, resolveBattle } from '../src/systems/combat'
 import { foldModifiers } from '../src/systems/combatModifiers'
+import type { ModifierSource } from '../src/systems/combatModifiers'
+import { SETS } from '../src/data/sets'
+import { ITEMS } from '../src/data/items'
+import { AFFIXES } from '../src/data/affixes'
+import { BOONS } from '../src/data/rifts'
+import { RACES } from '../src/data/races'
+import { BATTLE_PLANS } from '../src/data/battlePlans'
 import { statsForLevel } from '../src/systems/leveling'
 import { stageOutlook } from '../src/systems/difficulty'
 import type { PlayerState } from '../src/types'
@@ -323,6 +330,111 @@ describe('skills in combat', () => {
     ])
     expect(folded.heal).toBeCloseTo(0.09, 10)
     expect(folded.healEvery).toBe(3)
+  })
+
+  it('keeps the healing per blow the sources describe when cadences differ', () => {
+    // The rule that used to apply here — add the fractions, take the tighter
+    // cadence — paid the slow source at the fast source's rate. 20% every 4th
+    // blow beside 5% every 2nd came out as 25% every 2nd: 12.5% a blow where
+    // the two sources between them describe 7.5%.
+    const folded = foldModifiers([
+      { heal: 0.2, healEvery: 4 },
+      { heal: 0.05, healEvery: 2 },
+    ])
+    expect(folded.healEvery).toBe(2)
+    expect(folded.heal / folded.healEvery).toBeCloseTo(0.2 / 4 + 0.05 / 2, 10)
+    expect(folded.heal).toBeCloseTo(0.15, 10)
+  })
+
+  it('folds heal the same way whatever order the sources arrive in', () => {
+    // Gear, skills, sets and the race passive reach the fold in an order that
+    // depends on which systems the player has touched. If that order changed
+    // the rate, the same hero would heal differently for no visible reason.
+    const sources = [
+      { heal: 0.06, healEvery: 4 },
+      { heal: 0.05, healEvery: 2 },
+      { heal: 0.04, healEvery: 3 },
+    ]
+    const forward = foldModifiers(sources)
+    const backward = foldModifiers([...sources].reverse())
+    expect(backward.healEvery).toBe(forward.healEvery)
+    expect(backward.heal).toBeCloseTo(forward.heal, 10)
+  })
+
+  it('leaves a lone heal source exactly as it was written', () => {
+    const folded = foldModifiers([{ heal: 0.07, healEvery: 3 }])
+    expect(folded.heal).toBeCloseTo(0.07, 10)
+    expect(folded.healEvery).toBe(3)
+  })
+
+  it('never ships a heal without the cadence that gives it a rate', () => {
+    // The fold reads `heal` and `healEvery` as one rate, so a fraction written
+    // without a cadence contributes nothing at all. That is the right reading
+    // of "restores 6% every never", but it is a silent nothing — so the rule is
+    // that no shipped source is allowed to be written that way.
+    const shipped: { id: string; mods: ModifierSource }[] = [
+      ...SKILLS.map((s) => ({ id: `skill ${s.id}`, mods: s.mods })),
+      ...SETS.flatMap((s) => [
+        { id: `set ${s.id} 2pc`, mods: s.twoPiece.mods },
+        { id: `set ${s.id} 4pc`, mods: s.fourPiece.mods },
+      ]),
+      ...ITEMS.filter((i) => i.effect).map((i) => ({ id: `relic ${i.id}`, mods: i.effect!.mods })),
+      ...AFFIXES.map((a) => ({ id: `affix ${a.id}`, mods: a.build(a.base) })),
+      ...BOONS.map((b) => ({ id: `boon ${b.id}`, mods: b.mods })),
+      ...RACES.filter((r) => r.passive).map((r) => ({
+        id: `race ${r.id}`,
+        mods: raceModifiers(r.passive)!,
+      })),
+      ...BATTLE_PLANS.map((p) => ({ id: `plan ${p.id}`, mods: { heal: p.heal, healEvery: p.healEvery } })),
+    ]
+    for (const { id, mods } of shipped) {
+      if ((mods.heal ?? 0) > 0) expect(mods.healEvery ?? 0, id).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('the shield ceiling', () => {
+  const player = { maxHp: 1000, atk: 40, def: 10 }
+  const enemy = { name: 'Wall', sprite: 'enemy_1', maxHp: 100_000, atk: 200, def: 0 }
+  const rewards = { exp: 0, gold: 0 }
+
+  it('bounds an opening shield however many sources grant one', () => {
+    // Four 30% shields are 120% of Max HP before the cap and exactly the cap
+    // after it. Measured, an endgame hero really can assemble past 100%.
+    const stacked = resolveBattle({
+      player,
+      enemy,
+      rewards,
+      modifiers: [{ shield: 0.3 }, { shield: 0.3 }, { shield: 0.3 }, { shield: 0.3 }],
+    })
+    const absorbed = stacked.log.reduce((n, e) => n + (e.absorbed ?? 0), 0)
+    expect(absorbed).toBeLessThanOrEqual(Math.round(player.maxHp * SHIELD_CAP_FRACTION))
+  })
+
+  it('leaves an ordinary shield untouched', () => {
+    // The whole measured range of normal play is 17-42% of Max HP, so nobody
+    // playing without stacking on purpose ever meets the ceiling.
+    const modest = resolveBattle({ player, enemy, rewards, modifiers: [{ shield: 0.4 }] })
+    const firstHit = modest.log.find((e) => e.attacker === 'enemy')!
+    expect(firstHit.absorbed).toBe(firstHit.damage)
+    const absorbed = modest.log.reduce((n, e) => n + (e.absorbed ?? 0), 0)
+    expect(absorbed).toBe(Math.round(player.maxHp * 0.4))
+  })
+
+  it('stops a barrier refilling past the ceiling', () => {
+    // A ceiling on the stock alone would be no ceiling: the barrier's overflow
+    // would top the shield back up above it every time the player swung.
+    const banked = resolveBattle({
+      player,
+      enemy: { ...enemy, atk: 1 },
+      rewards,
+      modifiers: [{ shield: 0.4, heal: 0.9, healEvery: 1, barrier: true }],
+    })
+    expect(banked.shieldLeft).toBeLessThanOrEqual(Math.round(player.maxHp * SHIELD_CAP_FRACTION))
+    // And the banking is reported honestly: nothing claims to have been stored
+    // that the ceiling actually refused.
+    const reported = banked.log.reduce((n, e) => n + (e.barriered ?? 0), 0)
+    expect(reported).toBeLessThanOrEqual(Math.round(player.maxHp * SHIELD_CAP_FRACTION))
   })
 })
 

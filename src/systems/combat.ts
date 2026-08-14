@@ -81,6 +81,28 @@ const MAX_TURNS = 200
 const HEAL_FULL_UNTIL_TURN = 20
 const HEAL_ZERO_FROM_TURN = 40
 
+/**
+ * The most shield a hero can stand behind, as a share of Max HP.
+ *
+ * Shield is deliberately not part of Max HP — the comment at the shield's
+ * declaration says a build that runs on shields "should read as fragile on the
+ * health bar, because it is". Measured, that was not true. `shield` adds across
+ * sources with nothing bounding the sum, and searching every loadout an endgame
+ * hero can wear turns up openings of 0.71 to 1.05 of Max HP: a health bar
+ * showing under half of what the hero can actually take.
+ *
+ * A ceiling makes the claim true again and gives the bar a known worst case —
+ * the hero is never worth more than one and a half health bars. It binds only
+ * on deliberate stacking: every loadout the balance walk assembles for ordinary
+ * play sits at 0.17 to 0.42, well under the cap, so nobody playing normally
+ * meets it.
+ *
+ * It applies to the barrier's overflow as well as to the opening shield.
+ * Otherwise the ceiling would bound the stock and leave the flow free to refill
+ * past it, which is not a ceiling.
+ */
+export const SHIELD_CAP_FRACTION = 0.5
+
 export function healScale(turn: number): number {
   if (turn <= HEAL_FULL_UNTIL_TURN) return 1
   if (turn >= HEAL_ZERO_FROM_TURN) return 0
@@ -204,8 +226,18 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
   let activeTrait = trait
   // Shield sits in front of health and is spent first. It is deliberately not
   // part of Max HP: a build that runs on shields should read as fragile on the
-  // health bar, because it is — nothing refills it once the sources stop.
-  let shield = Math.round(player.maxHp * mods.shield * mods.sustainScale)
+  // health bar, because it is — nothing refills it once the sources stop, and
+  // it can never grow past SHIELD_CAP_FRACTION of the pool it stands in front
+  // of, so the bar's worst case is knowable.
+  const shieldCap = Math.round(player.maxHp * SHIELD_CAP_FRACTION)
+  let shield = 0
+  /** Adds to the shield, up to the ceiling; returns what actually stuck. */
+  const addShield = (amount: number): number => {
+    const added = Math.max(0, Math.min(amount, shieldCap - shield))
+    shield += added
+    return added
+  }
+  addShield(Math.round(player.maxHp * mods.shield * mods.sustainScale))
   // Counters advance on every *attempted* attack, dodged or not. One counter
   // per side means a dodge cannot silently shift an unrelated effect's cadence,
   // and the player can predict every proc by counting blows on screen.
@@ -236,9 +268,8 @@ export function resolveBattle(ctx: BattleContext): BattleResult {
     const raw = Math.round(player.maxHp * fraction * healScale(turn) * mods.sustainScale)
     if (raw <= 0) return { healed: 0, banked: 0 }
     const healed = Math.min(raw, player.maxHp - playerHp)
-    const banked = mods.barrier ? raw - healed : 0
     playerHp += healed
-    shield += banked
+    const banked = mods.barrier ? addShield(raw - healed) : 0
     return { healed, banked }
   }
 

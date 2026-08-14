@@ -573,6 +573,60 @@ replays**, and the tower walls in the same place it did before (floor 30-40
 bare, 40 with relics and five ascensions), so the fix costs nothing that was
 already working.
 
+### The sustain finding, and what it actually turned out to be
+
+The finding as it was written down: *a fully-farmed hero ends the World 20 boss
+at 100% health, because the sustain build banks overheal into shield faster than
+damage arrives.* Chasing it turned up two real defects — neither of which is
+the reason the health bar sits at 100%. Both are fixed; the stated cause is
+wrong, and the correction is worth more than the fixes.
+
+**Fixed: healing folded at a rate nobody had bought.** Modifier sources compose
+by documented rules — percentages of Max HP add, cadences take the strictest.
+Applied to healing, those two rules together pay *every* source at the *fastest*
+source's cadence. An Undead hero's passive mends 5% every second attack; worn
+beside six gear and skill heals of about 6% every fourth, the fold produced
+**41.9% every second attack** — a rate of 21% of Max HP per blow where the
+sources between them describe 11.7%. The small fast heal was not adding its own
+2.5%; it was nearly doubling everything else. Healing now folds as a rate and is
+restated at the strictest cadence, which leaves both cases a player can read
+untouched (one source is unchanged; sources sharing a cadence still simply add)
+and only bites where the cadences differ.
+
+**Fixed: shields stacked past a full health bar.** The comment where shield is
+declared says a build that runs on shields "should read as fragile on the health
+bar, because it is". Searching every loadout an endgame hero can wear —
+4,800 per kin — the best sustain builds open behind a shield worth **0.71 to
+1.05 of Max HP**, so the bar was showing under half the hero's real durability.
+`SHIELD_CAP_FRACTION` now bounds it at half a health bar, applied to the
+barrier's overflow as well as the opening stock, because a ceiling the flow can
+refill past is not a ceiling. Every loadout the balance walk assembles for
+ordinary play sits at 0.17-0.42, so nobody playing normally meets it.
+
+**Not the cause, and not fixed: the health bar cannot move.** Instrumenting the
+last campaign boss under the shipped rules shows `healed = 0` in every fight,
+for every kin. The hero starts at full health, the opening shield absorbs the
+first blow, so healing never has anything to restore and *all* of it becomes
+shield. The bar is pinned at 100% for as long as the shield outlasts the
+fight — which says nothing about whether the fight was close. Fae finishes the
+last boss having absorbed **578** damage with **25** shield points left, and
+reads as untouched; Dwarf finishes with 279 left, and reads exactly the same.
+
+Three knobs were swept against this and every one was rejected for buying
+nothing: a heal-rate ceiling (down to 2% of Max HP per blow), barrier banking a
+fraction of overheal (down to 0.4), and a tighter shield cap (down to 0.3). The
+low-water mark stayed at 100% at every value of all three, because the selector
+only has to find one of three battle plans where the buffer outlasts the fight.
+Shipping any of them would have been a nerf with a comment claiming a fix it
+did not deliver.
+
+What remains is two things this change deliberately does not attempt. The
+health bar needs to show the shield, so "100% health" stops hiding a fight won
+on the last 4% of a buffer. And the late campaign's enemies deal **22-47 a
+turn** to heroes with 683-976 Max HP — the same axis as the damage-floor
+finding above, one level up: the floor stopped bosses landing 1, but 15% of an
+attack of 90 is still not an endgame blow.
+
 ## Admin Test Lab
 
 A developer tool, opened with `Ctrl+Shift+A` or the TEST LAB badge on the main
